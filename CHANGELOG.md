@@ -7,9 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.2.0] - 2020-02-03 
+## -[1.20.a1]
 
 ### Added
+
+- Report Commands
+    -RPAD -get address
+    -RPBC - get band channel
+    -RPBG - get band group
+    -RPFR - get frequency
+    -RPID - get osd string
+    -RPLF - getlock format
+    -RPMD - get mode
+    -RPRS - get rssi
+    -RPOD - get osd state
+    -RPVF - get video format
+
+- Examples in main.py to scan for receivers for connection and version
+- Examples in main.py to run reports
+
+### Changed
+- Improved exception handling for serial errors that occur when the following events occur
+  - Connection error at the serial TTL interface 
+  - Connection error at the USB interface
+
+- Modified getter logic to support regex matching and a shared _run_report() method
+
+
+
+### Fixed
+- Report Commands
+  - Improved parsing robustness by using regex's
+
+
+### TODO
+- Improve regex parsing by storing expected limits of values inside clearview_comspecs
+- Improve error catching for serial errors by preserving stacktrace while also generating useful error messages
+- Improve docstring rendering with rst or md formatting
+
+
+## [1.20.0] - 2020-02-03 
+
+### Added
+
 - Support of basic ClearView API in concurrent with ClearView 1.20a software version
 - Control Commands
   - ADS - Set Receiver Address
