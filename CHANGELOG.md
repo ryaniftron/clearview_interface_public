@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Examples in main.py to scan for receivers for connection and version
 - Examples in main.py to run reports
+- Robust Mode 
+- Logger support to replace random print statements
 
 ### Changed
 - Improved exception handling for serial errors that occur when the following events occur
@@ -32,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Connection error at the USB interface
 
 - Modified getter logic to support regex matching and a shared _run_report() method
+
+- Functions now are keyword only
 
 
 
