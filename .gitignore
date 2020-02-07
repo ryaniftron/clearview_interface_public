@@ -1,2 +1,3 @@
 __pycache*__
 *.log
+.vscode
