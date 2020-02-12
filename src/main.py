@@ -24,7 +24,7 @@ logger.addHandler(ch)
 
 
 if __name__ == "__main__":      # example usage
-    rx_id = 1                   # ensure the cv is set to that rx_id
+    rx_id = 0                # ensure the cv is set to that rx_id
     bc_id = 0
     cv = ClearView.ClearView(
         port='/dev/ttyUSB0',    # port name, COMX on windows
@@ -33,9 +33,16 @@ if __name__ == "__main__":      # example usage
         robust=True,            # checks all data sent was actually received
         timeout=0.1,            # serial read timeout
         )
-    cv.set_receiver_address(rcvr_target=bc_id, new_target=1)
+
+    #commands_to_test = set_receiver_address
+    #print(cv.set_receiver_address(rcvr_target=0, new_target=2))
     time.sleep(1)
-    cv.set_receiver_address(rcvr_target=6,new_target=4)
+    print(cv.get_connected_receiver_list())
+    cv.set_band_channel(rcvr_target=rx_id,band_channel=6)
+    #cv.set_band_channel(rcvr_target=rxtg,band_channel=7)
+    
+    #time.sleep(1)
+    #cv.set_receiver_address(rcvr_target=6,new_target=4)
 
     # Change receiver address from 4 to 1
     # cv.set_receiver_address(4,1)
@@ -44,12 +51,12 @@ if __name__ == "__main__":      # example usage
     # cv.set_receiver_address(0,1)
 
     # Get a list of connected receivers and software versions
-    connected_receivers = cv.get_connected_receiver_list()
-    for rxaddr, conn_stat in connected_receivers.items():
-        if conn_stat:
-            logger.info("Receiver #%s is connected and running software version %s",
-                        rxaddr,
-                        cv.get_model_version(rcvr_target=rxaddr).software_version_major)
+    # connected_receivers = cv.get_connected_receiver_list()
+    # for rxaddr, conn_stat in connected_receivers.items():
+    #     if conn_stat:
+    #         logger.info("Receiver #%s is connected and running software version %s",
+    #                     rxaddr,
+    #                     cv.get_model_version(rcvr_target=rxaddr).software_version_major)
 
     # Antenna Mode
     # for i in range(4):
@@ -78,7 +85,7 @@ if __name__ == "__main__":      # example usage
 
 
     # Broadcast OSD Message
-    # cv.set_all_osd_meget_band_channelssage("HELLO ALL")
+    # cv.set_all_osd_message("HELLO ALL")
 
     # Video Mode (show live,spectrum analyzer, menu)
     # mode_seq = ["live","menu","spectrum","live","spectrum","menu","live"]
@@ -128,12 +135,12 @@ if __name__ == "__main__":      # example usage
 
     # Generating a list of reports
 
-    logger.info("Generating a list of reports. Press any key to continue after each report.")
-    input()
-    for report in reports:
-        logger.info(report.__name__)
-        logger.info(report(rcvr_target=rx_id))
-        input()
+    # logger.info("Generating a list of reports. Press any key to continue after each report.")
+    # input()
+    # for report in reports:
+    #     logger.info(report.__name__)
+    #     logger.info(report(rcvr_target=rx_id))
+    #     input()
 
     # while True:
     #     cv.send_report_cstm(rx_id)

@@ -14,7 +14,7 @@
 
 import serial
 from time import sleep
-import inspect,sys # for printing caller in debug
+import inspect, sys # for printing caller in debug
 import re
 from collections import namedtuple
 import logging
@@ -94,22 +94,14 @@ class ClearView:
             Success: True
             Fail to Set: False
             Error in command: -1
+
+        #TODO bug: When target is 0, this fails to report success even if it was
         """
 
-        # TODO rcvr_targets handling is sloppy code. 
-        # Find a more elegant way to handle both lists or a single receiver.
-        # One way is to always supply a list
-        # even if there is only one element
-        # For now, just leave it out and only do one at a time
-        if robust:
-            num_tries = self.robust_control_retries
-        else:
-            num_tries = 1
+        num_tries = self._get_robust_retries(mode="send", robust=robust)
 
         if 0 <= rcvr_target <= 8 and 1 <= new_target <= 8:
             cmd = self._format_write_command(int(rcvr_target), "ADS" + str(new_target))
-
-
 
             while num_tries > 0:
                 self._write_serial(cmd)
@@ -130,33 +122,48 @@ class ClearView:
                     num_tries = num_tries - 1
             return False
         else:
-            self.logger.error("set_receiver_address. Receiver %s out of range", rcvr_targets)
+            self.logger.error("set_receiver_address. Receiver %s out of range", rcvr_target)
             return -1
 
-    def set_antenna_mode(self, rcvr_target, antenna_mode):
-        """AN => Set antenna mode between legacy, L,R,CV"""
+    def set_antenna_mode(self, *, rcvr_target, antenna_mode):
+        """AN => Set antenna mode between legacy, L,R,CV
+        
+        Robust Mode: Not supported
+        """
 
-        # TODO check range of rcvr_target and support list of rcvr_target
         if 0 <= antenna_mode <= 3:
             cmd = self._format_write_command(str(rcvr_target), "AN" + str(antenna_mode))
             self._write_serial(cmd)
         else:
             print("Error. Unsupported antenna mode of ", antenna_mode)
 
-    def set_band_channel(self, rcvr_target, band_channel):
+    def set_band_channel(self, *, robust=True, rcvr_target, band_channel):
         """BC = > Sets band channel. 1-8"""
 
-        # TODO check range of rcvr_target and support list of rcvr_target
+        num_tries = self._get_robust_retries(mode="send", robust=robust)
+
         if 1 <= band_channel <= 8:
-            cmd = self._format_write_command(str(rcvr_target), "BC" + str(band_channel - 1))
-            self._write_serial(cmd)
+            while num_tries > 0:
+                sleep(0.25)
+                self._clear_serial_in_buffer()
+                cmd = self._format_write_command(str(rcvr_target), "BC" + str(band_channel - 1))
+                self._write_serial(cmd)
+                sleep(0.25)
+                bc = self.get_band_channel(rcvr_target=rcvr_target)
+                if bc is not None:
+                    if bc.channel == band_channel - 1:
+                        return True
+                else:
+                    self.logger.warning("Failed set_band_channel with %s tries left", num_tries)
+                num_tries = num_tries - 1
+            return False
+
         else:
             print("Error. set_band_channel target of ", band_channel, "is out of range")
 
     def set_band_group(self, rcvr_target, band_group):
         """BG = > Sets band. 0-9,a-f"""
 
-        # TODO check range of rcvr_target and support list of rcvr_target
         # TODO add check if 0-9 and a-f
         cmd = self._format_write_command(str(rcvr_target), "BG" + str(band_group))
         self._write_serial(cmd)
@@ -186,7 +193,6 @@ class ClearView:
     def set_video_mode(self, rcvr_target, mode):
         """#MDL,MDS,MDM show live video, spectrum analyzer, and user menu"""
 
-        # TODO check range of rcvr_target and support list of rcvr_target
         avail_modes = ["live", "spectrum", "menu"]
         if mode in avail_modes:
             if mode == "live":
@@ -204,14 +210,12 @@ class ClearView:
     def show_osd(self, rcvr_target):
         """ ODE shows/enables the osd"""
 
-        # TODO check range of rcvr_target and support list of rcvr_target
         cmd = self._format_write_command(str(rcvr_target), "ODE")
         self._write_serial(cmd)
 
     def hide_osd(self, rcvr_target):
         """ODD hides/disables the osd"""
 
-        # TODO check range of rcvr_target and support list of rcvr_target
         cmd = self._format_write_command(str(rcvr_target), "ODD")
         self._write_serial(cmd)
 
@@ -241,7 +245,6 @@ class ClearView:
     def reset_lock(self, rcvr_target):
         """RL => Reset Lock """
 
-        # TODO check range of rcvr_target and support list of rcvr
         cmd = self._format_write_command(str(rcvr_target), "RL")
         self._write_serial(cmd)
 
@@ -250,7 +253,6 @@ class ClearView:
         options are 'N' (ntsc),'P' (pal),'A' (auto)
         """
 
-        # TODO check range of rcvr_target and support list of rcvr_target
         desired_video_format = video_format.lower()
         if desired_video_format == "n" or desired_video_format == "ntsc":
             cmd = self._format_write_command(str(rcvr_target), "VFN")
@@ -299,7 +301,6 @@ class ClearView:
     def send_report_cstm(self, rcvr_target):
         """ #RP XX => Custom report"""
 
-        # TODO check range of rcvr_target and support list of rcvr_target
         while True:
             self._clear_serial_in_buffer()
             cmd = self._format_write_command(str(rcvr_target),
@@ -312,6 +313,7 @@ class ClearView:
     ############################
     #       Broadcast Messages #
     ############################
+
     def set_all_receiver_addresses(self, new_address):
         self.set_receiver_address(self.bc_id, new_address)
 
@@ -483,6 +485,47 @@ class ClearView:
             sleep(0.1)
         return connected_receivers
 
+    def _get_robust_retries(self,* , mode, robust):
+        if robust == False:
+            return 1
+        if mode == "send":
+            return self.robust_control_retries
+        elif mode == "receive":
+            return self.robust_report_retries
+        else:
+            self.logger.critical("Unsuported mode of %s for _get_robust_retries",stack_info=True)
+            raise ValueError("Unsupported mode for robust retires")
+
+    def _check_within_range(self,* , val, min, max):
+        """Return True if value is within range,inclusive"""
+
+        #TODO type check here
+        try:
+            if min is not None:
+                if val < min:
+                    return False    # Out of range
+        except TypeError:
+            self.logger.critical("Incorrect type for val or min in _check_within_range")
+            return -1
+
+        try:
+            if max is not None:
+                if val > max:
+                    return False    # Out of range
+        except TypeError:
+            self.logger.critical("Incorrect type for val or min in _check_within_range")
+            return -1
+        return True                 # Success
+
+    def _run_command(self, *,rcvr_target,message ):
+        "Check rcvr_target range, format the command, and send it"
+        if self._check_within_range(val=rcvr_target,min=0,max=8) is False: 
+            self.logger.critical("Error. rcvr_target id of %s is not valid.",rcvr_target)
+            return None
+
+        cmd = self._format_write_command(str(rcvr_target),message)
+        self._write_serial(cmd)
+
     def _run_report(self, rcvr_target, report_name, pattern, reply_named_tuple):
         """ 
         _run_report is hidden. It's to be used to send reports and parse responses
@@ -500,6 +543,10 @@ class ClearView:
         Exception:
             TODO
         """
+        if self._check_within_range(val=rcvr_target,min=0,max=8) is False:
+            self.logger.critical("Error. rcvr_target id of %s is not valid.",rcvr_target)
+            return None
+
 
         self._clear_serial_in_buffer()
         cmd = self._format_write_command(str(rcvr_target),report_name)
@@ -520,6 +567,8 @@ class ClearView:
             self.logger.error("When reporting %s from unit id#%s, there was no response", report_name , rcvr_target)
         sleep(0.05)
         return report
+
+    
 
     # ########################### 
     # ### CV Serial Utilities ### 
@@ -550,8 +599,16 @@ class ClearView:
             print(args,sep=kwargs.get('sep','\t'))  
 
     def _write_serial(self,msg):
-        self._print("CV_serial_write: ",sys._getframe().f_back.f_back.f_code.co_name , "=>" ,sys._getframe().f_back.f_code.co_name,msg,"cmd:",msg,**{'sep':' '})
+        self._print("CV_serial_write: ",
+                    sys._getframe().f_back.f_back.f_code.co_name ,
+                     "=>" ,
+                     sys._getframe().f_back.f_code.co_name,
+                     msg,
+                     "cmd:",
+                     msg,
+                     **{'sep':' '})
         self._serial.write(msg.encode())
+        # TODO should there be a return here?
 
     def _get_serial_in_waiting(self):
         try:
