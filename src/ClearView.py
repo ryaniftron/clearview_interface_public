@@ -18,6 +18,7 @@ import inspect, sys # for printing caller in debug
 import re
 from collections import namedtuple
 import logging
+import clearview_serial_simulator
 
 __version__ = '1.20a1'
 
@@ -42,19 +43,26 @@ except ImportError:
 # TODO the docstring seems to be in alphabetical order but it keeps headers in weird
 # TODO make all arguments named args
 # TODO perhaps all the setters can be sent in as a list
+# TODO check all logging and print statements use self.logging
+
 
 
 class ClearView:
     """Communicate with a ClearView using a serial port"""
-    def __init__(self, timeout=0.5, debug=False, *, port='/dev/ttyS0', robust=True):
-        self._serial = serial.Serial(
-           port=port,
-           baudrate=clearview_specs['baud'],
-           parity=serial.PARITY_NONE,
-           stopbits=serial.STOPBITS_ONE,
-           bytesize=serial.EIGHTBITS,
-           timeout=timeout   # number of seconds for read timeout
-           )
+    def __init__(self, timeout=0.5, debug=False, simulate_serial_port = False, *, port='/dev/ttyS0', robust=True):
+
+        # Pick whether to simulate ClearViews on the serial port or not
+        if (self.simulate_serial_port := simulate_serial_port) == True:
+            self._serial = clearview_serial_simulator.ClearViewSerialSimulator()
+        else:
+            self._serial = serial.Serial(
+            port=port,
+            baudrate=clearview_specs['baud'],
+            parity=serial.PARITY_NONE,
+            stopbits=serial.STOPBITS_ONE,
+            bytesize=serial.EIGHTBITS,
+            timeout=timeout   # number of seconds for read timeout
+            )
 
         self.msg_start_char = clearview_specs['message_start_char']
         self.msg_end_char = clearview_specs['message_end_char'] 

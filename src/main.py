@@ -32,6 +32,7 @@ if __name__ == "__main__":      # example usage
         # Slows stuff down. TODO not implemented well yet
         robust=True,            # checks all data sent was actually received
         timeout=0.1,            # serial read timeout
+        simulate_serial_port=True
         )
 
     #commands_to_test = set_receiver_address
