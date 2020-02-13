@@ -23,8 +23,14 @@ logger.addHandler(fh)
 logger.addHandler(ch)
 
 
+# If using the simulator, define the load and save file names. They usually are the same if you want persistent settings
+#sim_file_load_name = "myfiletoload.txt"
+sim_file_load_name = "cv_saved_settings.txt"
+sim_file_save_name = "cv_saved_settings.txt"
+
+
 if __name__ == "__main__":      # example usage
-    rx_id = 0                # ensure the cv is set to that rx_id
+    rx_id = 1               # ensure the cv is set to that rx_id
     bc_id = 0
     cv = ClearView.ClearView(
         port='/dev/ttyUSB0',    # port name, COMX on windows
@@ -32,14 +38,16 @@ if __name__ == "__main__":      # example usage
         # Slows stuff down. TODO not implemented well yet
         robust=True,            # checks all data sent was actually received
         timeout=0.1,            # serial read timeout
-        simulate_serial_port=True
+        simulate_serial_port=True,
+        sim_file_load_name=sim_file_load_name,
+        sim_file_save_name=sim_file_save_name
         )
 
     #commands_to_test = set_receiver_address
     #print(cv.set_receiver_address(rcvr_target=0, new_target=2))
     time.sleep(1)
-    print(cv.get_connected_receiver_list())
-    cv.set_band_channel(rcvr_target=rx_id,band_channel=6)
+    #print(cv.get_connected_receiver_list())
+    cv.set_band_channel(robust=False,rcvr_target=rx_id,band_channel=3)
     #cv.set_band_channel(rcvr_target=rxtg,band_channel=7)
     
     #time.sleep(1)

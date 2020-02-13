@@ -49,11 +49,19 @@ except ImportError:
 
 class ClearView:
     """Communicate with a ClearView using a serial port"""
-    def __init__(self, timeout=0.5, debug=False, simulate_serial_port = False, *, port='/dev/ttyS0', robust=True):
+    def __init__(self, timeout=0.5, debug=False, simulate_serial_port=False,
+                 sim_file_load_name=None,
+                 sim_file_save_name=None,
+                 *, port='/dev/ttyS0', robust=True):
 
         # Pick whether to simulate ClearViews on the serial port or not
-        if (self.simulate_serial_port := simulate_serial_port) == True:
-            self._serial = clearview_serial_simulator.ClearViewSerialSimulator()
+        self.simulate_serial_port = simulate_serial_port
+
+        if self.simulate_serial_port:
+            self._serial = clearview_serial_simulator.ClearViewSerialSimulator(
+                            sim_file_load_name=sim_file_load_name,
+                            sim_file_save_name=sim_file_save_name
+            )
         else:
             self._serial = serial.Serial(
             port=port,
@@ -157,13 +165,16 @@ class ClearView:
                 cmd = self._format_write_command(str(rcvr_target), "BC" + str(band_channel - 1))
                 self._write_serial(cmd)
                 sleep(0.25)
-                bc = self.get_band_channel(rcvr_target=rcvr_target)
-                if bc is not None:
-                    if bc.channel == band_channel - 1:
-                        return True
+                if robust:
+                    bc = self.get_band_channel(rcvr_target=rcvr_target)
+                    if bc is not None:
+                        if bc.channel == band_channel - 1:
+                            return True
+                    else:
+                        self.logger.warning("Failed set_band_channel with %s tries left", num_tries)
+                    num_tries = num_tries - 1
                 else:
-                    self.logger.warning("Failed set_band_channel with %s tries left", num_tries)
-                num_tries = num_tries - 1
+                    return True #not robust, no need query. just return true
             return False
 
         else:
@@ -626,12 +637,15 @@ class ClearView:
             raise
         
     def _clear_serial_in_buffer(self):
-        try:
-            while self._get_serial_in_waiting() > 0:
-                self._serial.read()
-            return True
-        except OSError:
-            raise
+        if self.simulate_serial_port:
+            pass
+        else:
+            try:
+                while self._get_serial_in_waiting() > 0:
+                    self._serial.read()
+                return True
+            except OSError:
+                raise
 
     def _read_until_termchar(self):
         str_read = self._serial.read_until(terminator = self.msg_end_char).decode('unicode_escape')
