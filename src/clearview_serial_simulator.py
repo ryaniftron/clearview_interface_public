@@ -8,13 +8,49 @@ import re
 logger = logging.getLogger(__name__)
 
 patterns = {
-    "set_address": r'\n([0-9])([0-9])AD([1-8,a-f])!\r',
-    "set_band": r'\n([0-9])([0-9])BC([1-8,a-f])!\r',
+    "set_address": r'\n([0-9])([0-9])ADS([1-8])!\r',
+    "set_antenna_mode": r'\n([0-9])([0-9])AN([0-3])!\r',
+    "set_channel":  r'\n([0-9])([0-9])BC([0-7])!\r',
+    "set_band": r'\n([0-9])([0-9])BG([1-8,a-f])!\r', 
+    "set_video_mode": r'\n([0-9])([0-9])MD([L,S,M])!\r',
+    "set_osd_visibility": r'\n([0-9])([0-9])OD([E,D])!\r',
+    "set_osd_position": r'\n([0-9])([0-9])ODP([0-7])!\r',
+    "set_id":  r'\n([0-9])([0-9])ID([0-7])!\r',
+    "reset_lock": r'\n([0-9])([0-9])RL!\r',
+    "video_format": r'\n([0-9])([0-9])VF([NAP])!\r',
 }
 
+# The last part of the matched tuples is the data field that changes in the cv receiver
 matched_tuples = {
-    "get_address": namedtuple('address_report', ['requestor_id', 'rx_address', 'replied_address']),
-    "set_band": namedtuple('band_group_report', ['requestor_id', 'rx_address', 'band_index']),
+    "set_address": namedtuple('set_address', ['rx_address',
+                                              'requestor_id',
+                                              'address']),
+    "set_antenna_mode": namedtuple('set_antenna_mode', ['rx_address',
+                                                        'requestor_id',
+                                                        'antenna_mode']),
+    "set_channel": namedtuple('set_channel', ['rx_address',
+                                              'requestor_id',
+                                              'channel']),
+    "set_band": namedtuple('set_band', ['rx_address',
+                                        'requestor_id',
+                                        'band']),
+    "set_video_mode": namedtuple('set_video_mode', ['rx_address',
+                                                    'requestor_id',
+                                                    'video_mode']),
+    "set_osd_visibility": namedtuple('set_osd_visibility', ['rx_address',
+                                                            'requestor_id',
+                                                            'osd_enable']),
+    "set_osd_position": namedtuple('set_osd_position', ['rx_address',
+                                                        'requestor_id',
+                                                        'osd_position']),
+    "set_id": namedtuple('set_id', ['rx_address',
+                                    'requestor_id',
+                                    'id']),
+    "reset_lock": namedtuple('reset_lock', ['rx_address',
+                                            'requestor_id']),
+    "video_format": namedtuple('video_format', ['rx_address',
+                                                'requestor_id',
+                                                'video_format']),
 }
 
 
@@ -22,13 +58,19 @@ class ClearViewReceiver:
     def __init__(self, input_data=None, rx_addr=1):
 
         defaults = {
-            "band":"X",
-            "channel":"0",
-            "address":"1",
-            "antenna_mode":"1",
-            "video_mode":"n",
-            "id":"ClearView"
+            "address": "1",
+            "antenna_mode": "1",
+            "channel": "0",
+            "band": "2",
+            "video_mode": "L",      # live
+            "id": "ClearViewN",     # osd string
+            "osd_enable": "E",      # enabled
+            "osd_position": "0",    # top left
+            "video_format": "N",   # NTSC
+
         }
+        if len(defaults) != len(matched_tuples) != len(patterns):
+            print("Error: ClearViewReceiver MISMATCH LENGTHS")
 
         if input_data is None:
             self.data = defaults
@@ -139,36 +181,47 @@ class ClearViewSerialSimulator:
         raise Exception("Error. Reached end of queue without generating error")
 
     def _parse_message(self, msg):
-        self.logger.info("Attempt to parse %s", msg)
+        self.logger.debug("Attempt to parse %s", msg)
 
         # Address
 
         for pattern in patterns:
-            print("Attempting to match on pattern:", pattern)
+            self.logger.debug("Attempting to match on pattern:", pattern)
             match = re.search(patterns[pattern], msg)
-            
+     
             if match:
                 if pattern in matched_tuples.keys():
                     nt = matched_tuples[pattern]._make(match.groups())
-                    print("Success: Do something with nt:", nt)
                     self._change_cv_data(nt)
+                    return True
                 else:
                     self.logger.critical("No namedtuple for pattern of %s", pattern)
+                    input("Press any key to acknowledge")
+                    raise NotImplementedError("_parse_message: No namedtuple for pattern of "+ pattern)
             else:
-                print("Fail: no match")
+                self.logger.debug("_parse_message: No success matching  %s on pattern %s", msg.strip(), pattern)
+        self.logger.critical("_parse_message: Unable to match %s on any pattern.", msg.strip())
+        input("Press any key to acknowledge")
+        raise NotImplementedError("_parse_message: Unable to match "+ msg.strip() + " on any pattern")
 
-    def _change_cv_data(self,nt):
-        
-        #TODO if rx_addr is 0, change all receivers
+    def _change_cv_data(self, nt):
+        # TODO if rx_addr is 0, change all receivers
+        # TODO if change of rx address is requested, need to move dictionary around AND edit field
 
-        # no limit checking. This was already done in ClearView.py
+        if len(nt._fields) == 2: 
+            # no action to take
+            self.logger.info("No action to take on %s", nt)
+            return
 
-        value_field = nt._fields[-1]
-        new_value = nt[1]
+        rx_addr = nt.rx_address
+        parameter_name = nt._fields[-1]
+        new_value = nt[-1]
         new_value = str(new_value)
-        old_value = self.receivers[str(rx_addr)][parameter_name]
-        logger.info("Changing rx addr %s's parameter of %s from %s to %s", rx_addr,parameter_name,old_value,new_value)
-        self.receivers[str(rx_addr)][parameter_name]= new_value
+        old_rx_params = self.receivers[str(rx_addr)].data
+        old_value = old_rx_params[parameter_name]
+        logger.info("Changing rx addr %s's parameter of %s from %s to %s", rx_addr, parameter_name, old_value,new_value)
+
+        self.receivers[str(rx_addr)].data[parameter_name] = new_value
         
 
         # OSD String

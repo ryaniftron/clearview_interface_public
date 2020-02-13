@@ -9,6 +9,20 @@ clearview_specs = {
     'bc_id': 0,
 }
 
+device_limits = {
+    'min_seat_number': 1,   # set receiver address target
+    'max_seat_number': 8,
+    'min_antenna_mode': 0,
+    'max_antenna_mode': 3,
+    'min_channel': 0,   # band channel
+    'max_channel': 7,
+    'band_groups': r"([0-9,a-f])",
+    'video_modes': r"([LSM])",
+    'osd_positions': r"([0-7])",
+    'osd_strings': None,    # TODO, what are the valid OSD chars? No idea
+    'video_formats': r"([NPA])",
+}
+
 # key = letter or number to send to clearview
 # value = Displayed Band Name
 band_map_cv_to_display = {

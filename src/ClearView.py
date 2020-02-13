@@ -98,8 +98,8 @@ class ClearView:
     # ###########################   
     # ### CV Control Commands ###
     # ########################### 
-    def set_receiver_address(self, robust=True, *, rcvr_target, new_target):
-        """ADS => set_receiver_address => rcvr_target is the receiver
+    def set_address(self, robust=True, *, rcvr_target, new_target):
+        """ADS => set_address => rcvr_target is the receiver
         seat number of interest,0-8, 0 for broadcast.
         new_target is the new seat 1-8
 
@@ -125,20 +125,23 @@ class ClearView:
                 # If successful, expect this to NOT return an address because the receiver
                 # is no longer at that address. This does not guarantee success because the 
                 # receiver could not be exist on either the old or new channel
-                rx_no_longer_old_addr = not (self.get_address(rcvr_target=rcvr_target) is None)
-                
-                # If successful, expect this to return an address. This is the more important
-                # test of success
-                rx_is_now_new_addr = (self.get_address(rcvr_target=new_target) is not None)
+                if robust:
+                    rx_no_longer_old_addr = not (self.get_address(rcvr_target=rcvr_target) is None)
+                    
+                    # If successful, expect this to return an address. This is the more important
+                    # test of success
+                    rx_is_now_new_addr = (self.get_address(rcvr_target=new_target) is not None)
 
-                if rx_no_longer_old_addr and rx_is_now_new_addr:
-                    return True
+                    if rx_no_longer_old_addr and rx_is_now_new_addr:
+                        return True
+                    else:
+                        self.logger.warning("Failed set_address with %s tries left", num_tries)
+                        num_tries = num_tries - 1
                 else:
-                    self.logger.warning("Failed set_receiver_address with %s tries left", num_tries)
-                    num_tries = num_tries - 1
+                    return True # was in robust mode. assume it worked
             return False
         else:
-            self.logger.error("set_receiver_address. Receiver %s out of range", rcvr_target)
+            self.logger.error("set_address. Receiver %s out of range", rcvr_target)
             return -1
 
     def set_antenna_mode(self, *, rcvr_target, antenna_mode):
@@ -158,23 +161,23 @@ class ClearView:
 
         num_tries = self._get_robust_retries(mode="send", robust=robust)
 
-        if 1 <= band_channel <= 8:
+        if 0 <= band_channel <= 7:
             while num_tries > 0:
                 sleep(0.25)
                 self._clear_serial_in_buffer()
-                cmd = self._format_write_command(str(rcvr_target), "BC" + str(band_channel - 1))
+                cmd = self._format_write_command(str(rcvr_target), "BC" + str(band_channel))
                 self._write_serial(cmd)
                 sleep(0.25)
                 if robust:
                     bc = self.get_band_channel(rcvr_target=rcvr_target)
                     if bc is not None:
-                        if bc.channel == band_channel - 1:
+                        if bc.channel == band_channel:
                             return True
                     else:
                         self.logger.warning("Failed set_band_channel with %s tries left", num_tries)
                     num_tries = num_tries - 1
                 else:
-                    return True #not robust, no need query. just return true
+                    return True # not robust, no need query. just return true
             return False
 
         else:
@@ -224,7 +227,7 @@ class ClearView:
                 print("Errror. How tf did I get here?")
             self._write_serial(cmd)
         else:
-            print("Error. usnsupported video mode")
+            print("Error. unsupported video mode")
 
     def show_osd(self, rcvr_target):
         """ ODE shows/enables the osd"""
@@ -334,7 +337,7 @@ class ClearView:
     ############################
 
     def set_all_receiver_addresses(self, new_address):
-        self.set_receiver_address(self.bc_id, new_address)
+        self.set_address(self.bc_id, new_address)
 
     def set_all_osd_message(self, message):
         self.set_osd_string(self.bc_id, message)

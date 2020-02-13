@@ -43,15 +43,15 @@ if __name__ == "__main__":      # example usage
         sim_file_save_name=sim_file_save_name
         )
 
-    #commands_to_test = set_receiver_address
-    #print(cv.set_receiver_address(rcvr_target=0, new_target=2))
-    time.sleep(1)
-    #print(cv.get_connected_receiver_list())
-    cv.set_band_channel(robust=False,rcvr_target=rx_id,band_channel=3)
-    #cv.set_band_channel(rcvr_target=rxtg,band_channel=7)
-    
-    #time.sleep(1)
-    #cv.set_receiver_address(rcvr_target=6,new_target=4)
+    # commands_to_test = set_receiver_address
+    # print(cv.set_receiver_address(rcvr_target=0, new_target=2))
+
+    # print(cv.get_connected_receiver_list())
+    # cv.set_band_channel(robust=False,rcvr_target=rx_id,band_channel=3)
+    # cv.set_band_channel(rcvr_target=rxtg,band_channel=7)
+
+    # time.sleep(1)
+    # cv.set_receiver_address(rcvr_target=6,new_target=4)
 
     # Change receiver address from 4 to 1
     # cv.set_receiver_address(4,1)
@@ -97,14 +97,14 @@ if __name__ == "__main__":      # example usage
     # cv.set_all_osd_message("HELLO ALL")
 
     # Video Mode (show live,spectrum analyzer, menu)
-    # mode_seq = ["live","menu","spectrum","live","spectrum","menu","live"]
-    # for mode in mode_seq:
-    #     logger.info("Setting video display mode to ", mode)
-    #     cv.set_video_mode(rx_id,mode)
-    #     time.sleep(3)
+    mode_seq = ["live", "menu", "spectrum", "live", "spectrum", "menu", "live"]
+    for mode in mode_seq:
+        logger.info("Setting video display mode to %s", mode)
+        cv.set_video_mode(rx_id, mode)
+        time.sleep(3)
 
     # Reset Lock
-    # cv.reset_lock(rx_id)
+    #cv.reset_lock(rx_id)
 
     # Video Format
     # formats = ["n","p","a","n","p","a"]
@@ -153,6 +153,13 @@ if __name__ == "__main__":      # example usage
 
     # while True:
     #     cv.send_report_cstm(rx_id)
-    logging.shutdown()
 
-    print("Done")
+    cv.set_address(robust=False, rcvr_target=rx_id, new_target=rx_id)
+    cv.set_antenna_mode(rcvr_target=rx_id, antenna_mode=1)
+    cv.set_band_channel(robust=False, rcvr_target=rx_id, band_channel=0)
+    cv.set_band_group(rcvr_target=rx_id, band_group=1)
+    cv.set_video_mode(rcvr_target=rx_id, mode="live")
+
+print("\n\n")
+logging.info("Shutting down logger and closing out")
+logging.shutdown()
