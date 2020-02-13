@@ -97,11 +97,11 @@ if __name__ == "__main__":      # example usage
     # cv.set_all_osd_message("HELLO ALL")
 
     # Video Mode (show live,spectrum analyzer, menu)
-    mode_seq = ["live", "menu", "spectrum", "live", "spectrum", "menu", "live"]
-    for mode in mode_seq:
-        logger.info("Setting video display mode to %s", mode)
-        cv.set_video_mode(rx_id, mode)
-        time.sleep(3)
+    # mode_seq = ["live", "menu", "spectrum", "live", "spectrum", "menu", "live"]
+    # for mode in mode_seq:
+    #     logger.info("Setting video display mode to %s", mode)
+    #     cv.set_video_mode(rx_id, mode)
+    #     time.sleep(3)
 
     # Reset Lock
     #cv.reset_lock(rx_id)
@@ -154,11 +154,21 @@ if __name__ == "__main__":      # example usage
     # while True:
     #     cv.send_report_cstm(rx_id)
 
-    cv.set_address(robust=False, rcvr_target=rx_id, new_target=rx_id)
-    cv.set_antenna_mode(rcvr_target=rx_id, antenna_mode=1)
-    cv.set_band_channel(robust=False, rcvr_target=rx_id, band_channel=0)
-    cv.set_band_group(rcvr_target=rx_id, band_group=1)
-    cv.set_video_mode(rcvr_target=rx_id, mode="live")
+    # ########### Example Setters ############
+    # cv.set_address(robust=False, rcvr_target=rx_id, new_target=rx_id)
+    # cv.set_antenna_mode(rcvr_target=rx_id, antenna_mode=1)
+    # cv.set_band_channel(robust=False, rcvr_target=rx_id, band_channel=0)
+    # cv.set_band_group(rcvr_target=rx_id, band_group=1)
+    # cv.set_video_mode(rcvr_target=rx_id, mode="live")
+    # cv.show_osd(rcvr_target=rx_id)
+    # cv.hide_osd(rcvr_target=rx_id)
+    # cv.set_osd_at_predefined_position(rcvr_target=rx_id, desired_position=0)
+    # cv.set_osd_string(rcvr_target=rx_id, osd_str="TestPilot1")
+    # cv.reset_lock(rcvr_target=rx_id)
+    # cv.set_video_format(rcvr_target=rx_id, video_format="n")
+
+    # ########### Example Getters #############
+    cv.get_address(rcvr_target=rx_id)
 
 print("\n\n")
 logging.info("Shutting down logger and closing out")

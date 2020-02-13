@@ -11,17 +11,28 @@ patterns = {
     "set_address": r'\n([0-9])([0-9])ADS([1-8])!\r',
     "set_antenna_mode": r'\n([0-9])([0-9])AN([0-3])!\r',
     "set_channel":  r'\n([0-9])([0-9])BC([0-7])!\r',
-    "set_band": r'\n([0-9])([0-9])BG([1-8,a-f])!\r', 
+    "set_band": r'\n([0-9])([0-9])BG([1-8,a-f])!\r',
     "set_video_mode": r'\n([0-9])([0-9])MD([L,S,M])!\r',
     "set_osd_visibility": r'\n([0-9])([0-9])OD([E,D])!\r',
     "set_osd_position": r'\n([0-9])([0-9])ODP([0-7])!\r',
-    "set_id":  r'\n([0-9])([0-9])ID([0-7])!\r',
+    "set_id":  r'\n([0-9])([0-9])ID(.{0,12})!\r',
     "reset_lock": r'\n([0-9])([0-9])RL!\r',
-    "video_format": r'\n([0-9])([0-9])VF([NAP])!\r',
+    "set_video_format": r'\n([0-9])([0-9])VF([NAP])!\r',
+    "get_address": r'\n([0-9])([0-9])RPAD!\r',
+    "get_channel": NotImplementedError,
+    "get_band": NotImplementedError,
+    "get_frequency": NotImplementedError,
+    "get_osd_string": NotImplementedError,
+    "get_lock_format": NotImplementedError,
+    "get_mode": NotImplementedError,
+    "get_model_version": NotImplementedError,
+    "get_rssi": NotImplementedError,
+    "get_osd_state": NotImplementedError,
+    "get_video_format": NotImplementedError,
 }
 
 # The last part of the matched tuples is the data field that changes in the cv receiver
-matched_tuples = {
+matched_command_tuples = {
     "set_address": namedtuple('set_address', ['rx_address',
                                               'requestor_id',
                                               'address']),
@@ -48,9 +59,50 @@ matched_tuples = {
                                     'id']),
     "reset_lock": namedtuple('reset_lock', ['rx_address',
                                             'requestor_id']),
-    "video_format": namedtuple('video_format', ['rx_address',
-                                                'requestor_id',
-                                                'video_format']),
+    "set_video_format": namedtuple('video_format', ['rx_address',
+                                                    'requestor_id',
+                                                    'video_format']),
+}
+
+matched_report_tuples = {
+    "get_address": namedtuple('set_address', ['rx_address',
+                                              'requestor_id']),
+    "get_channel": namedtuple('set_address', ['rx_address',
+                                              'requestor_id']),
+    "get_band": namedtuple('set_address', ['rx_address',
+                                           'requestor_id']),
+    "get_frequency": namedtuple('set_address', ['rx_address',
+                                                'requestor_id']),
+    "get_osd_string": namedtuple('set_address', ['rx_address',
+                                                 'requestor_id']),
+    "get_lock_format": namedtuple('set_address', ['rx_address',
+                                                  'requestor_id']),
+    "get_mode": namedtuple('set_address', ['rx_address',
+                                           'requestor_id']),
+    "get_model_version": namedtuple('set_address', ['rx_address',
+                                                    'requestor_id']),
+    "get_rssi": namedtuple('set_address', ['rx_address',
+                                           'requestor_id']),
+    "get_osd_state": namedtuple('set_address', ['rx_address',
+                                                'requestor_id']),
+    "get_video_format": namedtuple('set_address', ['rx_address',
+                                                   'requestor_id']),
+}
+
+# link the getter name to the data field name
+report_links = {
+    "get_address": "address",
+    "get_channel": "channel",
+    "get_band": "band",
+    "get_frequency": "frequency",
+    "get_osd_string": "id",
+    "get_lock_format": "lock_format",
+    "get_mode": "video_mode",
+    "get_model_version": "model_version",
+    "get_rssi": "model_version",
+    "get_osd_state": "osd_enable",
+    "get_video_format": "video_format"
+
 }
 
 
@@ -67,9 +119,13 @@ class ClearViewReceiver:
             "osd_enable": "E",      # enabled
             "osd_position": "0",    # top left
             "video_format": "N",   # NTSC
+            "lock_format": None,
+            "model_version": None,
+            "rssi": None,
+
 
         }
-        if len(defaults) != len(matched_tuples) != len(patterns):
+        if len(defaults) != len(matched_command_tuples) + len(matched_report_tuples) != len(patterns):
             print("Error: ClearViewReceiver MISMATCH LENGTHS")
 
         if input_data is None:
@@ -81,8 +137,6 @@ class ClearViewReceiver:
 
         with open("ClearViewReceiverDefaults.txt", 'w') as outfile:
             json.dump(defaults, outfile, indent=4)
-
-
 
 
 # keep track of which video channels are "turned on" and what the camera format is
@@ -148,11 +202,11 @@ class ClearViewSerialSimulator:
                     json.dump(data_to_dump, outfile, indent=4)
             else:
                 self.logger.info("Not saving cv_settings ")
-        
+
         self._load_in_file()
         atexit.register(_close_save)
 
-    # writing a message to simulator means it needs to be parsed. 
+    # writing a message to simulator means it needs to be parsed.
     # If the msg is a report request and the cv exists, add the response data to the _serial_buffer
 
     def write(self, msg):
@@ -171,7 +225,7 @@ class ClearViewSerialSimulator:
             try:
                 r = self._serial_buffer.get(block=False)
             except queue.Empty:
-                self.logger.info("Error. No data in buffer that ends in termchar. current data is %s",msg)
+                self.logger.info("Error. No data in buffer that ends in termchar. current data is %s", msg)
                 return "".encode()   # No termchar to read
 
             msg.append(r)
@@ -188,27 +242,31 @@ class ClearViewSerialSimulator:
         for pattern in patterns:
             self.logger.debug("Attempting to match on pattern:", pattern)
             match = re.search(patterns[pattern], msg)
-     
+
             if match:
-                if pattern in matched_tuples.keys():
-                    nt = matched_tuples[pattern]._make(match.groups())
+                if pattern in matched_command_tuples.keys():
+                    nt = matched_command_tuples[pattern]._make(match.groups())
                     self._change_cv_data(nt)
+                    return True
+                elif pattern in matched_report_tuples.keys():
+                    nt = matched_report_tuples[pattern]._make(match.groups())
+                    self._report_cv_data(nt)
                     return True
                 else:
                     self.logger.critical("No namedtuple for pattern of %s", pattern)
                     input("Press any key to acknowledge")
-                    raise NotImplementedError("_parse_message: No namedtuple for pattern of "+ pattern)
+                    raise NotImplementedError("_parse_message: No namedtuple for pattern of " + pattern)
             else:
                 self.logger.debug("_parse_message: No success matching  %s on pattern %s", msg.strip(), pattern)
         self.logger.critical("_parse_message: Unable to match %s on any pattern.", msg.strip())
         input("Press any key to acknowledge")
-        raise NotImplementedError("_parse_message: Unable to match "+ msg.strip() + " on any pattern")
+        raise NotImplementedError("_parse_message: Unable to match " + msg.strip() + " on any pattern")
 
     def _change_cv_data(self, nt):
         # TODO if rx_addr is 0, change all receivers
         # TODO if change of rx address is requested, need to move dictionary around AND edit field
 
-        if len(nt._fields) == 2: 
+        if len(nt._fields) == 2:
             # no action to take
             self.logger.info("No action to take on %s", nt)
             return
@@ -219,12 +277,17 @@ class ClearViewSerialSimulator:
         new_value = str(new_value)
         old_rx_params = self.receivers[str(rx_addr)].data
         old_value = old_rx_params[parameter_name]
-        logger.info("Changing rx addr %s's parameter of %s from %s to %s", rx_addr, parameter_name, old_value,new_value)
+        logger.info("Changing rx#%s's parameter of %s from %s to %s", rx_addr, parameter_name, old_value, new_value)
 
         self.receivers[str(rx_addr)].data[parameter_name] = new_value
-        
 
-        # OSD String
+    def _report_cv_data(self, nt):
+        # TODO if rx_ddr is 0, generate an warning that it is bad practice to request report from all
+
+        rx_addr = nt.rx_address
+        parameter_name = nt._fields[-1]
+        logger.info("Reporting rx#%s's parameter of %s", rx_addr, parameter_name)
+        print("FIXME get the value, generate the report command, and put it in the serial buffer")
 
     def _load_in_file(self):
         if self._sim_file_load_name is not None:
@@ -246,7 +309,7 @@ class ClearViewSerialSimulator:
                 self.logger.info("_load_in_file:  Using loaded data for %s ", k+1)
                 self.logger.debug("_load_in_file: Loaded rx data: %s", loaded_rx_data)
 
-                self.receivers[str(k+1)] = ClearViewReceiver(input_data=loaded_rx_data) 
+                self.receivers[str(k+1)] = ClearViewReceiver(input_data=loaded_rx_data)
             else:
                 self.logger.info("_load_in_file: Using defaults for %s", k+1)
                 self.receivers[str(k+1)] = ClearViewReceiver()
@@ -254,4 +317,3 @@ class ClearViewSerialSimulator:
                 #     for i in range(8):
                 #         self.receivers[str(i+1)] = ClearViewReceiver()
                 #     self._data = json.load(json_file)
-

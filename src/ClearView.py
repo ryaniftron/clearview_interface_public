@@ -14,7 +14,8 @@
 
 import serial
 from time import sleep
-import inspect, sys # for printing caller in debug
+import inspect
+import sys  # for printing caller in debug
 import re
 from collections import namedtuple
 import logging
@@ -46,7 +47,6 @@ except ImportError:
 # TODO check all logging and print statements use self.logging
 
 
-
 class ClearView:
     """Communicate with a ClearView using a serial port"""
     def __init__(self, timeout=0.5, debug=False, simulate_serial_port=False,
@@ -64,16 +64,16 @@ class ClearView:
             )
         else:
             self._serial = serial.Serial(
-            port=port,
-            baudrate=clearview_specs['baud'],
-            parity=serial.PARITY_NONE,
-            stopbits=serial.STOPBITS_ONE,
-            bytesize=serial.EIGHTBITS,
-            timeout=timeout   # number of seconds for read timeout
+                port=port,
+                baudrate=clearview_specs['baud'],
+                parity=serial.PARITY_NONE,
+                stopbits=serial.STOPBITS_ONE,
+                bytesize=serial.EIGHTBITS,
+                timeout=timeout   # number of seconds for read timeout
             )
 
         self.msg_start_char = clearview_specs['message_start_char']
-        self.msg_end_char = clearview_specs['message_end_char'] 
+        self.msg_end_char = clearview_specs['message_end_char']
         self.mess_src = clearview_specs['mess_src']
         self.csum = clearview_specs['message_csum']
         self.bc_id = clearview_specs['bc_id']
@@ -81,7 +81,7 @@ class ClearView:
         # debug => Used for printing all serial comms and warnings. Critical Error messages are printed no debug_msg state.
         self.debug_msg = debug
         # self.print only prints data if self.debug_msg is True
-        self._print("CV Debug Messages Enabled") 
+        self._print("CV Debug Messages Enabled")
 
         # robust mode => Slower, but all setters are automatically checked with a get
         self.robust = robust
@@ -95,15 +95,15 @@ class ClearView:
         # TODO get the logger working instead of _print
         self.logger = logger
 
-    # ###########################   
+    # ###########################
     # ### CV Control Commands ###
-    # ########################### 
+    # ###########################
     def set_address(self, robust=True, *, rcvr_target, new_target):
         """ADS => set_address => rcvr_target is the receiver
         seat number of interest,0-8, 0 for broadcast.
         new_target is the new seat 1-8
 
-        Robust mode can be turned off here if desired otherwise 
+        Robust mode can be turned off here if desired otherwise
         scanning for connected receivers is painfully slow.
 
         Return:
@@ -123,11 +123,11 @@ class ClearView:
                 self._write_serial(cmd)
 
                 # If successful, expect this to NOT return an address because the receiver
-                # is no longer at that address. This does not guarantee success because the 
+                # is no longer at that address. This does not guarantee success because the
                 # receiver could not be exist on either the old or new channel
                 if robust:
                     rx_no_longer_old_addr = not (self.get_address(rcvr_target=rcvr_target) is None)
-                    
+
                     # If successful, expect this to return an address. This is the more important
                     # test of success
                     rx_is_now_new_addr = (self.get_address(rcvr_target=new_target) is not None)
@@ -138,7 +138,7 @@ class ClearView:
                         self.logger.warning("Failed set_address with %s tries left", num_tries)
                         num_tries = num_tries - 1
                 else:
-                    return True # was in robust mode. assume it worked
+                    return True     # was in robust mode. assume it worked
             return False
         else:
             self.logger.error("set_address. Receiver %s out of range", rcvr_target)
@@ -146,7 +146,7 @@ class ClearView:
 
     def set_antenna_mode(self, *, rcvr_target, antenna_mode):
         """AN => Set antenna mode between legacy, L,R,CV
-        
+
         Robust Mode: Not supported
         """
 
@@ -177,7 +177,7 @@ class ClearView:
                         self.logger.warning("Failed set_band_channel with %s tries left", num_tries)
                     num_tries = num_tries - 1
                 else:
-                    return True # not robust, no need query. just return true
+                    return True     # not robust, no need query. just return true
             return False
 
         else:
@@ -218,11 +218,11 @@ class ClearView:
         avail_modes = ["live", "spectrum", "menu"]
         if mode in avail_modes:
             if mode == "live":
-                cmd = self._format_write_command(str(rcvr_target),"MDL")
+                cmd = self._format_write_command(str(rcvr_target), "MDL")
             elif mode == "spectrum":
-                cmd = self._format_write_command(str(rcvr_target),"MDS")
+                cmd = self._format_write_command(str(rcvr_target), "MDS")
             elif mode == "menu":
-                cmd = self._format_write_command(str(rcvr_target),"MDM")
+                cmd = self._format_write_command(str(rcvr_target), "MDM")
             else:
                 print("Errror. How tf did I get here?")
             self._write_serial(cmd)
@@ -306,7 +306,7 @@ class ClearView:
         """TVF => Temporary Set video format. options are 'N' (ntsc),'P' (pal),'A' (auto)"""
         # This command does not yet work in ClearView v1.20
         raise NotImplementedError
-        
+
         # desired_video_format = video_format.lower()
         # if desired_video_format == "n" or desired_video_format == "ntsc":
         #     cmd = self._format_write_command(str(rcvr_target),"TVFN")
@@ -352,19 +352,19 @@ class ClearView:
 
     The report commands below use a regex to match the response based on the expected input.
 
-    Reports return None if the CV is unresponsive or if the report doesn't match the expected report. 
+    Reports return None if the CV is unresponsive or if the report doesn't match the expected report.
 
     TODO there could be improvements to the report error detection to log what is wrong with the regex match
     TODO the requestor_id should match clearview_comspecs.clearview_specs.mess_src 
     TODO the rx_address should match the sent rcvr_target
 
-    Note: Reports are not intended to be requested of multiple receivers at the same time using broadcast. 
-        The only situation this makes sense is if you don't know the address. 
+    Note: Reports are not intended to be requested of multiple receivers at the same time using broadcast.
+        The only situation this makes sense is if you don't know the address.
 
         To find an unknown address, the following options exist
             1. use set_address(0,my_new_address). Ensure only one unit is connected otherwise they all get set to my_new_address
             2. use get_connected_receiver_list to see what the id is without changing it and update the known receiver address
-            3. use get_address(0) to find the address. Ensure only one unit is connected    
+            3. use get_address(0) to find the address. Ensure only one unit is connected
 
     """
 
@@ -373,7 +373,7 @@ class ClearView:
         Returns namedtuple of receiver address with fields requestor_id, rx_address, and replied_address"""
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPAD"
-        pattern = r'\n([0-9])([0-9])AD([1-8])!\r' #TODO replace hardcoded values with variables
+        pattern = r'\n([0-9])([0-9])AD([1-8])!\r'   # TODO replace hardcoded values with variables
         reply_named_tuple = namedtuple('address_report', ['requestor_id', 'rx_address', 'replied_address'])
 
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
@@ -384,7 +384,7 @@ class ClearView:
 
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPBC"
-        pattern = r'\n([0-9])([0-9])BC([1-8])!\r' # TODO replace hardcoded values with variables
+        pattern = r'\n([0-9])([0-9])BC([1-8])!\r'   # TODO replace hardcoded values with variables
         reply_named_tuple = namedtuple('band_channel_report', ['requestor_id', 'rx_address', 'channel'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
@@ -397,7 +397,7 @@ class ClearView:
 
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPBG"
-        pattern = r'\n([0-9])([0-9])BG([1-8,a-f])!\r' # TODO replace hardcoded values with variables
+        pattern = r'\n([0-9])([0-9])BG([1-8,a-f])!\r'   # TODO replace hardcoded values with variables
         reply_named_tuple = namedtuple('band_group_report', ['requestor_id', 'rx_address', 'band_index'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
@@ -408,7 +408,7 @@ class ClearView:
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPFR"
         n_digits_frequency = 4
-        pattern =r'\n([0-9])([0-9])FR([0-9]{%s})!\r' % n_digits_frequency  # TODO replace hardcoded values with variables
+        pattern = r'\n([0-9])([0-9])FR([0-9]{%s})!\r' % n_digits_frequency  # TODO replace hardcoded values with variables
         reply_named_tuple = namedtuple('frequency_report', ['requestor_id', 'rx_address', 'frequency'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
@@ -418,7 +418,7 @@ class ClearView:
         """
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPID"
-        pattern =r'\n([0-9])([0-9])ID(.{0,12})!\r'  #TODO replace hardcoded values with variables
+        pattern = r'\n([0-9])([0-9])ID(.{0,12})!\r'  # TODO replace hardcoded values with variables
         reply_named_tuple = namedtuple('osd_string_report', ['requestor_id', 'rx_address', 'osd_string'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
@@ -428,17 +428,17 @@ class ClearView:
         """
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPLF"
-        pattern =r'\n([0-9])([0-9])LF([NP])([FA])([LU])!\r'  #TODO replace hardcoded values with variables
-        reply_named_tuple = namedtuple('osd_string_report', ['requestor_id', 'rx_address', 'chosen_camera_type','forced_or_auto','locked_or_unlocked'])
+        pattern = r'\n([0-9])([0-9])LF([NP])([FA])([LU])!\r'  #TODO replace hardcoded values with variables
+        reply_named_tuple = namedtuple('osd_string_report', ['requestor_id', 'rx_address', 'chosen_camera_type', 'forced_or_auto', 'locked_or_unlocked'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
-    def get_mode(self, *, rcvr_target): 
+    def get_mode(self, *, rcvr_target):
         """ RPMD => Get the mode : live, menu, or spectrum analyzer
         Returns a namedtuple of receiver mode with fields requestor_id, rx_address, mode
         """
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPMD"
-        pattern =r'\n([0-9])([0-9])MD([LMS])!\r'  #TODO replace hardcoded values with variables
+        pattern = r'\n([0-9])([0-9])MD([LMS])!\r'  # TODO replace hardcoded values with variables
         reply_named_tuple = namedtuple('osd_string_report', ['requestor_id', 'rx_address', 'mode'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
@@ -448,8 +448,8 @@ class ClearView:
         """
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPMV"
-        pattern =r'\n([0-9])([0-9])MV (CV[0-9].[0-9])-V([0-9]{2}.[0-9]{2})([A-Z]:[A-Z])!\r'  #TODO replace hardcoded values with variables
-        reply_named_tuple = namedtuple('model_version_report', ['requestor_id', 'rx_address', 'hardware_version','software_version_major','software_version_minor'])
+        pattern = r'\n([0-9])([0-9])MV (CV[0-9].[0-9])-V([0-9]{2}.[0-9]{2})([A-Z]:[A-Z])!\r'  # TODO replace hardcoded values with variables
+        reply_named_tuple = namedtuple('model_version_report', ['requestor_id', 'rx_address', 'hardware_version', 'software_version_major', 'software_version_minor'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
     def get_rssi(self, *, rcvr_target):
@@ -458,8 +458,8 @@ class ClearView:
         """
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPRS"
-        pattern =r'\n([0-9])([0-9])RS([0-9]+),([0-9]+),([0-9]+),([0-9]+)!\r'  #TODO replace hardcoded values with variables
-        reply_named_tuple = namedtuple('rssi_report', ['requestor_id', 'rx_address', 'TODO_a','TODO_b','TODO_c','TODO_d'])
+        pattern = r'\n([0-9])([0-9])RS([0-9]+),([0-9]+),([0-9]+),([0-9]+)!\r'  # TODO replace hardcoded values with variables
+        reply_named_tuple = namedtuple('rssi_report', ['requestor_id', 'rx_address', 'TODO_a', 'TODO_b', 'TODO_c', 'TODO_d'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
     def get_osd_state(self, *, rcvr_target):
@@ -468,7 +468,7 @@ class ClearView:
         """
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPOD"
-        pattern =r'\n([0-9])([0-9])OD([ED])!\r'  #TODO replace hardcoded values with variables
+        pattern =r'\n([0-9])([0-9])OD([ED])!\r'  # TODO replace hardcoded values with variables
         reply_named_tuple = namedtuple('osd_state_report', ['requestor_id', 'rx_address', 'osd_state'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
@@ -479,7 +479,7 @@ class ClearView:
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPVF"
 
-        pattern =r'\n([0-9])([0-9])VF([NAP])!\r'  #TODO replace hardcoded values with variables
+        pattern = r'\n([0-9])([0-9])VF([NAP])!\r'  # TODO replace hardcoded values with variables
         reply_named_tuple = namedtuple('video_format_report', ['requestor_id', 'rx_address', 'video_format'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 

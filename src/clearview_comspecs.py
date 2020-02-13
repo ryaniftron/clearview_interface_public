@@ -19,7 +19,7 @@ device_limits = {
     'band_groups': r"([0-9,a-f])",
     'video_modes': r"([LSM])",
     'osd_positions': r"([0-7])",
-    'osd_strings': None,    # TODO, what are the valid OSD chars? No idea
+    'osd_strings': r"(.{0,12})",    # TODO, what are the valid OSD chars? No idea. Let them all in?
     'video_formats': r"([NPA])",
 }
 
@@ -48,9 +48,9 @@ band_map_cv_to_display = {
 band_map_display_to_cv = {v: k for k, v in band_map_cv_to_display.items()}
 
 report_standards = {
-    "frequency" : {
-        "report_name":"RPFR",
-        "pattern": "TODO", #TODO
-        "reply_nt": "TODO" #TODO
+    "frequency": {
+        "report_name": "RPFR",
+        "pattern": "TODO",  # TODO
+        "reply_nt": "TODO"  # TODO
     }
 }
