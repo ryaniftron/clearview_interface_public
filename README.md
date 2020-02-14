@@ -19,3 +19,10 @@ Repo that contains scripts to control a ClearView receiver
 * `$ python --version`
     Expect `3.8.1`
 * `python -m pip install pyserial`
+
+## Usage
+
+Check main.py to turn on simulator if you do not have a ClearView. If you do have one connected, turn off the simulator and supply the correct serial port name. 
+
+`$ cd clearview_interface_public`
+`$ python src/main.py`
