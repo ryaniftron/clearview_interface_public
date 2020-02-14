@@ -155,20 +155,20 @@ if __name__ == "__main__":      # example usage
     #     cv.send_report_cstm(rx_id)
 
     # ########### Example Setters ############
-    # cv.set_address(robust=False, rcvr_target=rx_id, new_target=rx_id)
-    # cv.set_antenna_mode(rcvr_target=rx_id, antenna_mode=1)
-    # cv.set_band_channel(robust=False, rcvr_target=rx_id, band_channel=0)
-    # cv.set_band_group(rcvr_target=rx_id, band_group=1)
-    # cv.set_video_mode(rcvr_target=rx_id, mode="live")
-    # cv.show_osd(rcvr_target=rx_id)
-    # cv.hide_osd(rcvr_target=rx_id)
-    # cv.set_osd_at_predefined_position(rcvr_target=rx_id, desired_position=0)
-    # cv.set_osd_string(rcvr_target=rx_id, osd_str="TestPilot1")
-    # cv.reset_lock(rcvr_target=rx_id)
-    # cv.set_video_format(rcvr_target=rx_id, video_format="n")
+    cv.set_address(robust=False, rcvr_target=rx_id, new_target=rx_id)
+    cv.set_antenna_mode(rcvr_target=rx_id, antenna_mode=1)
+    cv.set_band_channel(robust=False, rcvr_target=rx_id, band_channel=0)
+    cv.set_band_group(rcvr_target=rx_id, band_group=1)
+    cv.set_video_mode(rcvr_target=rx_id, mode="live")
+    cv.show_osd(rcvr_target=rx_id)
+    cv.hide_osd(rcvr_target=rx_id)
+    cv.set_osd_at_predefined_position(rcvr_target=rx_id, desired_position=0)
+    cv.set_osd_string(rcvr_target=rx_id, osd_str="TestPilot1")
+    cv.reset_lock(rcvr_target=rx_id)
+    cv.set_video_format(rcvr_target=rx_id, video_format="n")
 
     # ########### Example Getters #############
-    cv.get_address(rcvr_target=rx_id)
+    # cv.get_address(rcvr_target=rx_id)
 
 print("\n\n")
 logging.info("Shutting down logger and closing out")

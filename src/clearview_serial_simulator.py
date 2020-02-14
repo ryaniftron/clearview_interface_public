@@ -286,8 +286,16 @@ class ClearViewSerialSimulator:
 
         rx_addr = nt.rx_address
         parameter_name = nt._fields[-1]
+        print(type(nt))
         logger.info("Reporting rx#%s's parameter of %s", rx_addr, parameter_name)
         print("FIXME get the value, generate the report command, and put it in the serial buffer")
+
+        """nt is the named tuple. I need to pull out the name of the 
+        named_tuple but can't for some reason. I thought nt.__name__ 
+        would work, but it doesn't here. Perhaps because it's only 
+        passing the tuple fields instead of the object?
+        It seems like the tuple lost its reference to being part of 
+        the module. Not really sure what to do..."""
 
     def _load_in_file(self):
         if self._sim_file_load_name is not None:
