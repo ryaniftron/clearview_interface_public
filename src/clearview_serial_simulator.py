@@ -4,6 +4,7 @@ import atexit
 import logging
 from collections import namedtuple
 import re
+from clearview_comspecs import clearview_specs
 
 logger = logging.getLogger(__name__)
 
@@ -18,17 +19,17 @@ patterns = {
     "set_id":  r'\n([0-9])([0-9])ID(.{0,12})!\r',
     "reset_lock": r'\n([0-9])([0-9])RL!\r',
     "set_video_format": r'\n([0-9])([0-9])VF([NAP])!\r',
-    "get_address": r'\n([0-9])([0-9])RPAD!\r',
-    "get_channel": NotImplementedError,
-    "get_band": NotImplementedError,
-    "get_frequency": NotImplementedError,
-    "get_osd_string": NotImplementedError,
-    "get_lock_format": NotImplementedError,
-    "get_mode": NotImplementedError,
-    "get_model_version": NotImplementedError,
-    "get_rssi": NotImplementedError,
-    "get_osd_state": NotImplementedError,
-    "get_video_format": NotImplementedError,
+    "get_address": r'\n([0-9])([0-9])RPAD!\r', #TODO here and below
+    "get_channel": r'\n([0-9])([0-9])RPBC!\r',
+    "get_band": r'\n([0-9])([0-9])RPBG!\r',
+    "get_frequency": r'\n([0-9])([0-9])RPFR!\r',
+    "get_osd_string": r'\n([0-9])([0-9])RPID!\r',
+    "get_lock_format": r'\n([0-9])([0-9])RPLF!\r',
+    "get_mode": r'\n([0-9])([0-9])RPMD!\r',
+    "get_model_version": r'\n([0-9])([0-9])RPMV!\r',
+    "get_rssi": r'\n([0-9])([0-9])RPRS!\r',
+    "get_osd_state": r'\n([0-9])([0-9])RPOD!\r',
+    "get_video_format": r'\n([0-9])([0-9])RPVF!\r',
 }
 
 # The last part of the matched tuples is the data field that changes in the cv receiver
@@ -89,19 +90,19 @@ matched_report_tuples = {
                                                    'requestor_id']),
 }
 
-# link the getter name to the data field name
+# link the getter name to the data field name and report name
 report_links = {
-    "get_address": "address",
-    "get_channel": "channel",
-    "get_band": "band",
-    "get_frequency": "frequency",
-    "get_osd_string": "id",
-    "get_lock_format": "lock_format",
-    "get_mode": "video_mode",
-    "get_model_version": "model_version",
-    "get_rssi": "model_version",
-    "get_osd_state": "osd_enable",
-    "get_video_format": "video_format"
+    "get_address": ("address", "AD"),
+    "get_channel": ("channel", "BC"),
+    "get_band": ("band","BG"),
+    "get_frequency": ("frequency","FR"),
+    "get_osd_string": ("id","ID"),
+    "get_lock_format": ("lock_format","LF"),
+    "get_mode": ("video_mode","MD"),
+    "get_model_version": ("model_version","MV"),
+    "get_rssi": ("rssi","RS"),
+    "get_osd_state": ("osd_enable","OD"),
+    "get_video_format": ("video_format","VF"),
 
 }
 
@@ -191,6 +192,13 @@ class ClearViewSerialSimulator:
 
         self.logger.setLevel(logging.INFO)
 
+        # Save the serial communication protocol to the class
+        self.msg_start_char = clearview_specs['message_start_char']
+        self.msg_end_char = clearview_specs['message_end_char']
+        self.mess_src = clearview_specs['mess_src']
+        self.csum = clearview_specs['message_csum']
+        self.bc_id = clearview_specs['bc_id']
+
         def _close_save():
             if sim_file_save_name is not None:
                 self.logger.info("Saving settigns to %s",
@@ -217,7 +225,10 @@ class ClearViewSerialSimulator:
     def read(self, msg, timeout=None):
         return self._serial_buffer.get(timeout=timeout)
 
-    def read_until(self, *, terminator='\r'):
+    def read_until(self, *, terminator=None):
+        if terminator is None:
+            terminator = self.msg_end_char
+
         msg = ""
         while True:
             # https://docs.python.org/2/library/queue.html#Queue.Queue.get
@@ -228,7 +239,7 @@ class ClearViewSerialSimulator:
                 self.logger.info("Error. No data in buffer that ends in termchar. current data is %s", msg)
                 return "".encode()   # No termchar to read
 
-            msg.append(r)
+            msg += r    # TODO this is horribly slow
             if r == terminator:
                 return msg.encode()
 
@@ -241,7 +252,11 @@ class ClearViewSerialSimulator:
 
         for pattern in patterns:
             self.logger.debug("Attempting to match on pattern:", pattern)
-            match = re.search(patterns[pattern], msg)
+
+            try:
+                match = re.search(patterns[pattern], msg)
+            except:
+                pass
 
             if match:
                 if pattern in matched_command_tuples.keys():
@@ -250,7 +265,9 @@ class ClearViewSerialSimulator:
                     return True
                 elif pattern in matched_report_tuples.keys():
                     nt = matched_report_tuples[pattern]._make(match.groups())
-                    self._report_cv_data(nt)
+                    # Need to pass in pattern because the pattern is not accessible
+                    # from the named tuple
+                    self._report_cv_data(nt, pattern)   
                     return True
                 else:
                     self.logger.critical("No namedtuple for pattern of %s", pattern)
@@ -281,28 +298,49 @@ class ClearViewSerialSimulator:
 
         self.receivers[str(rx_addr)].data[parameter_name] = new_value
 
-    def _report_cv_data(self, nt):
+    def _report_cv_data(self, nt, pattern):
         # TODO if rx_ddr is 0, generate an warning that it is bad practice to request report from all
 
         rx_addr = nt.rx_address
-        parameter_name = nt._fields[-1]
-        print(type(nt))
-        logger.info("Reporting rx#%s's parameter of %s", rx_addr, parameter_name)
-        print("FIXME get the value, generate the report command, and put it in the serial buffer")
+        parameter_name = report_links[pattern][0]
+        message_identifier = report_links[pattern][1]
 
-        """nt is the named tuple. I need to pull out the name of the 
-        named_tuple but can't for some reason. I thought nt.__name__ 
-        would work, but it doesn't here. Perhaps because it's only 
-        passing the tuple fields instead of the object?
-        It seems like the tuple lost its reference to being part of 
-        the module. Not really sure what to do..."""
+        try:
+            cv_of_interest = self.receivers[rx_addr]
+
+            try:
+                cvdata_of_interest = cv_of_interest.data[parameter_name]
+            except KeyError:
+                self.logger.critical("Receiver %s does not have data object %s", rx_addr, parameter_name)
+                quit()
+        except KeyError:
+            self.logger.critical("The receiver ID of %s does not not exist in simulated receivers", rx_addr)
+            quit()
+
+        logger.info("Reporting rx#%s's pattern/param of %s/%s. Value is %s",
+                    rx_addr,
+                    pattern,
+                    parameter_name,
+                    cvdata_of_interest)
+
+        # TODO check the rx_address and msg_source are actually correct here. 
+        # For example, the mess_src parameter should actually be the receiver id, and the source 
+        # would actually be the requester id. 
+
+        report_message = self._format_write_command(nt.requestor_id, nt.rx_address, message_identifier + cvdata_of_interest)
+
+        # Put the characters in one at a time
+        for c in report_message:
+            self._serial_buffer.put(c)
+
+    def _format_write_command(self, requestor_target, receiver_src, message):   # formats sending commands with starting chars, addresses, csum, message and ending char. Arguments may be strings or ints
+        return self.msg_start_char + str(requestor_target) + str(receiver_src) + str(message) + self.csum + self.msg_end_char
 
     def _load_in_file(self):
         if self._sim_file_load_name is not None:
             try:
                 with open(self._sim_file_load_name) as json_file:
                     loaded_data = json.load(json_file)
-                    print("Loaded data successfully.")
 
             except FileNotFoundError as f:  # start with empty file
                 raise f

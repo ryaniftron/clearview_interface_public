@@ -157,7 +157,7 @@ class ClearView:
             print("Error. Unsupported antenna mode of ", antenna_mode)
 
     def set_band_channel(self, *, robust=True, rcvr_target, band_channel):
-        """BC = > Sets band channel. 1-8"""
+        """BC = > Sets band channel. 0-7"""
 
         num_tries = self._get_robust_retries(mode="send", robust=robust)
 
@@ -384,7 +384,7 @@ class ClearView:
 
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPBC"
-        pattern = r'\n([0-9])([0-9])BC([1-8])!\r'   # TODO replace hardcoded values with variables
+        pattern = r'\n([0-9])([0-9])BC([0-7])!\r'   # TODO replace hardcoded values with variables
         reply_named_tuple = namedtuple('band_channel_report', ['requestor_id', 'rx_address', 'channel'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
