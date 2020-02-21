@@ -3,7 +3,7 @@
 clearview_specs = {
     'message_start_char': '\n',
     'message_end_char': '\r',
-    'message_csum': '!',
+    'message_csum': '%',
     'mess_src': 9,  # 9 for laptop
     'baud': 57600,
     'bc_id': 0,

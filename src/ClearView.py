@@ -35,7 +35,7 @@ except ImportError:
     clearview_specs = {
         'message_start_char': '\n',
         'message_end_char': '\r',
-        'message_csum': '!',
+        'message_csum': '%',
         'mess_src': 9,
         'baud': 57600,
         'bc_id': 0
@@ -213,7 +213,10 @@ class ClearView:
         #     print("Error. Desired frequency out of range")
 
     def set_video_mode(self, rcvr_target, mode):
-        """#MDL,MDS,MDM show live video, spectrum analyzer, and user menu"""
+        """#MDL,MDS,MDM show live video, spectrum analyzer, and user menu
+
+            mode = "live", "spectrum", "menu"
+        """
 
         avail_modes = ["live", "spectrum", "menu"]
         if mode in avail_modes:
@@ -254,6 +257,22 @@ class ClearView:
         cmd = self._format_write_command(str(rcvr_target), "ID" + str(osd_str))
         self._write_serial(cmd)
 
+    def set_osd_string_positional(self, *, rcvr_target, starting_index, osd_str):
+        """ IDP => Sets OSD positional string"""
+        osd_str_max_len = 4
+
+        print("Before cut: ", osd_str, "with supplied length of ", len(osd_str), " and max total length of ", osd_str_max_len)
+        # Cut the string length down
+        char_count_avail = osd_str_max_len - starting_index
+        osd_str = osd_str[:char_count_avail]
+        print("After cut: ", osd_str)
+
+
+        old_osd_string = ''.join([char*osd_str_max_len for char in '*'])
+        print(new_osd_string)
+        new_osd_string = new_osd_string.replace(old_osd_string,new_osd_string)
+
+
     def reboot(self, rcvr_target):
         """RBR => Reboot receiver. Issue twice to take effect."""
         # This command does not yet work in ClearView v1.20
@@ -270,7 +289,7 @@ class ClearView:
         cmd = self._format_write_command(str(rcvr_target), "RL")
         self._write_serial(cmd)
 
-    def set_video_format(self, rcvr_target, video_format):
+    def set_video_format(self, *, rcvr_target, video_format):
         """VF => Temporary Set video format.
         options are 'N' (ntsc),'P' (pal),'A' (auto)
         """
@@ -320,15 +339,29 @@ class ClearView:
         # else:
         #     print("Error. Invalid video format in set_temporary_video_format of ",desired_video_format)
 
-    def send_report_cstm(self, rcvr_target):
+    def set_user_message(self, rcvr_target, osd_str):
+        """UM => Sets user message string
+
+        Query: No query available
+        """
+        osd_str_max_sz = 50
+        osd_str = osd_str[:osd_str_max_sz]
+        cmd = self._format_write_command(str(rcvr_target), "UM" + str(osd_str))
+        self._write_serial(cmd)
+
+    def send_report_cstm(self, custom_command=None, *, rcvr_target):
         """ #RP XX => Custom report"""
 
         while True:
-            self._clear_serial_in_buffer()
-            cmd = self._format_write_command(str(rcvr_target),
-                                             input('Enter a command'))
+            #self._clear_serial_in_buffer()
+            if custom_command is not None:
+                cmd = self._format_write_command(str(rcvr_target),
+                                                 custom_command)
+            else:
+                cmd = self._format_write_command(str(rcvr_target),
+                                                 input('Enter a command'))
             self._write_serial(cmd)
-            sleep(0.05)
+            # sleep(0.05)
             report = self._read_until_termchar()
             print(report)
 
@@ -373,7 +406,7 @@ class ClearView:
         Returns namedtuple of receiver address with fields requestor_id, rx_address, and replied_address"""
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPAD"
-        pattern = r'\n([0-9])([0-9])AD([1-8])!\r'   # TODO replace hardcoded values with variables
+        pattern = r'\n([0-9])([0-9])AD([1-8])%\r'   # TODO replace hardcoded values with variables
         reply_named_tuple = namedtuple('address_report', ['requestor_id', 'rx_address', 'replied_address'])
 
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
@@ -384,7 +417,7 @@ class ClearView:
 
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPBC"
-        pattern = r'\n([0-9])([0-9])BC([0-7])!\r'   # TODO replace hardcoded values with variables
+        pattern = r'\n([0-9])([0-9])BC([0-7])%\r'   # TODO replace hardcoded values with variables
         reply_named_tuple = namedtuple('band_channel_report', ['requestor_id', 'rx_address', 'channel'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
@@ -397,7 +430,7 @@ class ClearView:
 
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPBG"
-        pattern = r'\n([0-9])([0-9])BG([1-8,a-f])!\r'   # TODO replace hardcoded values with variables
+        pattern = r'\n([0-9])([0-9])BG([1-8,a-f])%\r'   # TODO replace hardcoded values with variables
         reply_named_tuple = namedtuple('band_group_report', ['requestor_id', 'rx_address', 'band_index'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
@@ -408,7 +441,7 @@ class ClearView:
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPFR"
         n_digits_frequency = 4
-        pattern = r'\n([0-9])([0-9])FR([0-9]{%s})!\r' % n_digits_frequency  # TODO replace hardcoded values with variables
+        pattern = r'\n([0-9])([0-9])FR([0-9]{4})%\r'#%n_digits_frequency  # TODO replace hardcoded values with variables
         reply_named_tuple = namedtuple('frequency_report', ['requestor_id', 'rx_address', 'frequency'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
@@ -418,7 +451,7 @@ class ClearView:
         """
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPID"
-        pattern = r'\n([0-9])([0-9])ID(.{0,12})!\r'  # TODO replace hardcoded values with variables
+        pattern = r'\n([0-9])([0-9])ID(.{0,12})%\r'  # TODO replace hardcoded values with variables
         reply_named_tuple = namedtuple('osd_string_report', ['requestor_id', 'rx_address', 'osd_string'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
@@ -428,7 +461,7 @@ class ClearView:
         """
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPLF"
-        pattern = r'\n([0-9])([0-9])LF([NP])([FA])([LU])!\r'  #TODO replace hardcoded values with variables
+        pattern = r'\n([0-9])([0-9])LF([NP])([FA])([LU])%\r'  #TODO replace hardcoded values with variables
         reply_named_tuple = namedtuple('osd_string_report', ['requestor_id', 'rx_address', 'chosen_camera_type', 'forced_or_auto', 'locked_or_unlocked'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
@@ -438,7 +471,7 @@ class ClearView:
         """
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPMD"
-        pattern = r'\n([0-9])([0-9])MD([LMS])!\r'  # TODO replace hardcoded values with variables
+        pattern = r'\n([0-9])([0-9])MD([LMS])%\r'  # TODO replace hardcoded values with variables
         reply_named_tuple = namedtuple('osd_string_report', ['requestor_id', 'rx_address', 'mode'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
@@ -448,7 +481,7 @@ class ClearView:
         """
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPMV"
-        pattern = r'\n([0-9])([0-9])MV (CV[0-9].[0-9])-V([0-9]{2}.[0-9]{2})([A-Z]:[A-Z])!\r'  # TODO replace hardcoded values with variables
+        pattern = r'\n([0-9])([0-9])MV (CV[0-9].[0-9])-V([0-9]{2}.[0-9]{2})([A-Z]:[A-Z])%\r'  # TODO replace hardcoded values with variables
         reply_named_tuple = namedtuple('model_version_report', ['requestor_id', 'rx_address', 'hardware_version', 'software_version_major', 'software_version_minor'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
@@ -458,7 +491,7 @@ class ClearView:
         """
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPRS"
-        pattern = r'\n([0-9])([0-9])RS([0-9]+),([0-9]+),([0-9]+),([0-9]+)!\r'  # TODO replace hardcoded values with variables
+        pattern = r'\n([0-9])([0-9])RS([0-9]+),([0-9]+),([0-9]+),([0-9]+)%\r'  # TODO replace hardcoded values with variables
         reply_named_tuple = namedtuple('rssi_report', ['requestor_id', 'rx_address', 'TODO_a', 'TODO_b', 'TODO_c', 'TODO_d'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
@@ -468,7 +501,7 @@ class ClearView:
         """
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPOD"
-        pattern =r'\n([0-9])([0-9])OD([ED])!\r'  # TODO replace hardcoded values with variables
+        pattern =r'\n([0-9])([0-9])OD([ED])%\r'  # TODO replace hardcoded values with variables
         reply_named_tuple = namedtuple('osd_state_report', ['requestor_id', 'rx_address', 'osd_state'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
@@ -479,7 +512,7 @@ class ClearView:
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPVF"
 
-        pattern = r'\n([0-9])([0-9])VF([NAP])!\r'  # TODO replace hardcoded values with variables
+        pattern = r'\n([0-9])([0-9])VF([NAP])%\r'  # TODO replace hardcoded values with variables
         reply_named_tuple = namedtuple('video_format_report', ['requestor_id', 'rx_address', 'video_format'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
@@ -515,7 +548,7 @@ class ClearView:
         elif mode == "receive":
             return self.robust_report_retries
         else:
-            self.logger.critical("Unsuported mode of %s for _get_robust_retries",stack_info=True)
+            self.logger.critical("Unsuported mode of <percent>s for _get_robust_retries",stack_info=True)
             raise ValueError("Unsupported mode for robust retires")
 
     def _check_within_range(self,* , val, min, max):

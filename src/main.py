@@ -38,7 +38,7 @@ if __name__ == "__main__":      # example usage
         # Slows stuff down. TODO not implemented well yet
         robust=True,            # checks all data sent was actually received
         timeout=0.1,            # serial read timeout
-        simulate_serial_port=True,
+        simulate_serial_port=False,
         sim_file_load_name=sim_file_load_name,
         sim_file_save_name=sim_file_save_name
         )
@@ -168,17 +168,95 @@ if __name__ == "__main__":      # example usage
     # cv.set_video_format(rcvr_target=rx_id, video_format="n")
 
     # ########### Example Getters #############
+    print(cv.get_connected_receiver_list())
     print(cv.get_address(rcvr_target=rx_id))
     print(cv.get_band_channel(rcvr_target=rx_id))
     print(cv.get_band_group(rcvr_target=rx_id))
-    """print(cv.get_frequency(rcvr_target=rx_id)) #Not implemented. Need to make band chart table"""
+    print(cv.get_frequency(rcvr_target=rx_id)) #Not implemented. Need to make band chart table"""
     print(cv.get_osd_string(rcvr_target=rx_id))
-    """print(cv.get_lock_format(rcvr_target=rx_id)) #Not implemented. Need to set up the rf simulator"""
+    print(cv.get_lock_format(rcvr_target=rx_id)) #Not implemented. Need to set up the rf simulator"""
     print(cv.get_mode(rcvr_target=rx_id))
-    """print(cv.get_model_version(rcvr_target=rx_id)) #Not implemented."""
-    """print(cv.get_rssi(rcvr_target=rx_id)) #Not implemented"""
+    print(cv.get_model_version(rcvr_target=rx_id)) #Not implemented."""
+    print(cv.get_rssi(rcvr_target=rx_id)) #Not implemented"""
     print(cv.get_osd_state(rcvr_target=rx_id))
     print(cv.get_video_format(rcvr_target=rx_id))
+
+    # cv.set_video_mode(rcvr_target=rx_id, mode="menu")
+    # cv.set_osd_string_positional(rcvr_target=rx_id, starting_index=0, osd_str="1234")
+
+    # cv._clear_serial_in_buffer()
+    # cmd = cv._format_write_command(str(0), "RPVF")
+    # cv._write_serial(cmd)
+    # print(cv._read_until_termchar())
+
+    #cv._write_serial(cv._format_write_command(rcvr_target=int(rx_id), message="AN0"))
+    #cv.send_report_cstm(rcvr_target=rx_id,custom_command="RPID")
+
+    # for i in range(8):
+    #     cv._run_command(rcvr_target=rx_id, message="ID123456789ab"+str(i))
+    #     time.sleep(0.2)
+
+    # for i in range(6):
+    #     print(cv._read_until_termchar())
+    # print(cv.get_connected_receiver_list())
+
+    # cv.hide_osd(rcvr_target=rx_id)
+    # time.sleep(5)
+    # cv.set_user_message(rcvr_target=rx_id, osd_str="A nice message")
+    # time.sleep(2)
+    # cv.set_user_message(rcvr_target=rx_id, osd_str="")
+    # time.sleep(2)
+    # cv.show_osd(rcvr_target=rx_id)
+    # time.sleep(2)
+    # cv.set_user_message(rcvr_target=rx_id, osd_str="Back again!")
+    # time.sleep(2)
+    # cv.set_user_message(rcvr_target=rx_id, osd_str="")
+    cv.show_osd(rcvr_target=rx_id)
+    time.sleep(0.2)
+    cv.set_user_message(rcvr_target=rx_id, osd_str='Back again$%&()*+-_/:;<=>?@{|}~')
+    time.sleep(0.2)
+    print(cv.get_rssi(rcvr_target=rx_id))
+    # cv.set_user_message(rcvr_target=rx_id,osd_str=" ")
+    # count = 1
+    # time.sleep(0.1)
+    #cv.set_user_message(rcvr_target=rx_id, osd_str="")
+    # while True:
+    #     pass
+    # while True:
+    #     dt = 0.5
+    #     time.sleep(dt)
+    #     cv.set_user_message(rcvr_target=rx_id, osd_str="RotorHazard")
+
+    #     time.sleep(dt)
+    #     cv.set_user_message(rcvr_target=rx_id, osd_str="A really long 505050 character message is here now")
+
+    #     time.sleep(dt)
+    #     cv.set_user_message(rcvr_target=rx_id, osd_str="X")
+
+    #     time.sleep(dt)
+    #     cv.set_user_message(rcvr_target=rx_id, osd_str="")
+        
+    #     if count % 5 == 0:
+    #         print("Left")
+    #         time.sleep(dt)
+    #         cv.set_osd_at_predefined_position(rcvr_target=rx_id,desired_position=1)
+    #         time.sleep(3)
+    #     elif count % 5 == 3:
+    #         print("Right")
+    #         time.sleep(dt)
+    #         cv.set_osd_at_predefined_position(rcvr_target=rx_id,desired_position=5)
+    #         time.sleep(3)
+
+
+    #     count = count + 1
+
+    
+
+    # dt = 0.1
+    # while True:
+    #     time.sleep(dt)
+    #     cv.set_user_message(rcvr_target=rx_id, osd_str="RH" + str(count%5))
+    #     count = count+1
 
 
 print("\n\n")
