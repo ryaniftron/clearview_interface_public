@@ -1,196 +1,313 @@
-/*  WiFi softAP Example
-
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
-*/
-#include <string.h>
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "esp_system.h"
 #include "esp_wifi.h"
+#include "esp_system.h"
 #include "esp_event.h"
-#include "esp_log.h"
+#include "esp_event_loop.h"
 #include "nvs_flash.h"
+#include "driver/gpio.h"
+#include "freertos/portmacro.h"
+#include "freertos/event_groups.h"
+#include "esp_log.h"
+#include "tcpip_adapter.h"
+static EventGroupHandle_t wifi_event_group;
+const int CONNECTED_BIT = BIT0;
 
 #include "lwip/err.h"
+#include "string.h"
+
 #include "lwip/sys.h"
+#include "lwip/netdb.h"
+#include "lwip/api.h"
 
-#include <esp_http_server.h>
+#define AP_TARGET_SSID "myssid"
+#define AP_TARGET_PASSWORD "mypassword"
 
-static const char *TAG = "wifi softAP";
-
-static esp_err_t hello_get_handler(httpd_req_t *req)
-{
-    char*  buf;
-    size_t buf_len;
-
-    /* Get header value string length and allocate memory for length + 1,
-     * extra byte for null termination */
-    buf_len = httpd_req_get_hdr_value_len(req, "Host") + 1;
-    if (buf_len > 1) {
-        buf = malloc(buf_len);
-        /* Copy null terminated value string into buffer */
-        if (httpd_req_get_hdr_value_str(req, "Host", buf, buf_len) == ESP_OK) {
-            ESP_LOGI(TAG, "Found header => Host: %s", buf);
-        }
-        free(buf);
-    }
-
-    buf_len = httpd_req_get_hdr_value_len(req, "Test-Header-2") + 1;
-    if (buf_len > 1) {
-        buf = malloc(buf_len);
-        if (httpd_req_get_hdr_value_str(req, "Test-Header-2", buf, buf_len) == ESP_OK) {
-            ESP_LOGI(TAG, "Found header => Test-Header-2: %s", buf);
-        }
-        free(buf);
-    }
-
-    buf_len = httpd_req_get_hdr_value_len(req, "Test-Header-1") + 1;
-    if (buf_len > 1) {
-        buf = malloc(buf_len);
-        if (httpd_req_get_hdr_value_str(req, "Test-Header-1", buf, buf_len) == ESP_OK) {
-            ESP_LOGI(TAG, "Found header => Test-Header-1: %s", buf);
-        }
-        free(buf);
-    }
-
-    /* Read URL query string length and allocate memory for length + 1,
-     * extra byte for null termination */
-    buf_len = httpd_req_get_url_query_len(req) + 1;
-    if (buf_len > 1) {
-        buf = malloc(buf_len);
-        if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
-            ESP_LOGI(TAG, "Found URL query => %s", buf);
-            char param[32];
-            /* Get value of expected key from query string */
-            if (httpd_query_key_value(buf, "query1", param, sizeof(param)) == ESP_OK) {
-                ESP_LOGI(TAG, "Found URL query parameter => query1=%s", param);
-            }
-            if (httpd_query_key_value(buf, "query3", param, sizeof(param)) == ESP_OK) {
-                ESP_LOGI(TAG, "Found URL query parameter => query3=%s", param);
-            }
-            if (httpd_query_key_value(buf, "query2", param, sizeof(param)) == ESP_OK) {
-                ESP_LOGI(TAG, "Found URL query parameter => query2=%s", param);
-            }
-        }
-        free(buf);
-    }
-
-    /* Set some custom headers */
-    httpd_resp_set_hdr(req, "Custom-Header-1", "Custom-Value-1");
-    httpd_resp_set_hdr(req, "Custom-Header-2", "Custom-Value-2");
-
-    /* Send response with custom headers and body set as the
-     * string passed in user context*/
-    const char* resp_str = (const char*) req->user_ctx;
-    httpd_resp_send(req, resp_str, strlen(resp_str));
-
-    /* After sending the HTTP response the old HTTP request
-     * headers are lost. Check if HTTP request headers can be read now. */
-    if (httpd_req_get_hdr_value_len(req, "Host") == 0) {
-        ESP_LOGI(TAG, "Request headers lost");
-    }
-    return ESP_OK;
-}
-
-static const httpd_uri_t hello = {
-    .uri       = "/hello",
-    .method    = HTTP_GET,
-    .handler   = hello_get_handler,
-    /* Let's pass response string in user
-     * context to demonstrate it's usage */
-    .user_ctx  = "Hello World!"
-};
-
-static httpd_handle_t start_webserver(void)
-{
-    httpd_handle_t server = NULL;
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-
-    // Start the httpd server
-    ESP_LOGI(TAG, "Starting server on port: '%d'", config.server_port);
-    if (httpd_start(&server, &config) == ESP_OK) {
-        // Set URI handlers
-        ESP_LOGI(TAG, "Registering URI handlers");
-        httpd_register_uri_handler(server, &hello);
-        return server;
-    }
-
-    ESP_LOGI(TAG, "Error starting server!");
-    return NULL;
-}
-
-/* The examples use WiFi configuration that you can set via project configuration menu.
-
-   If you'd rather not, just change the below entries to strings with
-   the config you want - ie #define EXAMPLE_WIFI_SSID "mywifissid"
+/* if code below is uncommented static ip is used */ 
+/*
+#define DEVICE_IP          "192.168.178.4"
+#define DEVICE_GW          "192.168.178.1"
+#define DEVICE_NETMASK     "255.255.255.0"
 */
-#define EXAMPLE_ESP_WIFI_SSID      CONFIG_ESP_WIFI_SSID
-#define EXAMPLE_ESP_WIFI_PASS      CONFIG_ESP_WIFI_PASSWORD
-#define EXAMPLE_MAX_STA_CONN       CONFIG_ESP_MAX_STA_CONN
+
+#define HDR_200 "HTTP/1.1 200 OK\r\nContent-type: text/html\r\n\r\n"
+#define HDR_201 "HTTP/1.1 201 Created\r\nContent-type: text/html\r\n\r\n"
+#define HDR_204 "HTTP/1.1 204 No Content\r\nContent-type: text/html\r\n\r\n"
+#define HDR_404 "HTTP/1.1 404 Not Found\r\nContent-type: text/html\r\n\r\n"
+#define HDR_405 "HTTP/1.1 405 Method not allowed\r\nContent-type: text/html\r\n\r\n"
+#define HDR_409 "HTTP/1.1 409 Conflict\r\nContent-type: text/html\r\n\r\n"
+#define HDR_501 "HTTP/1.1 501 Not Implemented\r\nContent-type: text/html\r\n\r\n"
+//#define root_text "<input type=\"text\" id=\"ssid\" name=\"ssid\"><br> "
 
 
+#define root_text \
+    "<strong>ClearView ESP32 Config </strong><br> \
+    Wifi Status: TODO <br>\
+    <form action=\"/config_esp32\" method> \
+        <label for=\"ssid\">Network SSID:</label><br> \
+        <input type=\"text\" id=\"ssid\" name=\"ssid\"><br> \
+        <label for=\"password\">Network Password:</label><br> \
+        <input type=\"text\" id=\"password\" name=\"password\"><br> \
+        <label for=\"device_name\">Device Name:</label><br> \
+        <input type=\"text\" id=\"device_name\" name=\"device_name\"><br> \
+        <input type=\"submit\" value=\"Save and Join Network\">\
+    </form> \
+            \
+    <form action=\"/scan_wifi\" method> \
+        <input type=\"submit\" value=\"Scan for WiFi\">\
+    </form> \
+"
 
-static void wifi_event_handler(void* arg, esp_event_base_t event_base,
-                                    int32_t event_id, void* event_data)
-{
-    if (event_id == WIFI_EVENT_AP_STACONNECTED) {
-        wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*) event_data;
-        ESP_LOGI(TAG, "station "MACSTR" join, AID=%d",
-                 MAC2STR(event->mac), event->aid);
-    } else if (event_id == WIFI_EVENT_AP_STADISCONNECTED) {
-        wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*) event_data;
-        ESP_LOGI(TAG, "station "MACSTR" leave, AID=%d",
-                 MAC2STR(event->mac), event->aid);
-    }
+#define wifi_scan_text \
+    " Scanned Wifi List: <br> \
+    <form action=\"/\" method> \
+        <input type=\"submit\" value=\"Return to main\">\
+    </form> \
+    "
+
+#define no_connection_to_ap_text \
+    " No connection to wifi : <br> \
+    ssid: %s <br>\
+    password: %s <br> \
+    <form action=\"/\" method> \
+        <input type=\"submit\" value=\"Return to main\">\
+    </form> \
+    "
+
+#define wifi_attempt_connect \
+    " Attempting wifi connection... TODO timeout <br> \
+    "
+    
+#define config_esp32_parse_fail \
+    " Error: config_esp32 Parse Fail <br> \
+    "
+
+
+void set_credential(char* credentialName, char* val){
+    printf("##Setting %s = %s##", credentialName, val);
+    // TODO store these values inside ESP32 then join access point
 }
 
-void wifi_init_softap()
-{
-    tcpip_adapter_init();
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+// parse the request payload for credentials for the wifi device
+// Successful parse returns true
+bool parse_net_credentials(char* payload){
+    ///example: /config_esp32?ssid=a&password=x&device_name=z
+    printf("Parsing these creds: %s\n", payload);
 
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
+    char credentialSearchTerms[4][15] = {"ssid","password","device_name","\0"};
 
-    wifi_config_t wifi_config = {
-        .ap = {
-            .ssid = EXAMPLE_ESP_WIFI_SSID,
-            .ssid_len = strlen(EXAMPLE_ESP_WIFI_SSID),
-            .password = EXAMPLE_ESP_WIFI_PASS,
-            .max_connection = EXAMPLE_MAX_STA_CONN,
-            .authmode = WIFI_AUTH_WPA_WPA2_PSK
-        },
-    };
-    if (strlen(EXAMPLE_ESP_WIFI_PASS) == 0) {
-        wifi_config.ap.authmode = WIFI_AUTH_OPEN;
+
+
+    char * start,*stop,*arg1, *k, *knext; 
+    
+    int nConfTerms = 3;
+    for (int i = 0 ; i < nConfTerms ; i++){
+        k = credentialSearchTerms[i];
+        //knext = credentialSearchTerms[i+1];
+        knext = "&";
+        printf("\tGetting Param %s\n", k);
+        start = strstr(payload, k);
+        if (start == NULL){
+            printf("Error. Start parameter not found in %s\n", payload);
+            return false;
+        }
+        start += 1 + strlen(k);
+        stop = strstr(start + 1,  knext);
+        printf("\t\tStart:%s\n",start);
+        
+
+        if (stop == NULL) {
+            if (i == nConfTerms - 1){ //last credential to parse.
+                printf("DEBUG: End term in %s\n", payload); 
+                set_credential(k,start);
+                printf("DEBUG2\n");
+            } else {
+                printf("Error. End parameter not found in %s\n", payload);
+                return false;
+            }
+
+        }else{
+            printf("\t\tStop:%s\n",stop);
+            stop = stop; //remove the '='
+
+            // allocate memory for the payload
+            arg1 = (char *) malloc(stop - start + 1);
+            memcpy(arg1, start, stop - start);
+            arg1[stop - start] = '\0';
+            printf("\targ1:%s\n", arg1);
+            set_credential(k,arg1);
+            free(arg1);
+        }
     }
-
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
-    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_start());
-
-    ESP_LOGI(TAG, "wifi_init_softap finished. SSID:%s password:%s",
-             EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
-    start_webserver();
-    ESP_LOGI(TAG, "X");
+    return true;
 }
 
-void app_main()
-{
-    //Initialize NVS
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-      ESP_ERROR_CHECK(nvs_flash_erase());
-      ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
 
-    ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
-    wifi_init_softap();
+static esp_err_t event_handler(void *ctx, system_event_t *event)
+{
+	switch(event->event_id) {
+		case SYSTEM_EVENT_STA_START:
+			esp_wifi_connect();
+			break;
+		case SYSTEM_EVENT_STA_GOT_IP:
+			xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+			break;
+		case SYSTEM_EVENT_STA_DISCONNECTED:
+			esp_wifi_connect();
+			xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+			break;
+		default:
+			break;
+	}
+	return ESP_OK;
+}
+
+
+static void initialise_wifi(void)
+{
+	tcpip_adapter_init();
+	wifi_event_group = xEventGroupCreate();
+	ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
+	wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+
+#ifdef DEVICE_IP
+	tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_STA);
+	tcpip_adapter_ip_info_t ipInfo;
+	inet_pton(AF_INET, DEVICE_IP, &ipInfo.ip);
+	inet_pton(AF_INET, DEVICE_GW, &ipInfo.gw);
+	inet_pton(AF_INET, DEVICE_NETMASK, &ipInfo.netmask);
+	tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_STA, &ipInfo);
+#endif
+
+	ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
+	ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
+	ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
+
+    //TODO: Set up both station and AP mode:
+    //  https://www.esp32.com/viewtopic.php?t=10619
+
+
+	wifi_config_t sta_config = {
+		.sta = {
+			.ssid = AP_TARGET_SSID,
+			.password = AP_TARGET_PASSWORD,
+			.bssid_set = false
+		}
+	};
+
+  ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &sta_config) );
+  ESP_ERROR_CHECK( esp_wifi_start() );
+}
+
+static void
+http_server_netconn_serve(struct netconn *conn)
+{
+	struct netbuf *inbuf;
+	char *buf, *payload, *start, *stop;
+	u16_t buflen;
+	err_t err;
+
+  /* Read the data from the port, blocking if nothing yet there.
+   We assume the request (the part we care about) is in one netbuf */
+	err = netconn_recv(conn, &inbuf);
+
+	if (err == ERR_OK) {
+        // TODO capture the possible error code form netbuf_data
+		netbuf_data(inbuf, (void**)&buf, &buflen);
+		// find the first and seconds space (those delimt the url)
+		start = strstr(buf, " ") + 1;
+		stop = strstr(start + 1, " ");	
+		// allocate memory for the payload
+		payload = (char *) malloc(stop - start + 1);
+		memcpy(payload, start, stop - start);
+		payload[stop - start] = '\0';
+
+		/* For now  only GET results in a valid respons */
+		if (strncmp(buf, "GET /", 5) == 0){
+            netconn_write(conn, HDR_200, sizeof(HDR_200)-1, NETCONN_NOCOPY);
+			//printf("GET = '%s' \n", payload);
+            if (strcmp(payload, "/") == 0 || strcmp(payload, "/?") == 0) { //give the root website
+                netconn_write(conn, root_text, sizeof(root_text)-1, NETCONN_NOCOPY);
+            }else if (strcmp(payload, "/favicon.ico") == 0) {
+                //do nothing
+            }else if (strcmp(payload, "/scan_wifi?") == 0) {
+                netconn_write(conn, wifi_scan_text, sizeof(wifi_scan_text)-1, NETCONN_NOCOPY);
+            }else if (strncmp(payload, "/config_esp32", strlen("/config_esp32")) == 0){
+                printf("Got a config filestring\n");
+                //GET='GET /config_esp32?ssid=A&password=B&device_name=C '
+                if (parse_net_credentials(payload)){
+                    netconn_write(conn, wifi_attempt_connect, sizeof(wifi_attempt_connect)-1, NETCONN_NOCOPY);
+                }else {
+                    netconn_write(conn, config_esp32_parse_fail, sizeof(config_esp32_parse_fail)-1, NETCONN_NOCOPY);
+                }
+            }else{  
+                //char* errmsg = sprintf("Uncaptured GET='%s' \n", *payload);
+                //printf("Uncaptured GET='%s' \n", &payload);
+                //netconn_write(conn, errmsg, sizeof(errmsg)-1, NETCONN_NOCOPY);              
+            }
+
+            
+            /* send "hello world to client" */
+            
+			
+		}else if (strncmp(buf, "POST /", 6) == 0){
+			/* send '501 Not implementd' reply  */
+			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
+		}else if (strncmp(buf, "PUT /", 5) == 0){
+			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
+		}else if (strncmp(buf, "PATCH /", 7) == 0){
+			/* send '501 Not implementd' reply  */
+			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
+		}else if (strncmp(buf, "DELETE /", 8) == 0){
+			/* send '501 Not implementd' reply  */
+			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
+		}else{
+			/* 	Any unrecognized verb will automatically 
+				result in '501 Not implementd' reply */
+			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
+		}
+		free(payload);
+	}
+  	/* Close the connection (server closes in HTTP) and clean up after ourself */
+	netconn_close(conn);
+	netbuf_delete(inbuf);
+}
+
+static void http_server(void *pvParameters)
+{
+	uint32_t port;
+	if (pvParameters == NULL){
+		port = 80;
+	}else{
+		port = (uint32_t) pvParameters;
+	}
+	// printf("\n Creating socket at\n %d \n", (uint32_t) pvParameters);
+	struct netconn *conn, *newconn;
+	err_t err;
+	conn = netconn_new(NETCONN_TCP);
+	netconn_bind(conn, NULL,  port);
+	netconn_listen(conn);
+	do {
+		err = netconn_accept(conn, &newconn);
+		if (err == ERR_OK) {
+			http_server_netconn_serve(newconn);
+			netconn_delete(newconn);
+		}
+	} while(err == ERR_OK);
+	netconn_close(conn);
+	netconn_delete(conn);
+}
+
+
+int app_main(void)
+{
+    //uint64_t *mac = ESP_MAC_WIFI_STA;
+    //esp_efuse_mac_get_default(mac);
+    //printf("%s",mac);
+
+	nvs_flash_init();
+	initialise_wifi();
+
+	xTaskCreate(&http_server, "http_server", 2048, NULL, 5, NULL);
+	return 0;
 }
