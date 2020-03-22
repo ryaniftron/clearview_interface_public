@@ -24,10 +24,16 @@ menu "Example Configuration"
         help
             SSID (network name) for the example to connect to.
 
-    config NETWORK_WIFI_PASSWORD
+    config NETWORK_PASSWORD
         string "WiFi Password"
         default "mynetworkpassword"
         help
             WiFi password (WPA or WPA2) for the example to use.
+
+    config EXAMPLE_SUBSCIBE_TOPIC
+        string "MQTT topic to subscribe to"
+        default "/hellotopic"
+        help 
+            A MQTT topic to subscribe to
         
 endmenu
