@@ -6,6 +6,7 @@
             "cppStandard": "c++17",
             "includePath": [
                 "${config:idf.espIdfPath}/components/**",
+                "${config:idf.espIdfPath}/examples/common_components/protocol_examples_common/include",
                 "${config:idf.espIdfPathWin}/components/**",
                 "${workspaceFolder}/**"
             ],
@@ -15,7 +16,7 @@
                     "${config:idf.espIdfPathWin}/components",
                     "${workspaceFolder}"
                 ],
-                "limitSymbolsToIncludedHeaders": false   
+                "limitSymbolsToIncludedHeaders": false
             }
         }
     ],

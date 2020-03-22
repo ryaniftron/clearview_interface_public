@@ -7,5 +7,12 @@
     "[c]": {
         "editor.quickSuggestions": true
     },
-    "C_Cpp.intelliSenseEngineFallback": "Enabled"
+    "C_Cpp.intelliSenseEngineFallback": "Enabled",
+    "files.associations": {
+        "string.h": "c",
+        "freertos.h": "c",
+        "portmacro.h": "c",
+        "nvs_flash.h": "c",
+        "tcpip_adapter.h": "c"
+    }
 } 
