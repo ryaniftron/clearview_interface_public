@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+/*
 #include <stddef.h>
 #include <string.h>
 #include "esp_wifi.h"
@@ -20,8 +21,8 @@
 #include "lwip/netdb.h"
 
 #include "esp_log.h"
-#include "mqtt_client.h"
-/*
+//#include "mqtt_client.h"
+
 static const char *TAG = "PUBLISH_TEST";
 
 static EventGroupHandle_t mqtt_event_group;
