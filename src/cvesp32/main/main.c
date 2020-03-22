@@ -22,13 +22,16 @@ const int CONNECTED_BIT = BIT0;
 #include "lwip/netdb.h"
 #include "lwip/api.h"
 
+//Components
+//#include "cv_mqtt.h"
+
 //*****************
 //Network credentials for station mode. 
 //*****************
 
 //If uncommended, these override Kconfig.projbuild
-#define my_network_ssid           "my_ssid"
-#define my_network_pass           "my_password"
+#define my_network_ssid           "Rachel"
+#define my_network_pass           "woodwood"
 
 // the run "idf.py menuconfig" and  navigate to example configuration to change your defaults
 #ifndef my_network_ssid
@@ -71,12 +74,18 @@ static const char *TAG = "cv-esp32";
         <label for=\"device_name\">Device Name:</label><br> \
         <input type=\"text\" id=\"device_name\" name=\"device_name\"><br> \
         <input type=\"submit\" value=\"Save and Join Network\">\
+"
+
+//Add it to root text when the functionality is ready
+//this is the scan for wifi button if needed. 
+/* 
+
     </form> \
             \
     <form action=\"/scan_wifi\" method> \
         <input type=\"submit\" value=\"Scan for WiFi\">\
     </form> \
-"
+*/
 
 #define wifi_scan_text \
     " Scanned Wifi List: <br> \
@@ -115,7 +124,8 @@ static void get_chip_id(char* ssid, const int UNIQUE_ID_LENGTH){
     uint16_t chip = (uint16_t)(chipid >> 32);
     //esp_read_mac(chipid);
     snprintf(ssid, UNIQUE_ID_LENGTH, "CV-%04X%08X", chip, (uint32_t)chipid);
-    printf("SSID is %s\n", ssid);
+    printf("SSID created from chip id: %s\n", ssid);
+    return;
 }
 
 static void set_credential(char* credentialName, char* val){
@@ -216,7 +226,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
 
 static void initialize_softAP_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_LEN)
 {
-    // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/wifi.html
+// https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/wifi.html
     printf("Starting ESP32 softAP mode.\n");
     tcpip_adapter_init();
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -229,22 +239,34 @@ static void initialize_softAP_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID
     wifi_config_t wifi_config = {
         .ap = {
             .ssid = SOFTAP_SSID,
-            .ssid_len = strlen(SOFTAP_SSID),
-            .password = SOFTAP_PASS,
+            .ssid_len = 0,
+            .password = SOFTAP_PASS, //This is either empty string or >= 8 chars or it breaks
             .max_connection = SOFTAP_MAX_STA_CONN,
             .authmode = WIFI_AUTH_WPA_WPA2_PSK
         },
     };
+    //Set the SSID to PARAM_ESP_WIFI_SSID
+    strcpy((char *)wifi_config.ap.ssid, PARAM_ESP_WIFI_SSID);
+
     if (strlen(SOFTAP_PASS) == 0) {
         wifi_config.ap.authmode = WIFI_AUTH_OPEN;
     }
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_start());
-
-    ESP_LOGI(TAG, "wifi_init_softap finished. SSID:'%s' password:'%s'",
-             SOFTAP_SSID, SOFTAP_PASS);
+    ESP_ERROR_CHECK(esp_wifi_start());    
+    
+    if (strlen(SOFTAP_PASS) == 0){
+        ESP_LOGI(TAG, "softAP started. SSID:'%s'",
+             wifi_config.ap.ssid);
+        ESP_LOGI(TAG,"\t**unsecured - no password required**\n");
+    } else {
+        ESP_LOGI(TAG, "softAP started. SSID:'%s' password:'%s'",
+             wifi_config.ap.ssid, wifi_config.ap.password);
+             //TODO password connection/security may not work well
+    }
+    ESP_LOGI(TAG, "Login and go to http://192.168.4.1/ \n");
+    
 
 }
 
@@ -361,6 +383,7 @@ http_server_netconn_serve(struct netconn *conn)
 
 static void http_server(void *pvParameters)
 {
+    
 	uint32_t port;
 	if (pvParameters == NULL){
 		port = 80;
@@ -382,10 +405,11 @@ static void http_server(void *pvParameters)
 	} while(err == ERR_OK);
 	netconn_close(conn);
 	netconn_delete(conn);
+    
 }
 
 
-int app_main(void)
+void app_main(void)
 {
 	//Initialize NVS
     esp_err_t ret = nvs_flash_init();
@@ -398,15 +422,18 @@ int app_main(void)
 
     const int UNIQUE_ID_LENGTH = 16;
     char chipid[UNIQUE_ID_LENGTH];
+
     get_chip_id(chipid, UNIQUE_ID_LENGTH);
 
     //Start Wifi
 	//initialise_sta_wifi();
     initialize_softAP_wifi(chipid, UNIQUE_ID_LENGTH);
 
+    printf("Starting http server\n");
+    xTaskCreate(&http_server, "http_server", 2048, NULL, 5, NULL);
+
+    //cv_mqtt_init();
 
     
-
-	xTaskCreate(&http_server, "http_server", 2048, NULL, 5, NULL);
-	return 0;
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
 }
