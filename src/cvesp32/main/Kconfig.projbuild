@@ -1,0 +1,33 @@
+menu "Example Configuration"
+
+    config ESP_WIFI_SSID
+        string "WiFi SSID"
+        default "esp_softap_ssid"
+        help
+            SSID (network name) for the esp to generate
+
+    config ESP_WIFI_PASSWORD
+        string "WiFi Password"
+        default ""
+        help
+            WiFi password (WPA or WPA2) for the example to use.
+
+    config ESP_MAX_STA_CONN
+        int "Maximal station connections"
+        default 4
+        help
+            Max number of the STA connects to AP.
+
+    config NETWORK_SSID
+        string "Network SSID to connect to as a station"
+        default "networK_ssid"
+        help
+            SSID (network name) for the example to connect to.
+
+    config NETWORK_WIFI_PASSWORD
+        string "WiFi Password"
+        default "mynetworkpassword"
+        help
+            WiFi password (WPA or WPA2) for the example to use.
+        
+endmenu

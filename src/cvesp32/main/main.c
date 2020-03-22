@@ -1,33 +1,54 @@
+#include "string.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/portmacro.h"
+#include "freertos/event_groups.h"
+#include "freertos/task.h"
+
 #include "esp_wifi.h"
 #include "esp_system.h"
 #include "esp_event.h"
 #include "esp_event_loop.h"
 #include "nvs_flash.h"
 #include "driver/gpio.h"
-#include "freertos/portmacro.h"
-#include "freertos/event_groups.h"
+
 #include "esp_log.h"
 #include "tcpip_adapter.h"
 static EventGroupHandle_t wifi_event_group;
 const int CONNECTED_BIT = BIT0;
 
-#include "lwip/err.h"
-#include "string.h"
 
+#include "lwip/err.h"
 #include "lwip/sys.h"
 #include "lwip/netdb.h"
 #include "lwip/api.h"
 
-#define AP_TARGET_SSID "myssid"
-#define AP_TARGET_PASSWORD "mypassword"
+//*****************
+//Network credentials for station mode. 
+//*****************
 
-/* if code below is uncommented static ip is used */ 
-/*
-#define DEVICE_IP          "192.168.178.4"
-#define DEVICE_GW          "192.168.178.1"
-#define DEVICE_NETMASK     "255.255.255.0"
-*/
+//If uncommended, these override Kconfig.projbuild
+#define my_network_ssid           "my_ssid"
+#define my_network_pass           "my_password"
+
+// the run "idf.py menuconfig" and  navigate to example configuration to change your defaults
+#ifndef my_network_ssid
+    #define AP_TARGET_SSID            CONFIG_NETWORK_SSID
+#else
+    #define AP_TARGET_SSID            my_network_ssid
+#endif
+
+#ifndef my_network_ssid
+    #define AP_TARGET_PASS            CONFIG_NETWORK_PASS
+#else
+    #define AP_TARGET_PASS            my_network_pass
+#endif
+
+//AP (softAP) configuration -> See main/Kconfig.projbuild
+#define SOFTAP_SSID               CONFIG_ESP_WIFI_SSID
+#define SOFTAP_PASS               CONFIG_ESP_WIFI_PASSWORD
+#define SOFTAP_MAX_STA_CONN       CONFIG_ESP_MAX_STA_CONN
+
+static const char *TAG = "cv-esp32";
 
 #define HDR_200 "HTTP/1.1 200 OK\r\nContent-type: text/html\r\n\r\n"
 #define HDR_201 "HTTP/1.1 201 Created\r\nContent-type: text/html\r\n\r\n"
@@ -81,8 +102,23 @@ const int CONNECTED_BIT = BIT0;
     " Error: config_esp32 Parse Fail <br> \
     "
 
+// uint64_t getEfuseMac(void)
+// {
+//     uint64_t _chipmacid = 0LL;
+//     esp_efuse_mac_get_default((uint8_t*) (&_chipmacid));
+//     return _chipmacid;
+// }
+    
+static void get_chip_id(char* ssid, const int UNIQUE_ID_LENGTH){
+    uint64_t chipid = 0LL;
+    esp_efuse_mac_get_default((uint8_t*) (&chipid));
+    uint16_t chip = (uint16_t)(chipid >> 32);
+    //esp_read_mac(chipid);
+    snprintf(ssid, UNIQUE_ID_LENGTH, "CV-%04X%08X", chip, (uint32_t)chipid);
+    printf("SSID is %s\n", ssid);
+}
 
-void set_credential(char* credentialName, char* val){
+static void set_credential(char* credentialName, char* val){
     printf("##Setting %s = %s##", credentialName, val);
     // TODO store these values inside ESP32 then join access point
 }
@@ -90,7 +126,7 @@ void set_credential(char* credentialName, char* val){
 
 // parse the request payload for credentials for the wifi device
 // Successful parse returns true
-bool parse_net_credentials(char* payload){
+static bool parse_net_credentials(char* payload){
     ///example: /config_esp32?ssid=a&password=x&device_name=z
     printf("Parsing these creds: %s\n", payload);
 
@@ -162,9 +198,59 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
 	return ESP_OK;
 }
 
-
-static void initialise_wifi(void)
+//TODO combine this with event_handler
+static void wifi_event_handler(void* arg, esp_event_base_t event_base,
+                                    int32_t event_id, void* event_data)
 {
+    if (event_id == WIFI_EVENT_AP_STACONNECTED) {
+        wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*) event_data;
+        ESP_LOGI(TAG, "station "MACSTR" join, AID=%d",
+                 MAC2STR(event->mac), event->aid);
+    } else if (event_id == WIFI_EVENT_AP_STADISCONNECTED) {
+        wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*) event_data;
+        ESP_LOGI(TAG, "station "MACSTR" leave, AID=%d",
+                 MAC2STR(event->mac), event->aid);
+    }
+}
+
+
+static void initialize_softAP_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_LEN)
+{
+    // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/wifi.html
+    printf("Starting ESP32 softAP mode.\n");
+    tcpip_adapter_init();
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT(); //VSCODE shows this undefined but it works
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
+
+    wifi_config_t wifi_config = {
+        .ap = {
+            .ssid = SOFTAP_SSID,
+            .ssid_len = strlen(SOFTAP_SSID),
+            .password = SOFTAP_PASS,
+            .max_connection = SOFTAP_MAX_STA_CONN,
+            .authmode = WIFI_AUTH_WPA_WPA2_PSK
+        },
+    };
+    if (strlen(SOFTAP_PASS) == 0) {
+        wifi_config.ap.authmode = WIFI_AUTH_OPEN;
+    }
+
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
+    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
+
+    ESP_LOGI(TAG, "wifi_init_softap finished. SSID:'%s' password:'%s'",
+             SOFTAP_SSID, SOFTAP_PASS);
+
+}
+
+static void initialise_sta_wifi(void)
+{
+	
 	tcpip_adapter_init();
 	wifi_event_group = xEventGroupCreate();
 	ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
@@ -190,7 +276,7 @@ static void initialise_wifi(void)
 	wifi_config_t sta_config = {
 		.sta = {
 			.ssid = AP_TARGET_SSID,
-			.password = AP_TARGET_PASSWORD,
+			.password = AP_TARGET_PASS,
 			.bssid_set = false
 		}
 	};
@@ -301,12 +387,25 @@ static void http_server(void *pvParameters)
 
 int app_main(void)
 {
-    //uint64_t *mac = ESP_MAC_WIFI_STA;
-    //esp_efuse_mac_get_default(mac);
-    //printf("%s",mac);
+	//Initialize NVS
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+      ESP_ERROR_CHECK(nvs_flash_erase());
+      ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+    
 
-	nvs_flash_init();
-	initialise_wifi();
+    const int UNIQUE_ID_LENGTH = 16;
+    char chipid[UNIQUE_ID_LENGTH];
+    get_chip_id(chipid, UNIQUE_ID_LENGTH);
+
+    //Start Wifi
+	//initialise_sta_wifi();
+    initialize_softAP_wifi(chipid, UNIQUE_ID_LENGTH);
+
+
+    
 
 	xTaskCreate(&http_server, "http_server", 2048, NULL, 5, NULL);
 	return 0;
