@@ -14,6 +14,8 @@
         "portmacro.h": "c",
         "nvs_flash.h": "c",
         "tcpip_adapter.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "protocol_examples_common.h": "c",
+        "typeinfo": "c"
     }
 } 
