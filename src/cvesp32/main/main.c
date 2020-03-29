@@ -24,7 +24,7 @@ static const int CONNECTED_BIT = BIT0;
 
 //Components
 //#include "cv_mqtt.h"
-#include "test.c"
+#include "main_cv_mqtt.c"
 
 //*****************
 //Network credentials for station mode. 
@@ -364,6 +364,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
 }
 
 
+
 static void initialize_softAP_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_LEN)
 {
 // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/wifi.html
@@ -413,11 +414,9 @@ static void initialize_softAP_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID
 static void initialise_sta_wifi(void)
 {
 
-        s_wifi_event_group = xEventGroupCreate();
+    s_wifi_event_group = xEventGroupCreate();
 
-    tcpip_adapter_init();
-
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    ESP_ERROR_CHECK(esp_event_loop_create_default()); //only once
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -531,16 +530,14 @@ void app_main(void)
     get_chip_id(chipid, UNIQUE_ID_LENGTH);
 
     //Start Wifi
-	//initialise_sta_wifi();
+	initialise_sta_wifi();
     //initialize_softAP_wifi(chipid, UNIQUE_ID_LENGTH);
-    demo_sequential_wifi(chipid, UNIQUE_ID_LENGTH);
-
+    //demo_sequential_wifi(chipid, UNIQUE_ID_LENGTH);
    
 
-    //cv_mqtt_init();
+    cv_mqtt_init(chipid, UNIQUE_ID_LENGTH);
+
     //printf("Starting http server\n");
     //xTaskCreate(&http_server, "http_server", 2048, NULL, 5, NULL);
-
-    
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 }
