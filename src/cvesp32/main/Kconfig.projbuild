@@ -32,8 +32,20 @@ menu "Example Configuration"
 
     config EXAMPLE_SUBSCIBE_TOPIC
         string "MQTT topic to subscribe to"
-        default "/hellotopic"
+        default "/hellotopic_sub"
         help 
             A MQTT topic to subscribe to
+
+    config EXAMPLE_PUBLISH_TOPIC
+        string "MQTT topic to publish to"
+        default "/hellotopic_pub"
+        help 
+            A MQTT topic to publish to
+
+    config BROKER_IP
+        string "MQTT broker IP"
+        default "localhost"
+        help 
+            The IP address of the MQTT Broker
         
 endmenu
