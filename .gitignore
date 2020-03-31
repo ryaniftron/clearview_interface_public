@@ -1,3 +1,4 @@
 __pycache*__
 *.log
 .vscode
+*.egg-info
