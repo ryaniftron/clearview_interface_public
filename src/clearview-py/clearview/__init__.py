@@ -19,27 +19,30 @@ import sys  # for printing caller in debug
 import re
 from collections import namedtuple
 import logging
-import clearview_serial_simulator
+from . import sim
+from . import comspecs
+
+clearview_specs = comspecs.clearview_specs
 
 __version__ = '1.20a1'
 
 logger = logging.getLogger(__name__)
 
 
-try:
-    import clearview_comspecs
-    clearview_specs = clearview_comspecs.clearview_specs
-except ImportError:
-    print("No clearview_specs. Using defaults")
-    baudrate = 19200
-    clearview_specs = {
-        'message_start_char': '\n',
-        'message_end_char': '\r',
-        'message_csum': '%',
-        'mess_src': 9,
-        'baud': 57600,
-        'bc_id': 0
-    }
+# try:
+#     import comspecs
+#     clearview_specs = comspecs.clearview_specs
+# except ImportError:
+#     print("No clearview_specs. Using defaults")
+#     baudrate = 19200
+#     clearview_specs = {
+#         'message_start_char': '\n',
+#         'message_end_char': '\r',
+#         'message_csum': '%',
+#         'mess_src': 9,
+#         'baud': 57600,
+#         'bc_id': 0
+#     }
 
 # TODO the docstring seems to be in alphabetical order but it keeps headers in weird
 # TODO make all arguments named args
@@ -49,19 +52,27 @@ except ImportError:
 
 class ClearView:
     """Communicate with a ClearView using a serial port"""
-    def __init__(self, timeout=0.5, debug=False, simulate_serial_port=False,
+    def __init__(self, timeout=0.5, 
+                 debug=False, 
+                 simulate_serial_port=False,
                  sim_file_load_name=None,
                  sim_file_save_name=None,
-                 *, port='/dev/ttyS0', robust=True):
+                 return_formatted_commands=False,
+                 port='/dev/ttyS0', 
+                 robust=True):
 
         # Pick whether to simulate ClearViews on the serial port or not
         self.simulate_serial_port = simulate_serial_port
+        
 
         if self.simulate_serial_port:
-            self._serial = clearview_serial_simulator.ClearViewSerialSimulator(
+            self._serial = sim.ClearViewSerialSimulator(
                             sim_file_load_name=sim_file_load_name,
                             sim_file_save_name=sim_file_save_name
             )
+        elif return_formatted_commands==True:
+            # Just use the module to generate commands based on the serial specs
+            self._serial = None
         else:
             self._serial = serial.Serial(
                 port=port,
@@ -90,7 +101,8 @@ class ClearView:
         # number of report request retries before giving up
         self.robust_report_retries = 1
 
-        self._print("Connecting to ", self._serial.port, sep='\t')
+        if self._serial is not None:
+            self._print("Connecting to ", self._serial.port, sep='\t')
 
         # TODO get the logger working instead of _print
         self.logger = logger
@@ -98,7 +110,7 @@ class ClearView:
     # ###########################
     # ### CV Control Commands ###
     # ###########################
-    def set_address(self, robust=True, *, rcvr_target, new_target):
+    def set_address(self, rcvr_target, new_target ,robust=False):
         """ADS => set_address => rcvr_target is the receiver
         seat number of interest,0-8, 0 for broadcast.
         new_target is the new seat 1-8
@@ -144,7 +156,7 @@ class ClearView:
             self.logger.error("set_address. Receiver %s out of range", rcvr_target)
             return -1
 
-    def set_antenna_mode(self, *, rcvr_target, antenna_mode):
+    def set_antenna_mode(self, rcvr_target, antenna_mode):
         """AN => Set antenna mode between legacy, L,R,CV
 
         Robust Mode: Not supported
@@ -156,7 +168,7 @@ class ClearView:
         else:
             print("Error. Unsupported antenna mode of ", antenna_mode)
 
-    def set_band_channel(self, *, robust=True, rcvr_target, band_channel):
+    def set_band_channel(self, rcvr_target, band_channel, robust = False):
         """BC = > Sets band channel. 0-7"""
 
         num_tries = self._get_robust_retries(mode="send", robust=robust)
@@ -166,6 +178,10 @@ class ClearView:
                 sleep(0.25)
                 self._clear_serial_in_buffer()
                 cmd = self._format_write_command(str(rcvr_target), "BC" + str(band_channel))
+                
+                if self._serial is None:
+                    return cmd
+
                 self._write_serial(cmd)
                 sleep(0.25)
                 if robust:
@@ -188,13 +204,33 @@ class ClearView:
 
         # TODO add check if 0-9 and a-f
         cmd = self._format_write_command(str(rcvr_target), "BG" + str(band_group))
-        self._write_serial(cmd)
+        return self._write_serial(cmd)
 
     def set_custom_frequency(self, rcvr_target, frequency):
         """#FR = > Sets frequency of receiver and creates custom frequency if needed"""
         # This command does not yet work in ClearView v1.20
-        raise NotImplementedError
+        min_freq = comspecs.cv_device_limits["min_frequency"]
+        max_freq = comspecs.cv_device_limits["max_frequency"]
 
+        if min_freq <= frequency <= max_freq:
+
+            #because setting direct frequency not supported, set band and channel
+            band_channel = comspecs.frequency_to_bandchannel(frequency)
+            if band_channel is not None:
+                band_letter = band_channel[0]
+                channel_num = int(band_channel[1])-1
+                cv_band = comspecs.band_name_to_cv_index(band_letter)
+
+                #channel number
+                channel_command = self.set_band_channel(rcvr_target=rcvr_target,
+                                                   band_channel=channel_num)
+                
+                band_command = self.set_band_group(rcvr_target=rcvr_target,
+                                              band_group=cv_band)
+
+        return [channel_command, band_command]
+
+            
         # if 5200 <= frequency < 6000:
         #     cmd = self._format_write_command(str(rcvr_target),"FR" + str(frequency,))
         #     self._write_serial(cmd)
@@ -204,7 +240,7 @@ class ClearView:
     def set_temporary_frequency(self, rcvr_target, frequency):
         """TFR = > Sets frequency of receiver and creates custom frequency if needed"""
         # This command does not yet work in ClearView v1.20
-        raise NotImplementedError
+        min_freq = clearview_specs
 
         # if 5200 <= frequency < 6000:
         #     cmd = self._format_write_command(str(rcvr_target),"TFR" + str(frequency,))
@@ -257,7 +293,7 @@ class ClearView:
         cmd = self._format_write_command(str(rcvr_target), "ID" + str(osd_str))
         self._write_serial(cmd)
 
-    def set_osd_string_positional(self, *, rcvr_target, starting_index, osd_str):
+    def set_osd_string_positional(self, rcvr_target, starting_index, osd_str):
         """ IDP => Sets OSD positional string"""
         osd_str_max_len = 4
 
@@ -268,10 +304,9 @@ class ClearView:
         print("After cut: ", osd_str)
 
 
-        old_osd_string = ''.join([char*osd_str_max_len for char in '*'])
-        print(new_osd_string)
+        old_osd_string = ''.join([char for char in '*'])
         new_osd_string = new_osd_string.replace(old_osd_string,new_osd_string)
-
+  
 
     def reboot(self, rcvr_target):
         """RBR => Reboot receiver. Issue twice to take effect."""
@@ -289,7 +324,7 @@ class ClearView:
         cmd = self._format_write_command(str(rcvr_target), "RL")
         self._write_serial(cmd)
 
-    def set_video_format(self, *, rcvr_target, video_format):
+    def set_video_format(self, rcvr_target, video_format):
         """VF => Temporary Set video format.
         options are 'N' (ntsc),'P' (pal),'A' (auto)
         """
@@ -349,7 +384,7 @@ class ClearView:
         cmd = self._format_write_command(str(rcvr_target), "UM" + str(osd_str))
         self._write_serial(cmd)
 
-    def send_report_cstm(self, custom_command=None, *, rcvr_target):
+    def send_report_cstm(self, rcvr_target, custom_command=None):
         """ #RP XX => Custom report"""
 
         while True:
@@ -401,7 +436,7 @@ class ClearView:
 
     """
 
-    def get_address(self, *, rcvr_target):
+    def get_address(self, rcvr_target):
         """RPAD => Get the address of a unit if it's connected. Only useful to see what units are connected to the bus
         Returns namedtuple of receiver address with fields requestor_id, rx_address, and replied_address"""
         # TODO do I try to recatch serial exceptions here?
@@ -411,7 +446,7 @@ class ClearView:
 
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
-    def get_band_channel(self, *, rcvr_target):
+    def get_band_channel(self, rcvr_target):
         """RPBC => Get the band's channel number
         Returns namedtuple of receiver band channel with fields requestor_id, rx_address, and channel"""
 
@@ -421,7 +456,7 @@ class ClearView:
         reply_named_tuple = namedtuple('band_channel_report', ['requestor_id', 'rx_address', 'channel'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
-    def get_band_group(self, *, rcvr_target):
+    def get_band_group(self, rcvr_target):
         """RPBG => Get the band group
         Returns namedtuple of receiver band with fields requestor_id, rx_address, and band_index
 
@@ -434,7 +469,7 @@ class ClearView:
         reply_named_tuple = namedtuple('band_group_report', ['requestor_id', 'rx_address', 'band_index'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
-    def get_frequency(self, *, rcvr_target):
+    def get_frequency(self, rcvr_target):
         """RPFR => Get the frequency
         Returns namedtuple of receiver band channel with fields requestor_id, rx_address, and channel"""
 
@@ -445,7 +480,7 @@ class ClearView:
         reply_named_tuple = namedtuple('frequency_report', ['requestor_id', 'rx_address', 'frequency'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
-    def get_osd_string(self, *, rcvr_target):
+    def get_osd_string(self, rcvr_target):
         """ RPID => Get the osd string, also called the "ID". Not to be confused with receiver address.
         Returns a namedtuple of receiver osd string with fields requestor_id, rx_address, and osd_string
         """
@@ -455,7 +490,7 @@ class ClearView:
         reply_named_tuple = namedtuple('osd_string_report', ['requestor_id', 'rx_address', 'osd_string'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
-    def get_lock_format(self, *, rcvr_target):
+    def get_lock_format(self, rcvr_target):
         """ RPLF => Get the lock format. Used to tell if receiver is locked to the video signal
         Returns a namedtuple of receiver lock format with fields requestor_id, rx_address, chosen_camera_type, forced_or_auto,locked_or_unlocked
         """
@@ -465,7 +500,7 @@ class ClearView:
         reply_named_tuple = namedtuple('osd_string_report', ['requestor_id', 'rx_address', 'chosen_camera_type', 'forced_or_auto', 'locked_or_unlocked'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
-    def get_mode(self, *, rcvr_target):
+    def get_mode(self, rcvr_target):
         """ RPMD => Get the mode : live, menu, or spectrum analyzer
         Returns a namedtuple of receiver mode with fields requestor_id, rx_address, mode
         """
@@ -475,7 +510,7 @@ class ClearView:
         reply_named_tuple = namedtuple('osd_string_report', ['requestor_id', 'rx_address', 'mode'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
-    def get_model_version(self, *, rcvr_target):
+    def get_model_version(self, rcvr_target):
         """ RPMV => Get the model version for hardware and software versions
         Returns a namedtuple of model_version with fields requestor_id, rx_address, hardware_version, and software_version_major, software_version_minor
         """
@@ -485,7 +520,7 @@ class ClearView:
         reply_named_tuple = namedtuple('model_version_report', ['requestor_id', 'rx_address', 'hardware_version', 'software_version_major', 'software_version_minor'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
-    def get_rssi(self, *, rcvr_target):
+    def get_rssi(self, rcvr_target):
         """ RPRS => Get the rssi of each antenna
         Returns a namedtuple of rssi with fields requestor_id, rx_address, TODO,TODO,TODO,TODO
         """
@@ -495,7 +530,7 @@ class ClearView:
         reply_named_tuple = namedtuple('rssi_report', ['requestor_id', 'rx_address', 'TODO_a', 'TODO_b', 'TODO_c', 'TODO_d'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
-    def get_osd_state(self, *, rcvr_target):
+    def get_osd_state(self, rcvr_target):
         """ RPOD => Get if OSD is enabled or disabled
         Returns a namedtuple of osd_state with fields requestor_id, rx_address, osd_state
         """
@@ -505,7 +540,7 @@ class ClearView:
         reply_named_tuple = namedtuple('osd_state_report', ['requestor_id', 'rx_address', 'osd_state'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
-    def get_video_format(self, *, rcvr_target):
+    def get_video_format(self, rcvr_target):
         """ RPVF => Get Video Format (pal,ntsc,auto)
             Returns a namedtuple of video_format with fields requestor_id, rx_address, video_format
         """
@@ -517,7 +552,7 @@ class ClearView:
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
 
-    def get_report_cstm_by_input(self, *, rcvr_target): #RP XX => Custom report
+    def get_report_cstm_by_input(self, rcvr_target): #RP XX => Custom report
         while True:
             self._clear_serial_in_buffer()
             cmd = self._format_write_command(str(rcvr_target),"RP" + input('Enter a report type:'))
@@ -540,7 +575,7 @@ class ClearView:
             sleep(0.1)
         return connected_receivers
 
-    def _get_robust_retries(self,* , mode, robust):
+    def _get_robust_retries(self, mode, robust):
         if robust == False:
             return 1
         if mode == "send":
@@ -551,7 +586,7 @@ class ClearView:
             self.logger.critical("Unsuported mode of <percent>s for _get_robust_retries",stack_info=True)
             raise ValueError("Unsupported mode for robust retires")
 
-    def _check_within_range(self,* , val, min, max):
+    def _check_within_range(self, val, min, max):
         """Return True if value is within range,inclusive"""
 
         #TODO type check here
@@ -572,7 +607,7 @@ class ClearView:
             return -1
         return True                 # Success
 
-    def _run_command(self, *,rcvr_target,message ):
+    def _run_command(self,rcvr_target,message ):
         "Check rcvr_target range, format the command, and send it"
         if self._check_within_range(val=rcvr_target,min=0,max=8) is False: 
             self.logger.critical("Error. rcvr_target id of %s is not valid.",rcvr_target)
@@ -608,8 +643,11 @@ class ClearView:
         self._write_serial(cmd)
         sleep(0.05)
 
-        if (report := self._read_until_termchar()) is not None:
-            
+        #python3
+
+        #if (report := self._read_until_termchar()) is not None:
+        report == self._read_until_termchar()
+        if report is not None:
             # Try matching based on expected behavior
             match = re.search(pattern,report)
             
@@ -651,9 +689,12 @@ class ClearView:
     
     def _print(self,*args,**kwargs):
         if self.debug_msg==True:
-            print(args,sep=kwargs.get('sep','\t'))  
-
+            #python3            #print(args,sep=kwargs.get('sep','\t'))  
+            print(args)  
     def _write_serial(self,msg):
+        if self._serial is None: # Return the formatted command
+            return msg
+
         self._print("CV_serial_write: ",
                     sys._getframe().f_back.f_back.f_code.co_name ,
                      "=>" ,
@@ -675,6 +716,8 @@ class ClearView:
     def _clear_serial_in_buffer(self):
         if self.simulate_serial_port:
             pass
+        if self._serial is None:
+            pass
         else:
             try:
                 while self._get_serial_in_waiting() > 0:
@@ -684,6 +727,9 @@ class ClearView:
                 raise
 
     def _read_until_termchar(self):
+        if self._serial is None:
+            return None
+
         str_read = self._serial.read_until(terminator = self.msg_end_char).decode('unicode_escape')
         if str_read == '':
             return None
@@ -691,7 +737,5 @@ class ClearView:
             return str_read
         
 
-
 if __name__ == "__main__": 
     print("This is ClearView module. Not main. Run main.py to understand how to use ClearView.py")
-

@@ -4,7 +4,7 @@ import atexit
 import logging
 from collections import namedtuple
 import re
-from clearview_comspecs import clearview_specs
+import clearview
 
 logger = logging.getLogger(__name__)
 
@@ -177,7 +177,7 @@ class RfEnvironment:
                 5800: 'n',
                 5880: 'p'
             }
-            self.logger.info("Frequencies Loaded: ", self.frequencies)
+            self.logger.info("Frequencies Loaded: %s", self.frequencies)
 
 
 class ClearViewSerialSimulator:
@@ -225,7 +225,7 @@ class ClearViewSerialSimulator:
     def read(self, msg, timeout=None):
         return self._serial_buffer.get(timeout=timeout)
 
-    def read_until(self, *, terminator=None):
+    def read_until(self, terminator=None):
         if terminator is None:
             terminator = self.msg_end_char
 
