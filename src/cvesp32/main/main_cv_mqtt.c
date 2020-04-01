@@ -22,6 +22,7 @@
 
 #include "esp_log.h"
 #include "mqtt_client.h"
+#include "cv_uart.c" //TODO
 
 static const char *TAG_TEST = "PUBLISH_TEST";
 static EventGroupHandle_t mqtt_event_group;
@@ -37,13 +38,13 @@ static int qos_test = 0;
 
 
 // CV Defines
-char* device_name; 
+char device_name[20]; 
 #define DEVICE_TYPE "rx"
 #define PROTOCOL_VERSION "cv1"
 int node_number = 0;
 bool active_status = false;
-# define MAX_TOPIC_LEN 50
-# define MAX_TOPIC_HEADER_LEN 10
+# define MAX_TOPIC_LEN 75
+# define MAX_TOPIC_HEADER_LEN 10 // should encompass "/rx/cv1/" . room for null chars is not needed
 
 //*******************
 //** Format Topic Defines **
@@ -303,29 +304,93 @@ static bool mqtt_subscribe_to_topics(esp_mqtt_client_handle_t client)
 
 static bool process_mqtt_message(int topic_len,char* topic, int data_len, char* data)
 {
+    printf("Xdname: '%.*s'",5,device_name);
     printf("TOPIC=%.*s\r\n", topic_len, topic);
     printf("DATA=%.*s\r\n", data_len, data);
+    data[data_len] = 0;
+    char* ptag = "process_parser";
+    esp_log_level_set(ptag,ESP_LOG_DEBUG);
 
     //Check the topic header "rx/cv1" for a match
     char topic_header[MAX_TOPIC_HEADER_LEN];
-    const char* topic_header_fmt = "%s/%s";
+    const char* topic_header_fmt = "%s/%s/";
     int topic_header_len = snprintf(topic_header,
                                     MAX_TOPIC_HEADER_LEN,
                                     topic_header_fmt,
                                     DEVICE_TYPE,
                                     PROTOCOL_VERSION);
 
-    if (strncmp(topic_header,topic,strlen(DEVICE_TYPE)+strlen(PROTOCOL_VERSION)+1)){
-        ESP_LOGI(TAG_TEST, "No topic header match of %s",topic_header);
+    if (strncmp(topic_header,topic,topic_header_len)){
+        ESP_LOGI(ptag, "No topic header match of %s",topic_header);
         return false;
     }
-    printf("Topic Header is %d long", topic_header_len);
+    // Valid topic header, so remove the header and continue parsing
+    topic += topic_header_len;
+    topic_len -= topic_header_len;
 
-    //pull out command name until the slash and do a tree on that
+    //printf("TopicMoved=%.*s\r\n", topic_len-topic_header_len, topic);
 
+    char* match;
+    match = "cmd_";
+    if (strncmp(topic,match,strlen(match))==0) {    // <topic_header>cmd_
+        topic += strlen(match);
+        topic_len -= strlen(match);
+        
+        match = "all";
+        if (strncmp(topic,match,strlen(match))==0) {    // <topic_header>cmd_all
+            ESP_LOGI(ptag,"matched cmd_all");
+            cvuart_send_command(data);
+            return true;
+        } 
+
+        match = "node/";
+        if (strncmp(topic,match,strlen(match))==0) { // <topic_header>cmd_node/
+            topic += strlen(match);
+            topic_len -= strlen(match);
+
+
+            //match node number
+            long int node_num_parsed = strtol(topic,NULL,10);
+            if (node_num_parsed == node_number){
+                ESP_LOGI(ptag, "matched cmd_node/<node_number>");
+                cvuart_send_command(data);
+                return true;
+            } else {
+                //TODO output an error message on an MQTT_Error Topic
+                ESP_LOGW(ptag, "Nonmatching node number. Got %ld. Expected %d",node_num_parsed,node_number );
+                return false; //short circuit the rest of the parser
+            }
+
+        } 
+        
+        match = "target/";
+        if (strncmp(topic,match,strlen(match))==0) { // <topic_header>cmd_target/
+            topic += strlen(match);
+            topic_len -= strlen(match);
+
+            if (strncmp(topic,device_name,15)==0){
+                //TODO remove magic number 15
+                ESP_LOGI(ptag, "matched cmd_target/<device_name>");
+                cvuart_send_command(data);
+                return true;
+            } else {
+                //TODO output an error message on an MQTT_Error Topic
+                printf("dname: '%.*s'",5,device_name);
+                ESP_LOGW(ptag, "Nonmatching device name. Got %.*s. Expected %.*s",topic_len,topic, 15,device_name); //TODO magic 15
+                return false; //short circuit the rest of the parser
+            }
+        } 
+
+        
+
+    }
+
+
+    
+    
     //if kick: esp_mqtt_client_stop(client)
     
-    
+    ESP_LOGW(ptag, "No match on TOPIC=%.*s\r\n", topic_len, topic);
     return false;
 }
 
@@ -416,9 +481,13 @@ static void get_string(char *line, size_t size)
 void cv_mqtt_init(char* chipid, uint8_t chip_len) 
 {
     printf("Starting MQTT\n");
-    device_name = chipid;
+    strncpy(device_name,chipid,chip_len);
+    //printf("CHIPLEN%d\n",chip_len);
+    //printf("CHIPID: %.*s\n",chip_len,chipid);
+    //printf("DNAME: %.*s\n",chip_len,device_name);
     
     mqtt_app_start();
+    init_uart();
 
     //Stop client just to be safe
     esp_mqtt_client_stop(mqtt_client);
