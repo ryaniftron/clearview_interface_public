@@ -26,6 +26,7 @@ static const int CONNECTED_BIT = BIT0;
 //#include "cv_mqtt.h"
 #include "main_cv_mqtt.c"
 
+
 //*****************
 //Network credentials for station mode. 
 //*****************
@@ -198,8 +199,8 @@ http_server_netconn_serve(struct netconn *conn)
 	u16_t buflen;
 	err_t err;
 
-  /* Read the data from the port, blocking if nothing yet there.
-   We assume the request (the part we care about) is in one netbuf */
+   // Read the data from the port, blocking if nothing yet there.
+   // We assume the request (the part we care about) is in one netbuf 
 	err = netconn_recv(conn, &inbuf);
 
 	if (err == ERR_OK) {
@@ -213,7 +214,7 @@ http_server_netconn_serve(struct netconn *conn)
 		memcpy(payload, start, stop - start);
 		payload[stop - start] = '\0';
 
-		/* For now  only GET results in a valid respons */
+		// For now  only GET results in a valid response
 		if (strncmp(buf, "GET /", 5) == 0){
             netconn_write(conn, HDR_200, sizeof(HDR_200)-1, NETCONN_NOCOPY);
 			//printf("GET = '%s' \n", payload);
@@ -239,28 +240,27 @@ http_server_netconn_serve(struct netconn *conn)
             }
 
             
-            /* send "hello world to client" */
-            
+                       
 			
 		}else if (strncmp(buf, "POST /", 6) == 0){
-			/* send '501 Not implementd' reply  */
+			// send '501 Not implementd' reply  
 			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
 		}else if (strncmp(buf, "PUT /", 5) == 0){
 			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
 		}else if (strncmp(buf, "PATCH /", 7) == 0){
-			/* send '501 Not implementd' reply  */
+			// send '501 Not implementd' reply  
 			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
 		}else if (strncmp(buf, "DELETE /", 8) == 0){
-			/* send '501 Not implementd' reply  */
+			// send '501 Not implementd' reply  
 			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
 		}else{
-			/* 	Any unrecognized verb will automatically 
-				result in '501 Not implementd' reply */
+			// 	Any unrecognized verb will automatically 
+			//	result in '501 Not implementd' reply 
 			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
 		}
 		free(payload);
 	}
-  	/* Close the connection (server closes in HTTP) and clean up after ourself */
+  	// Close the connection (server closes in HTTP) and clean up after ourself 
 	netconn_close(conn);
 	netbuf_delete(inbuf);
 }
@@ -298,7 +298,7 @@ static void get_chip_id(char* ssid, const int UNIQUE_ID_LENGTH){
     esp_efuse_mac_get_default((uint8_t*) (&chipid));
     uint16_t chip = (uint16_t)(chipid >> 32);
     //esp_read_mac(chipid);
-    snprintf(ssid, UNIQUE_ID_LENGTH, "CV-%04X%08X", chip, (uint32_t)chipid);
+    snprintf(ssid, UNIQUE_ID_LENGTH, "CV_%04X%08X", chip, (uint32_t)chipid);
     printf("SSID created from chip id: %s\n", ssid);
     return;
 }
@@ -437,16 +437,16 @@ static void initialise_sta_wifi(void)
     ESP_LOGI(TAG, "wifi_init_sta finished. Connecting to SSID:%s password:%s",
              AP_TARGET_SSID, AP_TARGET_PASS);
 
-    /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
-     * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
+    // Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
+    // number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above)
     EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
             WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
             pdFALSE,
             pdFALSE,
             portMAX_DELAY);
 
-    /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
-     * happened. */
+    // xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
+    //  happened. 
     if (bits & WIFI_CONNECTED_BIT) {
         ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
                  AP_TARGET_SSID, AP_TARGET_PASS);
@@ -523,6 +523,7 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     tcpip_adapter_init();
+    //init_uart();
 
     const int UNIQUE_ID_LENGTH = 16;
     char chipid[UNIQUE_ID_LENGTH];
@@ -541,3 +542,7 @@ void app_main(void)
     //xTaskCreate(&http_server, "http_server", 2048, NULL, 5, NULL);
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 }
+
+
+
+
