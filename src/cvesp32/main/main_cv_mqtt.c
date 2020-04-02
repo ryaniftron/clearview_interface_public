@@ -95,22 +95,26 @@ const char* status_static_fmt = "status_static/%s"; // receiver_serial_number
 //14
 const char* status_variable_fmt = "status_variable/%s"; // receiver_serial_number
 
+//15
+const char* receiver_response_target_fmt = "%s/%s/resp_target/%s"; //receiver_serial_number
+
 typedef struct
 {
-    char* rx_cmd_all;
-    char* rx_cmd_node;
-    char* rx_cmd_targeted;
-    char* rx_kick;
-    char* rx_active;
-    char* rx_req_all;
-    char* rx_req_node_all;
-    char* rx_req_node_active;
-    char* rx_req_targeted;
-    char* rx_resp_all;
-    char* rx_resp_node;
-    char* rx_conn;
-    char* rx_stat_static;
-    char* rx_stat_variable;
+    char* rx_cmd_all; //1
+    char* rx_cmd_node;  //2
+    char* rx_cmd_targeted;  //3 
+    char* rx_kick;  //4
+    char* rx_active;    //5
+    char* rx_req_all;   //6
+    char* rx_req_node_all;  //7
+    char* rx_req_node_active;   //8
+    char* rx_req_targeted; //9
+    char* rx_resp_all; //10
+    char* rx_resp_node; //11
+    char* rx_conn;  //12
+    char* rx_stat_static;   //13
+    char* rx_stat_variable; //14
+    char* rx_resp_target; //15
 } mqtt_topics;
 
 char rx_cmd_all_topic[MAX_TOPIC_LEN];
@@ -127,6 +131,7 @@ char rx_resp_node_topic[MAX_TOPIC_LEN];
 char rx_conn_topic[MAX_TOPIC_LEN];
 char status_static_topic[MAX_TOPIC_LEN];
 char status_variable_topic[MAX_TOPIC_LEN];
+char rx_resp_targeted_topic[MAX_TOPIC_LEN];
 
 mqtt_topics mtopics = {
     .rx_cmd_all=rx_cmd_all_topic,
@@ -143,6 +148,7 @@ mqtt_topics mtopics = {
     .rx_conn=rx_conn_topic,
     .rx_stat_static=status_static_topic,
     .rx_stat_variable=status_variable_topic,
+    .rx_resp_target=rx_resp_targeted_topic,
 };
 
 
@@ -201,6 +207,14 @@ void update_mqtt_pub_topics()
             MAX_TOPIC_LEN,
             status_variable_fmt,
             device_name);
+    
+    snprintf(mtopics.rx_resp_target,
+            MAX_TOPIC_LEN,
+            receiver_response_target_fmt,
+            DEVICE_TYPE,
+            PROTOCOL_VERSION,
+            device_name);
+            
 }
 
 void update_mqtt_sub_topics()
@@ -297,12 +311,35 @@ static bool mqtt_subscribe_to_topics(esp_mqtt_client_handle_t client)
     sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_req_all);
     sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_req_node_all);
     sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_req_node_active);
+    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_req_targeted);
     return !sub_fail;
 }
 
+static void mqtt_publish_to_topic(esp_mqtt_client_handle_t client, char* topic, char* message)
+{   
+    char* tag = "mqtt_publish_to_topic";
+    int topic_len = strlen(topic);
+    if (topic_len==0) {
+        ESP_LOGE(tag, "Topic name is zero length. ");
+        ESP_LOGE(tag, "    ==>unsent message: '%s'", message);
+        return;
+    }
+
+    esp_mqtt_client_publish(client, topic, message, 0, qos_test, 0);
+}
 
 
-static bool process_mqtt_message(int topic_len,char* topic, int data_len, char* data)
+//Parses a message. 
+//   * Command Topics
+//        * * Writes the message to UART
+//   * Request Topics
+//        * Writes the message to UART and reads the reply
+//        * Send the reply payload back via MQTT
+// Return:
+//     True if parse of incoming topic matched an expected topic
+//     False if the MQTT message did not match
+// Note: 
+static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,char* topic, int data_len, char* data)
 {
     printf("Xdname: '%.*s'",5,device_name);
     printf("TOPIC=%.*s\r\n", topic_len, topic);
@@ -331,6 +368,8 @@ static bool process_mqtt_message(int topic_len,char* topic, int data_len, char* 
     //printf("TopicMoved=%.*s\r\n", topic_len-topic_header_len, topic);
 
     char* match;
+
+    //Commands
     match = "cmd_";
     if (strncmp(topic,match,strlen(match))==0) {    // <topic_header>cmd_
         topic += strlen(match);
@@ -347,7 +386,6 @@ static bool process_mqtt_message(int topic_len,char* topic, int data_len, char* 
         if (strncmp(topic,match,strlen(match))==0) { // <topic_header>cmd_node/
             topic += strlen(match);
             topic_len -= strlen(match);
-
 
             //match node number
             long int node_num_parsed = strtol(topic,NULL,10);
@@ -380,12 +418,92 @@ static bool process_mqtt_message(int topic_len,char* topic, int data_len, char* 
                 return false; //short circuit the rest of the parser
             }
         } 
+    } //end match cmd_
+
+    
+    // Requests
+    match = "req_";
+    if (strncmp(topic,match,strlen(match))==0) {    // <topic_header>req_
+        uint8_t* dataRx = (uint8_t*) malloc(RX_BUF_SIZE+1);
+        topic += strlen(match);
+        topic_len -= strlen(match);
+        
+        match = "all";
+        if (strncmp(topic,match,strlen(match))==0) {    // <topic_header>req_all
+            ESP_LOGI(ptag,"matched req_all");
+            const int bytesRead = cvuart_send_report(data, dataRx);
+            if (bytesRead > 0){
+                mqtt_publish_to_topic(client, mtopics.rx_resp_target, (char* )dataRx); //TODO reply by all topic?
+            }
+            return true;
+        } 
+
+        match = "node_all/";
+        if (strncmp(topic,match,strlen(match))==0) { // <topic_header>req_node_all/
+            topic += strlen(match);
+            topic_len -= strlen(match);
+
+            //match node number
+            long int node_num_parsed = strtol(topic,NULL,10);
+            if (node_num_parsed == node_number){
+                ESP_LOGI(ptag, "matched req_node_all/<node_number>");
+                const int bytesRead = cvuart_send_report(data, dataRx);
+                if (bytesRead > 0){
+                    mqtt_publish_to_topic(client, mtopics.rx_resp_target,(char* ) dataRx); //TODO reply by node topic?
+                }
+                return true;
+            } else {
+                //TODO output an error message on an MQTT_Error Topic
+                ESP_LOGW(ptag, "Nonmatching node number. Got %ld. Expected %d",node_num_parsed,node_number );
+                return false; //short circuit the rest of the parser
+            }
+        } 
+
+        match = "node_active/";
+        if (strncmp(topic,match,strlen(match))==0) { // <topic_header>req_node_active/
+            topic += strlen(match);
+            topic_len -= strlen(match);
+
+            //match node number
+            long int node_num_parsed = strtol(topic,NULL,10);
+            if (node_num_parsed == node_number){
+                ESP_LOGI(ptag, "matched req_node_active/<node_number>");
+                const int bytesRead = cvuart_send_report(data, dataRx);
+                if (bytesRead > 0){
+                    mqtt_publish_to_topic(client, mtopics.rx_resp_target,(char* ) dataRx); //TODO reply by active node topic?
+                }
+                return true;
+            } else {
+                //TODO output an error message on an MQTT_Error Topic
+                ESP_LOGW(ptag, "Nonmatching node number. Got %ld. Expected %d",node_num_parsed,node_number );
+                return false; //short circuit the rest of the parser
+            }
+        } 
+         
+        match = "target/";
+        if (strncmp(topic,match,strlen(match))==0) { // <topic_header>req_target/
+            topic += strlen(match);
+            topic_len -= strlen(match);
+
+            if (strncmp(topic,device_name,15)==0){
+                //TODO remove magic number 15
+                ESP_LOGI(ptag, "matched req_target/<device_name>");
+                const int bytesRead = cvuart_send_report(data, dataRx);
+                if (bytesRead > 0){
+                    mqtt_publish_to_topic(client, mtopics.rx_resp_target, (char* ) dataRx);
+                }
+                return true;
+            } else {
+                //TODO output an error message on an MQTT_Error Topic
+                printf("dname: '%.*s'",5,device_name);
+                ESP_LOGW(ptag, "Nonmatching device name. Got %.*s. Expected %.*s",topic_len,topic, 15,device_name); //TODO magic 15
+                return false; //short circuit the rest of the parser
+            }
+        } 
 
         
-
+        free(dataRx);
     }
-
-
     
     
     //if kick: esp_mqtt_client_stop(client)
@@ -407,7 +525,7 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
             mqtt_subscribe_to_topics(client);
 
             char* conn_msg = "1";
-            esp_mqtt_client_publish(mqtt_client, mtopics.rx_conn,conn_msg,0, qos_test, 0);
+            mqtt_publish_to_topic(mqtt_client, mtopics.rx_conn,conn_msg);
             break;
         case MQTT_EVENT_DISCONNECTED:
             ESP_LOGI(TAG_TEST, "MQTT_EVENT_DISCONNECTED");
@@ -424,7 +542,7 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
         case MQTT_EVENT_DATA:
             ESP_LOGI(TAG_TEST, "MQTT_EVENT_DATA");
             //TODO the message may be broken up over multiple pieces of data
-            if (!process_mqtt_message(event->topic_len,event->topic, event->data_len, event->data)) {
+            if (!process_mqtt_message(client, event->topic_len,event->topic, event->data_len, event->data)) {
                 ESP_LOGI(TAG_TEST, "Failed to process");
             }
             break;
@@ -445,8 +563,13 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 
 static void mqtt_app_start(void)
 {
+    printf("X3\n");
     update_all_mqtt_topics();
+    printf("X4\n");
+
+    //return //-> works
     mqtt_event_group = xEventGroupCreate();
+    printf("X5\n");
     const esp_mqtt_client_config_t mqtt_cfg = {
         .event_handle = mqtt_event_handler,
         .host = "192.168.0.110",
@@ -456,7 +579,9 @@ static void mqtt_app_start(void)
     // TODO set the last will topic
     // TODO set the 
     ESP_LOGI(TAG_TEST, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
+    printf("X2\n");
     mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
+    printf("X1\n");
 }
 
 
@@ -490,7 +615,7 @@ void cv_mqtt_init(char* chipid, uint8_t chip_len)
     init_uart();
 
     //Stop client just to be safe
-    esp_mqtt_client_stop(mqtt_client);
+    //esp_mqtt_client_stop(mqtt_client);
 
     xEventGroupClearBits(mqtt_event_group, CONNECTED_BIT2);
     esp_mqtt_client_start(mqtt_client);
