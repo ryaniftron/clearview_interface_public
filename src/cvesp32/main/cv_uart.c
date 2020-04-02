@@ -20,6 +20,7 @@
 //general uart settings
 static const int RX_BUF_SIZE = 1024;
 static bool _uart_is_init = false; //this is checked to make sure uart is active before sending
+#define REPORT_REPLY_TIME 3000 //how many ms to wait for a reply after a send. Should be >50ms
 
 //cv protocol specifics
 #define cv_start_char '\n'
@@ -46,6 +47,7 @@ void init_uart() {
     _uart_is_init = true;
 }
 
+// sends null terminated "data" to UART. 
 int sendData(const char* logName, const char* data)
 {
     const int len = strlen(data);
@@ -113,7 +115,7 @@ static void rx_task()
     free(data);
 }
 
-extern void cvuart_send_command(const char* data)
+void cvuart_send_command(const char* data)
 {
     static const char *logName = "send_command";
     if (_uart_is_init)
@@ -128,18 +130,16 @@ extern void cvuart_send_command(const char* data)
     
 }
 
-void cv_uart_send_report(const char* data)
+// Write 'data' to the serial port and put a response on dataRx. 
+// Returns the number of bytes read
+const int cvuart_send_report(const char* data, uint8_t* dataRx)
 {
     static const char *logName = "send_report";
 
-    if (_uart_is_init)
-    {
-        //pass
-    }
-    else
+    if (!_uart_is_init)
     {
         ESP_LOGE(logName, "cv_uart must be initialized.");
-        return;
+        return -1;
     }
 
     //clear rx buffer in anticipation of the data
@@ -147,11 +147,23 @@ void cv_uart_send_report(const char* data)
 
     //send the report request
     sendData(logName, data);
-    TickType_t respone_wait_tics = 100 / portTICK_RATE_MS;
+    TickType_t respone_wait_tics = REPORT_REPLY_TIME / portTICK_RATE_MS;
 
     //use the timeout in the uart to wait for a response
-
-
+    //uint8_t* dataRx = (uint8_t*) malloc(RX_BUF_SIZE+1);
+    
+    size_t * cached_data_len;
+    ESP_ERROR_CHECK(uart_get_buffered_data_len(UART_NUM, (size_t*)&cached_data_len));
+    const int rxBytes = uart_read_bytes(UART_NUM, dataRx, RX_BUF_SIZE, respone_wait_tics);
+    if (rxBytes > 0) {
+        dataRx[rxBytes] = 0;
+        ESP_LOGI(logName, "Read %d bytes: '%s'", rxBytes, dataRx);
+        //ESP_LOG_BUFFER_HEXDUMP(RX_TASK_TAG, data, rxBytes, ESP_LOG_INFO);
+    } else {
+        ESP_LOGI(logName, "No data available in buffer\n");
+    }
+    //free(dataRx);
+    return rxBytes;
 }
 
 //this demo's the uart functionality. 
