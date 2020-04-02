@@ -497,7 +497,7 @@ class ClearView:
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPLF"
         pattern = r'\n([0-9])([0-9])LF([NP])([FA])([LU])%\r'  #TODO replace hardcoded values with variables
-        reply_named_tuple = namedtuple('osd_string_report', ['requestor_id', 'rx_address', 'chosen_camera_type', 'forced_or_auto', 'locked_or_unlocked'])
+        reply_named_tuple = namedtuple('osd_lock_report', ['requestor_id', 'rx_address', 'chosen_camera_type', 'forced_or_auto', 'locked_or_unlocked'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
     def get_mode(self, rcvr_target):
@@ -507,7 +507,7 @@ class ClearView:
         # TODO do I try to recatch serial exceptions here?
         report_name = "RPMD"
         pattern = r'\n([0-9])([0-9])MD([LMS])%\r'  # TODO replace hardcoded values with variables
-        reply_named_tuple = namedtuple('osd_string_report', ['requestor_id', 'rx_address', 'mode'])
+        reply_named_tuple = namedtuple('osd_mode_report', ['requestor_id', 'rx_address', 'mode'])
         return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
 
     def get_model_version(self, rcvr_target):
@@ -636,10 +636,14 @@ class ClearView:
         if self._check_within_range(val=rcvr_target,min=0,max=8) is False:
             self.logger.critical("Error. rcvr_target id of %s is not valid.",rcvr_target)
             return None
-
+        cmd = self._format_write_command(str(rcvr_target),report_name)
+        
+        if self._serial is None: # Return the formatted command
+            print("_serialNone=> returning report format")
+            return (cmd, report_name, pattern, reply_named_tuple)
 
         self._clear_serial_in_buffer()
-        cmd = self._format_write_command(str(rcvr_target),report_name)
+        
         self._write_serial(cmd)
         sleep(0.05)
 
