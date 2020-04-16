@@ -573,7 +573,9 @@ static void mqtt_app_start(void)
     const esp_mqtt_client_config_t mqtt_cfg = {
         .event_handle = mqtt_event_handler,
         .host = "192.168.0.110",
-        .port = 1883
+        .port = 1883,
+        .lwt_topic = mtopics.rx_conn,
+        .lwt_msg = "0", //disconnected
     }; 
     // TODO set the host again with scrcpy
     // TODO set the last will topic
