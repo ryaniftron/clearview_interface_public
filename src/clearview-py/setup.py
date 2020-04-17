@@ -11,7 +11,7 @@ setuptools.setup(
     description="Package for controlling and simulating a ClearView video reciever",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/ryaniftron/clearview_interface_public,
+    url="https://github.com/ryaniftron/clearview_interface_public",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 2",
