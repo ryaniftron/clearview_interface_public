@@ -130,6 +130,8 @@ class ClearView:
 
         if 0 <= rcvr_target <= 8 and 1 <= new_target <= 8:
             cmd = self._format_write_command(int(rcvr_target), "ADS" + str(new_target))
+            if self._serial is None:
+                return cmd
 
             while num_tries > 0:
                 self._write_serial(cmd)
@@ -153,7 +155,7 @@ class ClearView:
                     return True     # was in robust mode. assume it worked
             return False
         else:
-            self.logger.error("set_address. Receiver %s out of range", rcvr_target)
+            self.logger.error("set_address. Receiver %s out of range" % rcvr_target)
             return -1
 
     def set_antenna_mode(self, rcvr_target, antenna_mode):
@@ -166,7 +168,7 @@ class ClearView:
             cmd = self._format_write_command(str(rcvr_target), "AN" + str(antenna_mode))
             self._write_serial(cmd)
         else:
-            print("Error. Unsupported antenna mode of ", antenna_mode)
+            self.logger.error("Error. Unsupported antenna mode of %s" % antenna_mode)
 
     def set_band_channel(self, rcvr_target, band_channel, robust = False):
         """BC = > Sets band channel. 0-7"""
@@ -197,7 +199,7 @@ class ClearView:
             return False
 
         else:
-            print("Error. set_band_channel target of ", band_channel, "is out of range")
+            self.logger.error("Error. set_band_channel target of %s is out of range" % band_channel)
 
     def set_band_group(self, rcvr_target, band_group):
         """BG = > Sets band. 0-9,a-f"""
@@ -223,30 +225,27 @@ class ClearView:
 
                 #channel number
                 channel_command = self.set_band_channel(rcvr_target=rcvr_target,
-                                                   band_channel=channel_num)
-                
+                                                   band_channel=channel_num)                
                 band_command = self.set_band_group(rcvr_target=rcvr_target,
                                               band_group=cv_band)
+            else:
 
-        return [channel_command, band_command]
+                # TODO when CV supports any frequency, not just in the band/channel charts, just have this throw
+                self.logger.error("Custom Frequency of %s is not supported" % frequency)
+                raise NotImplementedError
 
-            
-        # if 5200 <= frequency < 6000:
-        #     cmd = self._format_write_command(str(rcvr_target),"FR" + str(frequency,))
-        #     self._write_serial(cmd)
-        # else:
-        #     print("Error. Desired frequency out of range")
+            return [channel_command, band_command]
+        else:
+            self.logger.error("Frequency %s out of range of (%s,%s)"%(frequency, min_freq, max_freq))
+            raise ValueError
+
 
     def set_temporary_frequency(self, rcvr_target, frequency):
         """TFR = > Sets frequency of receiver and creates custom frequency if needed"""
         # This command does not yet work in ClearView v1.20
         min_freq = clearview_specs
 
-        # if 5200 <= frequency < 6000:
-        #     cmd = self._format_write_command(str(rcvr_target),"TFR" + str(frequency,))
-        #     self._write_serial(cmd)
-        # else:
-        #     print("Error. Desired frequency out of range")
+        raise NotImplementedError
 
     def set_video_mode(self, rcvr_target, mode):
         """#MDL,MDS,MDM show live video, spectrum analyzer, and user menu
@@ -382,7 +381,7 @@ class ClearView:
         osd_str_max_sz = 50
         osd_str = osd_str[:osd_str_max_sz]
         cmd = self._format_write_command(str(rcvr_target), "UM" + str(osd_str))
-        self._write_serial(cmd)
+        return self._write_serial(cmd)
 
     def send_report_cstm(self, rcvr_target, custom_command=None):
         """ #RP XX => Custom report"""
@@ -639,7 +638,6 @@ class ClearView:
         cmd = self._format_write_command(str(rcvr_target),report_name)
         
         if self._serial is None: # Return the formatted command
-            print("_serialNone=> returning report format")
             return (cmd, report_name, pattern, reply_named_tuple)
 
         self._clear_serial_in_buffer()
