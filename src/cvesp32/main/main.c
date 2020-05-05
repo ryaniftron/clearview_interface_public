@@ -68,6 +68,17 @@ static EventGroupHandle_t s_wifi_event_group;
 static int s_retry_num = 0; //current number of retries ESP32 has tried to connect to AP
 #define ESP_MAXIMUM_RETRY 3
 
+// This gets flagged true if wifi failed to connect
+// Can be used to notify user of failed connection
+static bool wifi_connect_fail = false;
+
+#define WIFI_CRED_MAXLEN 32
+char desired_ap_ssid[WIFI_CRED_MAXLEN];
+char desired_ap_pass[WIFI_CRED_MAXLEN];
+char desired_friendly_name[WIFI_CRED_MAXLEN];
+char desired_mqtt_broker_ip[WIFI_CRED_MAXLEN];
+
+
 
 
 
@@ -81,6 +92,7 @@ static int s_retry_num = 0; //current number of retries ESP32 has tried to conne
 //#define root_text "<input type=\"text\" id=\"ssid\" name=\"ssid\"><br> "
 
 
+// TODO improve file serving like in here: https://github.com/espressif/esp-idf/blob/master/examples/protocols/http_server/file_serving/main/file_server.c
 #define root_text \
     "<strong>ClearView ESP32 Config </strong><br> \
     Wifi Status: TODO <br>\
@@ -91,8 +103,21 @@ static int s_retry_num = 0; //current number of retries ESP32 has tried to conne
         <input type=\"text\" id=\"password\" name=\"password\"><br> \
         <label for=\"device_name\">Device Name:</label><br> \
         <input type=\"text\" id=\"device_name\" name=\"device_name\"><br> \
+        <label for=\"broker_ip\">Broker IP Address:</label><br> \
+        <input type=\"text\" id=\"broker_ip\" name=\"broker_ip\"><br> \
         <input type=\"submit\" value=\"Save and Join Network\">\
+    *note: Leave empty for defaults<br> \
 "
+
+#define fail_connect_text \ 
+    "Failed to connect to wifi<br> \
+    Attempted SSID: TODO<br> \ 
+    Attemped Password: TODO<br> \ 
+    <form action=\"/\" method> \
+        <input type=\"submit\" value=\"Return to Main\">\
+    </form> \
+"
+
 
 //Add it to root text when the functionality is ready
 //this is the scan for wifi button if needed. 
@@ -122,7 +147,8 @@ static int s_retry_num = 0; //current number of retries ESP32 has tried to conne
     "
 
 #define wifi_attempt_connect \
-    " Attempting wifi connection... TODO timeout <br> \
+    " Attempting wifi connection... <br>\
+      This hotspot will be turning off unless connection is failed.\
     "
     
 #define config_esp32_parse_fail \
@@ -131,9 +157,26 @@ static int s_retry_num = 0; //current number of retries ESP32 has tried to conne
 
 
 static void set_credential(char* credentialName, char* val){
-    printf("##Setting %s = %s##", credentialName, val);
+    printf("##Setting Credential %s = %s\n", credentialName, val);
+    if (strlen(val) > WIFI_CRED_MAXLEN) {
+        ESP_LOGE(TAG, "\t Unable to set credential.");
+    }
 
-    // TODO store these values inside ESP32 then join access point
+    if (strcmp(credentialName, "ssid") == 0) {
+        strcpy(desired_ap_ssid, val);
+    } else if (strcmp(credentialName, "password") == 0) {
+        strcpy(desired_ap_pass, val);
+    } else if (strcmp(credentialName, "device_name") == 0) {
+        strcpy(desired_friendly_name, val);
+    } else if (strcmp(credentialName, "broker_ip") == 0) {
+        strcpy(desired_mqtt_broker_ip, val);
+    } else {
+        ESP_LOGE(TAG, "Unexpected Credential of %s", credentialName);
+        return;
+    }
+
+    //Todo store the value in eeprom
+
 }
 
 // parse the request payload for credentials for the wifi device
@@ -142,13 +185,11 @@ static bool parse_net_credentials(char* payload){
     ///example: /config_esp32?ssid=a&password=x&device_name=z
     printf("Parsing these creds: %s\n", payload);
 
-    char credentialSearchTerms[4][15] = {"ssid","password","device_name","\0"};
+    char credentialSearchTerms[4][15] = {"ssid","password","device_name","broker_ip","\0"};
 
-
-
-    char * start,*stop,*arg1, *k, *knext; 
+    char *start,*stop,*arg1, *k, *knext; 
     
-    int nConfTerms = 3;
+    int nConfTerms = 4;
     for (int i = 0 ; i < nConfTerms ; i++){
         k = credentialSearchTerms[i];
         //knext = credentialSearchTerms[i+1];
@@ -219,7 +260,14 @@ http_server_netconn_serve(struct netconn *conn)
             netconn_write(conn, HDR_200, sizeof(HDR_200)-1, NETCONN_NOCOPY);
 			//printf("GET = '%s' \n", payload);
             if (strcmp(payload, "/") == 0 || strcmp(payload, "/?") == 0) { //give the root website
-                netconn_write(conn, root_text, sizeof(root_text)-1, NETCONN_NOCOPY);
+                //TODO instead of using a global bool, figure out something more robust
+                if (wifi_connect_fail){
+                    netconn_write(conn, fail_connect_text, sizeof(fail_connect_text)-1, NETCONN_NOCOPY);
+                    wifi_connect_fail = false; //reset fail to connect so a user can try again
+                } else {
+                    netconn_write(conn, root_text, sizeof(root_text)-1, NETCONN_NOCOPY);
+                }
+                
             }else if (strcmp(payload, "/favicon.ico") == 0) {
                 //do nothing
             }else if (strcmp(payload, "/scan_wifi?") == 0) {
@@ -411,9 +459,10 @@ static void initialize_softAP_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID
 
 }
 
-static void initialise_sta_wifi(void)
+// Connect as station to AP
+// Returns true on success, false on fail
+static bool initialise_sta_wifi(char* PARAM_HOSTNAME)
 {
-
     s_wifi_event_group = xEventGroupCreate();
 
     ESP_ERROR_CHECK(esp_event_loop_create_default()); //only once
@@ -430,12 +479,29 @@ static void initialise_sta_wifi(void)
             .password = AP_TARGET_PASS
         },
     };
+
+    // Use default SSID and PASS unless supplied in config
+    //if (strcmp("", desired_ap_ssid) == 0) {
+    strcpy((char *)wifi_config.sta.ssid, desired_ap_ssid);
+    ESP_LOGI(TAG, "ESP WIFI Desired %s",desired_ap_ssid );
+    ESP_LOGI(TAG, "ESP WIFI Actual %s",wifi_config.sta.ssid );
+    //if (strcmp("", desired_ap_pass) == 0) {
+    strcpy((char *)wifi_config.sta.password, desired_ap_pass);
+    //}
+
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
     ESP_ERROR_CHECK(esp_wifi_start() );
 
-    ESP_LOGI(TAG, "wifi_init_sta finished. Connecting to SSID:%s password:%s",
-             AP_TARGET_SSID, AP_TARGET_PASS);
+    esp_err_t ret = tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA ,PARAM_HOSTNAME);
+    if(ret != ESP_OK ){
+      ESP_LOGE(TAG,"failed to set hostname:%d",ret);  
+    } else {
+        ESP_LOGI(TAG, "hostname has been set as %s", PARAM_HOSTNAME);
+    }
+
+    ESP_LOGI(TAG, "wifi_init_sta finished. Connecting to SSID:%s password:%s as %s",
+             wifi_config.sta.ssid, wifi_config.sta.password,PARAM_HOSTNAME);
 
     // Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
     // number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above)
@@ -449,17 +515,22 @@ static void initialise_sta_wifi(void)
     //  happened. 
     if (bits & WIFI_CONNECTED_BIT) {
         ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
-                 AP_TARGET_SSID, AP_TARGET_PASS);
+                 wifi_config.sta.ssid,wifi_config.sta.password);
+        wifi_connect_fail = false;
     } else if (bits & WIFI_FAIL_BIT) {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
-                 AP_TARGET_SSID, AP_TARGET_PASS);
+                 wifi_config.sta.ssid,wifi_config.sta.password);
+        wifi_connect_fail = true;
+        
     } else {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
+        wifi_connect_fail = true;
     }
 
     ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &ap_event_handler));
     ESP_ERROR_CHECK(esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &ap_event_handler));
     vEventGroupDelete(s_wifi_event_group);
+    return !wifi_connect_fail;
 	
 }
 
@@ -475,6 +546,7 @@ void kill_wifi(void){
     }
     ESP_ERROR_CHECK(esp_wifi_stop());
     ESP_ERROR_CHECK(esp_wifi_deinit());
+    ESP_ERROR_CHECK(esp_event_loop_delete_default());
 }
 
 static void demo_sequential_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_LEN)
@@ -483,13 +555,12 @@ static void demo_sequential_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_L
     initialize_softAP_wifi(PARAM_ESP_WIFI_SSID,PARAM_SSID_LEN);
     printf("Starting http server\n");
     xTaskCreate(&http_server, "http_server", 2048, NULL, 5, NULL);
-    printf("Server started\n");
+    printf("Waiting for  switch_to_sta\n");;
     while (true){
         vTaskDelay(2000 / portTICK_PERIOD_MS);
-        printf("Waiting for  switch_to_sta\n");
         if (switch_to_sta == true)
         {   
-            printf("Switching now\n");
+            printf("Switching from softAP to station\n");
             switch_to_sta = false;
            
             break;
@@ -500,13 +571,13 @@ static void demo_sequential_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_L
 
     kill_wifi();
     
-    printf("Ready to try station wifi\n"); //TODO is this printed or stuck in kill_wifi
-    //initialise_sta_wifi();
-
-
-
+    bool sta_succ = initialise_sta_wifi(PARAM_ESP_WIFI_SSID);
+    if (!sta_succ) { 
+        //restart sequential wifi
+        kill_wifi();
+        demo_sequential_wifi(PARAM_ESP_WIFI_SSID,PARAM_SSID_LEN);
+    }
 }
-
 
 
 
@@ -531,16 +602,11 @@ void app_main(void)
     get_chip_id(chipid, UNIQUE_ID_LENGTH);
 
     //Start Wifi
-	initialise_sta_wifi();
+	//initialise_sta_wifi();
     //initialize_softAP_wifi(chipid, UNIQUE_ID_LENGTH);
-    //demo_sequential_wifi(chipid, UNIQUE_ID_LENGTH);
-   
-
-    cv_mqtt_init(chipid, UNIQUE_ID_LENGTH);
-
-    //printf("Starting http server\n");
-    //xTaskCreate(&http_server, "http_server", 2048, NULL, 5, NULL);
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    //example_connect()
+    demo_sequential_wifi(chipid, UNIQUE_ID_LENGTH); //this returns on successful connection
+    cv_mqtt_init(chipid, UNIQUE_ID_LENGTH, desired_mqtt_broker_ip);
 }
 
 

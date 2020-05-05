@@ -561,29 +561,22 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 }
 
 
-static void mqtt_app_start(void)
+static void mqtt_app_start(const char* mqtt_hostname)
 {
-    printf("X3\n");
     update_all_mqtt_topics();
-    printf("X4\n");
-
     //return //-> works
     mqtt_event_group = xEventGroupCreate();
-    printf("X5\n");
     const esp_mqtt_client_config_t mqtt_cfg = {
         .event_handle = mqtt_event_handler,
-        .host = "192.168.0.110",
+        .host = mqtt_hostname,
         .port = 1883,
         .lwt_topic = mtopics.rx_conn,
         .lwt_msg = "0", //disconnected
     }; 
-    // TODO set the host again with scrcpy
-    // TODO set the last will topic
-    // TODO set the 
+
     ESP_LOGI(TAG_TEST, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
-    printf("X2\n");
+    ESP_LOGI(TAG_TEST, "Connecting to broker IP %s",mqtt_cfg.host );
     mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
-    printf("X1\n");
 }
 
 
@@ -605,7 +598,7 @@ static void get_string(char *line, size_t size)
 }
 
 
-void cv_mqtt_init(char* chipid, uint8_t chip_len) 
+void cv_mqtt_init(char* chipid, uint8_t chip_len, const char* mqtt_hostname) 
 {
     printf("Starting MQTT\n");
     strncpy(device_name,chipid,chip_len);
@@ -613,7 +606,7 @@ void cv_mqtt_init(char* chipid, uint8_t chip_len)
     //printf("CHIPID: %.*s\n",chip_len,chipid);
     //printf("DNAME: %.*s\n",chip_len,device_name);
     
-    mqtt_app_start();
+    mqtt_app_start(mqtt_hostname);
     init_uart();
 
     //Stop client just to be safe
