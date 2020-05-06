@@ -12,9 +12,25 @@
 
 
 
+
 //hardware pins
+#define U1 1
+#define U2 2
+
+//pick one or the other
+#define CV_UART_TO_USE U1 // U1 or U2
+
+#if CV_UART_TO_USE == U2
 #define TXD_PIN (GPIO_NUM_17) //U2TXD
 #define RXD_PIN (GPIO_NUM_16) //U2RXD
+#endif
+
+#if CV_UART_TO_USE == U1
+#define TXD_PIN (GPIO_NUM_10) //U1TXD
+#define RXD_PIN (GPIO_NUM_9) //U1RXD
+#endif
+
+//don't change this. It's just for naming
 #define UART_NUM UART_NUM_1
 
 //general uart settings
