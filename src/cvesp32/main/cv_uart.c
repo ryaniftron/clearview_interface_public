@@ -18,7 +18,7 @@
 #define U2 2
 
 //pick one or the other
-#define CV_UART_TO_USE U1 // U1 or U2
+#define CV_UART_TO_USE U2 // U1 or U2
 
 #if CV_UART_TO_USE == U2
 #define TXD_PIN (GPIO_NUM_17) //U2TXD
@@ -47,6 +47,10 @@ static bool _uart_is_init = false; //this is checked to make sure uart is active
 
 
 void init_uart() {
+    if (_uart_is_init == true) {
+        ESP_LOGW("INIT_UART", "UART is already initialized");
+        return;
+    }
     const uart_config_t uart_config = {
         .baud_rate = 57600,
         .data_bits = UART_DATA_8_BITS,
@@ -110,6 +114,9 @@ static void tx_task2()
         vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
 }
+
+
+
 
 static void rx_task()
 {
@@ -182,13 +189,48 @@ const int cvuart_send_report(const char* data, uint8_t* dataRx)
     return rxBytes;
 }
 
-//this demo's the uart functionality. 
+/*
 void run_cv_uart()
 {
     init_uart();
     //xTaskCreate(rx_task, "uart_rx_task", 1024*2, NULL, configMAX_PRIORITIES, NULL);
     //xTaskCreate(tx_task, "uart_tx_task", 1024*2, NULL, configMAX_PRIORITIES-1, NULL); 
     //xTaskCreate(tx_task2, "uart_tx_task2", 1024*2, NULL, configMAX_PRIORITIES-1, NULL);
+}
+*/
+
+
+// The uart test task cycles the channel number
+// It also asks for lock status
+static void uart_test_task()
+{
+    static const char *TEST_TASK_TAG = "UART_TEST_TASK";
+    esp_log_level_set(TEST_TASK_TAG, ESP_LOG_INFO);
+    ESP_LOGI(TEST_TASK_TAG, "Running UART Send Task");
+
+    init_uart();
+    char* lock_request_cmd = "\n09RPLF\%%\r";
+    char* set_channel_fmt = "\n09BC%u\%%\r";
+    uint8_t channel_num = 1;
+    while (1) {
+        char set_channel_cmd[20];
+
+        //cycle the selected channel
+        sprintf(set_channel_cmd, set_channel_fmt, channel_num%8);
+
+        ESP_LOGI(TEST_TASK_TAG, "Sending channel command:%s",set_channel_cmd);
+        cvuart_send_command(set_channel_cmd);
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+
+        channel_num++;
+    }
+}
+
+
+void run_cv_uart_test_task()
+{
+    printf("RUnning uart test task\n");
+    xTaskCreate(uart_test_task, "uart_test_task", 1024*2, NULL, configMAX_PRIORITIES, NULL);
 }
 
 #endif //CV_UART

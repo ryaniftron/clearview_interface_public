@@ -25,6 +25,15 @@ static const int CONNECTED_BIT = BIT0;
 //Components
 //#include "cv_mqtt.h"
 #include "main_cv_mqtt.c"
+//****************
+// UART Testing
+//****************
+
+ 
+#ifndef UART_TEST_LOOP
+    //uncomment this to run the test UART command periodically.
+    #define UART_TEST_LOOP 1
+#endif
 
 
 //*****************
@@ -78,6 +87,16 @@ char desired_ap_pass[WIFI_CRED_MAXLEN];
 char desired_friendly_name[WIFI_CRED_MAXLEN];
 char desired_mqtt_broker_ip[WIFI_CRED_MAXLEN];
 
+/*
+typedef enum {
+    CV_AP_INIT = 0,                                 // Started up for the first time (ever)  
+    CV_STA_CONN_ATTEMPT,                            // Attempting Connection as STA to network 
+    CV_STA_CONN_NO_BROKER,            //  MQTT connection refused reason: ID rejected 
+    CV_STA_CONN_WITH_BROKER,     //  MQTT connection refused reason: Server unavailable 
+    CV_AP_FAIL_,           //  MQTT connection refused reason: Wrong user 
+    MQTT_CONNECTION_REFUSE_NOT_AUTHORIZED          //  connection refused reason: Wrong username or password 
+} esp_mqtt_connect_return_code_t;
+*/
 
 
 
@@ -94,7 +113,8 @@ char desired_mqtt_broker_ip[WIFI_CRED_MAXLEN];
 
 // TODO improve file serving like in here: https://github.com/espressif/esp-idf/blob/master/examples/protocols/http_server/file_serving/main/file_server.c
 #define root_text \
-    "<strong>ClearView ESP32 Config </strong><br> \
+    "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
+    <strong>ClearView ESP32 Config </strong><br> \
     Wifi Status: TODO <br>\
     <form action=\"/config_esp32\" method> \
         <label for=\"ssid\">Network SSID:</label><br> \
@@ -601,12 +621,17 @@ void app_main(void)
 
     get_chip_id(chipid, UNIQUE_ID_LENGTH);
 
-    //Start Wifi
-	//initialise_sta_wifi();
-    //initialize_softAP_wifi(chipid, UNIQUE_ID_LENGTH);
-    //example_connect()
-    demo_sequential_wifi(chipid, UNIQUE_ID_LENGTH); //this returns on successful connection
-    cv_mqtt_init(chipid, UNIQUE_ID_LENGTH, desired_mqtt_broker_ip);
+
+
+    printf("MQTT IS INIT\n");
+    #ifdef UART_TEST_LOOP
+        printf("XRunning uart test task\n");
+        run_cv_uart_test_task();
+    #else
+        //Start Wifi
+        demo_sequential_wifi(chipid, UNIQUE_ID_LENGTH); //this returns on successful connection
+        cv_mqtt_init(chipid, UNIQUE_ID_LENGTH, desired_mqtt_broker_ip);
+    #endif
 }
 
 

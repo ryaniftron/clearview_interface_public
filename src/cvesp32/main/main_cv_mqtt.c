@@ -607,7 +607,9 @@ void cv_mqtt_init(char* chipid, uint8_t chip_len, const char* mqtt_hostname)
     //printf("DNAME: %.*s\n",chip_len,device_name);
     
     mqtt_app_start(mqtt_hostname);
+
     init_uart();
+
 
     //Stop client just to be safe
     //esp_mqtt_client_stop(mqtt_client);
