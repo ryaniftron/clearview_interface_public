@@ -37,14 +37,15 @@ Required Hardware
 * ESP32 Development Board
 
 Connections
-* ESP32 P16 (U2RXD)- CV Breakout Green (Tx of ClearView)
-* ESP32 P17 (U2TXD)- CV Breaktout White (Rx of ClearView)
+* ESP32 P16 (U2RXD)- CV Breakout White (Tx of ClearView)
+* ESP32 P17 (U2TXD)- CV Breaktout Green (Rx of ClearView)
 * ESP32 GND - CV Breakout GND
 * ESP32 3V3 - CV Breakout 3.3V pad 
 
 On the update board, I soldered from the +3.3v pad of the LED to an unconnected pin on the breakout. On the back side, you can then solder a jumper to the ESP32. 
 
 ![CV ESP32 Breakout with 3.3V Wire Added](./docs/cv2_dongle_hack.jpg)
+![CV ESP32 Wiring Diagram](./docs/cv2_wiring.jpg)
 
 
 ## ESP32 Code Flash Instructions using ESP-WROOM-32 DevKitC
