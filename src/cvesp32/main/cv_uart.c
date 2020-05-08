@@ -209,7 +209,7 @@ static void uart_test_task()
     ESP_LOGI(TEST_TASK_TAG, "Running UART Send Task");
 
     init_uart();
-    char* lock_request_cmd = "\n09RPLF\%%\r";
+    char* freq_request_cmd = "\n09RPLF\%\r";
     char* set_channel_fmt = "\n09BC%u\%%\r";
     uint8_t channel_num = 1;
     while (1) {
@@ -222,14 +222,22 @@ static void uart_test_task()
         cvuart_send_command(set_channel_cmd);
         vTaskDelay(5000 / portTICK_PERIOD_MS);
 
+        //now, run a report for the frequency
+        uint8_t* dataRx = (uint8_t*) malloc(RX_BUF_SIZE+1);
+        ESP_LOGI(TEST_TASK_TAG, "Asking for frequency with: %s", freq_request_cmd);
+        cvuart_send_report(freq_request_cmd, dataRx);
+        vTaskDelay(5000/ portTICK_PERIOD_MS);
+
+        free(dataRx);
         channel_num++;
+
     }
 }
 
 
 void run_cv_uart_test_task()
 {
-    printf("RUnning uart test task\n");
+    printf("Running uart test task\n");
     xTaskCreate(uart_test_task, "uart_test_task", 1024*2, NULL, configMAX_PRIORITIES, NULL);
 }
 
