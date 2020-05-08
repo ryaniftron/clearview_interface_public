@@ -12,6 +12,7 @@
 #include "freertos/task.h"
 
 #include "esp_wifi.h"
+
 #include "esp_system.h"
 #include "esp_event.h"
 #include "esp_event_loop.h"
@@ -235,7 +236,7 @@ static bool parse_net_credentials(char* payload){
     ///example: /config_esp32?ssid=a&password=x&device_name=z
     printf("Parsing these creds: %s\n", payload);
 
-    char credentialSearchTerms[4][15] = {"ssid","password","device_name","broker_ip","\0"};
+    char credentialSearchTerms[5][15] = {"ssid","password","device_name","broker_ip","\0"};
 
     char *start,*stop,*arg1, *k, *knext; 
     
@@ -518,7 +519,11 @@ static void initialize_softAP_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID
 // Connect as station to AP
 // Returns true on success, false on fail
 static bool initialise_sta_wifi(char* PARAM_HOSTNAME)
-{
+{    
+    if (s_wifi_event_group != NULL) {
+        ESP_LOGE(TAG, "s_wifi_event_group is not NULL");
+    }
+
     s_wifi_event_group = xEventGroupCreate();
     set_ledc_code(0, led_on);
 
@@ -529,6 +534,7 @@ static bool initialise_sta_wifi(char* PARAM_HOSTNAME)
 
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &ap_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &ap_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
 
     wifi_config_t wifi_config = {
         .sta = {
@@ -540,8 +546,6 @@ static bool initialise_sta_wifi(char* PARAM_HOSTNAME)
     // Use default SSID and PASS unless supplied in config
     //if (strcmp("", desired_ap_ssid) == 0) {
     strcpy((char *)wifi_config.sta.ssid, desired_ap_ssid);
-    ESP_LOGI(TAG, "ESP WIFI Desired %s",desired_ap_ssid );
-    ESP_LOGI(TAG, "ESP WIFI Actual %s",wifi_config.sta.ssid );
     //if (strcmp("", desired_ap_pass) == 0) {
     strcpy((char *)wifi_config.sta.password, desired_ap_pass);
     //}
@@ -549,15 +553,16 @@ static bool initialise_sta_wifi(char* PARAM_HOSTNAME)
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
     ESP_LOGI(TAG, "WIFI Ready to start");
+    
     ESP_ERROR_CHECK(esp_wifi_start() );
-
-    esp_err_t ret = tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA ,PARAM_HOSTNAME);
+    
+    /*esp_err_t ret = tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA ,PARAM_HOSTNAME);
     if(ret != ESP_OK ){
       ESP_LOGE(TAG,"failed to set hostname:%d",ret);  
     } else {
         ESP_LOGI(TAG, "hostname has been set as %s", PARAM_HOSTNAME);
     }
-
+    */
     ESP_LOGI(TAG, "wifi_init_sta finished. Connecting to SSID:%s password:%s as %s",
              wifi_config.sta.ssid, wifi_config.sta.password,PARAM_HOSTNAME);
 
@@ -589,8 +594,8 @@ static bool initialise_sta_wifi(char* PARAM_HOSTNAME)
     ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &ap_event_handler));
     ESP_ERROR_CHECK(esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &ap_event_handler));
     vEventGroupDelete(s_wifi_event_group);
+    
     return !wifi_connect_fail;
-	
 }
 
 //disconnect and kill wifi driver no matter which mode it is in
@@ -607,6 +612,8 @@ void kill_wifi(void){
     ESP_ERROR_CHECK(esp_wifi_stop());
     ESP_ERROR_CHECK(esp_wifi_deinit());
     ESP_ERROR_CHECK(esp_event_loop_delete_default());
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    
     #elif HW == HW_ESP_WROOM_32D
         printf("Can't kill wifi in 32D\n");
         ESP_ERROR_CHECK(esp_event_loop_delete_default());
@@ -634,15 +641,16 @@ static void demo_sequential_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_L
     kill_wifi();
     
     #if HW == HW_ESP_WROOM_32
-    bool sta_succ = initialise_sta_wifi(PARAM_ESP_WIFI_SSID);
-    if (!sta_succ) { 
-        //restart sequential wifi
-        kill_wifi();
-        demo_sequential_wifi(PARAM_ESP_WIFI_SSID,PARAM_SSID_LEN);
-    }
+        bool sta_succ = initialise_sta_wifi(PARAM_ESP_WIFI_SSID);
+        if (!sta_succ) { 
+            //restart sequential wifi
+            kill_wifi();
+            demo_sequential_wifi(PARAM_ESP_WIFI_SSID,PARAM_SSID_LEN);
+        }
+        
     #elif HW == HW_ESP_WROOM_32D
-    printf("Not restarting wifi yet...\n");
-    bool sta_succ = initialise_sta_wifi(PARAM_ESP_WIFI_SSID);
+        printf("Not restarting wifi yet...\n");
+        bool sta_succ = initialise_sta_wifi(PARAM_ESP_WIFI_SSID);
     #endif
 }
 
@@ -680,6 +688,9 @@ void app_main(void)
     #else
         //Start Wifi
         demo_sequential_wifi(chipid, UNIQUE_ID_LENGTH); //this returns on successful connection
+
+        //only after in sequential wifi do we start mqtt. Give it some time
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
         cv_mqtt_init(chipid, UNIQUE_ID_LENGTH, desired_mqtt_broker_ip);
     #endif
     
