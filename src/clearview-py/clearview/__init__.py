@@ -263,7 +263,7 @@ class ClearView:
                 cmd = self._format_write_command(str(rcvr_target), "MDM")
             else:
                 print("Errror. How tf did I get here?")
-            self._write_serial(cmd)
+            return self._write_serial(cmd)
         else:
             print("Error. unsupported video mode")
 
@@ -271,13 +271,13 @@ class ClearView:
         """ ODE shows/enables the osd"""
 
         cmd = self._format_write_command(str(rcvr_target), "ODE")
-        self._write_serial(cmd)
+        return self._write_serial(cmd)
 
     def hide_osd(self, rcvr_target):
         """ODD hides/disables the osd"""
 
         cmd = self._format_write_command(str(rcvr_target), "ODD")
-        self._write_serial(cmd)
+        return self._write_serial(cmd)
 
     def set_osd_at_predefined_position(self, rcvr_target, desired_position):
         """Set OSD at integer position"""
@@ -290,7 +290,7 @@ class ClearView:
         osd_str_max_sz = 12
         osd_str = osd_str[:osd_str_max_sz]
         cmd = self._format_write_command(str(rcvr_target), "ID" + str(osd_str))
-        self._write_serial(cmd)
+        return self._write_serial(cmd)
 
     def set_osd_string_positional(self, rcvr_target, starting_index, osd_str):
         """ IDP => Sets OSD positional string"""
@@ -305,6 +305,7 @@ class ClearView:
 
         old_osd_string = ''.join([char for char in '*'])
         new_osd_string = new_osd_string.replace(old_osd_string,new_osd_string)
+        raise NotImplementedError
   
 
     def reboot(self, rcvr_target):
@@ -321,7 +322,7 @@ class ClearView:
         """RL => Reset Lock """
 
         cmd = self._format_write_command(str(rcvr_target), "RL")
-        self._write_serial(cmd)
+        return self._write_serial(cmd)
 
     def set_video_format(self, rcvr_target, video_format):
         """VF => Temporary Set video format.
@@ -331,15 +332,14 @@ class ClearView:
         desired_video_format = video_format.lower()
         if desired_video_format == "n" or desired_video_format == "ntsc":
             cmd = self._format_write_command(str(rcvr_target), "VFN")
-            self._write_serial(cmd)
         elif desired_video_format == "p" or desired_video_format == "pal":
             cmd = self._format_write_command(str(rcvr_target), "VFP")
-            self._write_serial(cmd)
         elif desired_video_format == "a" or desired_video_format == "auto":
             cmd = self._format_write_command(str(rcvr_target), "VFA")
-            self._write_serial(cmd)
         else:
             print("Error. Invalid video format in set_temporary_video_format of ", desired_video_format)
+            return None
+        return self._write_serial(cmd)
 
     def move_cursor(self, rcvr_target, desired_move):
         # This command works but needs written out here
