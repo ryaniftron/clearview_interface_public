@@ -25,14 +25,37 @@ static const int CONNECTED_BIT = BIT0;
 //Components
 //#include "cv_mqtt.h"
 #include "main_cv_mqtt.c"
+#include "cv_ledc.c"
+
+// Hardware selection
+#ifndef HW_ESP_WROOM_32
+    #define HW_ESP_WROOM_32 1
+#endif
+
+#ifndef HW_ESP_WROOM_32D
+    #define HW_ESP_WROOM_32D 2
+#endif
+
+#ifndef HW
+    //#define HW HW_ESP_WROOM_32
+    #define HW HW_ESP_WROOM_32
+#endif
+
+//TODO set up enum to link states to LED codes
+
+
+
+
+
+
+
 //****************
 // UART Testing
 //****************
-
  
 #ifndef UART_TEST_LOOP
     //uncomment this to run the test UART command periodically.
-    #define UART_TEST_LOOP 1
+    //#define UART_TEST_LOOP 1
 #endif
 
 
@@ -286,6 +309,7 @@ http_server_netconn_serve(struct netconn *conn)
                     wifi_connect_fail = false; //reset fail to connect so a user can try again
                 } else {
                     netconn_write(conn, root_text, sizeof(root_text)-1, NETCONN_NOCOPY);
+                    set_ledc_code(0, led_blink_slow);
                 }
                 
             }else if (strcmp(payload, "/favicon.ico") == 0) {
@@ -437,7 +461,12 @@ static void initialize_softAP_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID
 {
 // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/wifi.html
     printf("Starting ESP32 softAP mode.\n");
-    
+    if (wifi_connect_fail){
+        set_ledc_code(0, led_blink_fast);
+    } else {
+        set_ledc_code(0, led_blink_slow);
+    }
+
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT(); //VSCODE shows this undefined but it works
@@ -484,6 +513,7 @@ static void initialize_softAP_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID
 static bool initialise_sta_wifi(char* PARAM_HOSTNAME)
 {
     s_wifi_event_group = xEventGroupCreate();
+    set_ledc_code(0, led_on);
 
     ESP_ERROR_CHECK(esp_event_loop_create_default()); //only once
 
@@ -511,6 +541,7 @@ static bool initialise_sta_wifi(char* PARAM_HOSTNAME)
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
+    ESP_LOGI(TAG, "WIFI Ready to start");
     ESP_ERROR_CHECK(esp_wifi_start() );
 
     esp_err_t ret = tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA ,PARAM_HOSTNAME);
@@ -537,6 +568,7 @@ static bool initialise_sta_wifi(char* PARAM_HOSTNAME)
         ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
                  wifi_config.sta.ssid,wifi_config.sta.password);
         wifi_connect_fail = false;
+        set_ledc_code(0, led_breathe_fast);
     } else if (bits & WIFI_FAIL_BIT) {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
                  wifi_config.sta.ssid,wifi_config.sta.password);
@@ -556,6 +588,7 @@ static bool initialise_sta_wifi(char* PARAM_HOSTNAME)
 
 //disconnect and kill wifi driver no matter which mode it is in
 void kill_wifi(void){
+    #if HW == HW_ESP_WROOM_32
     wifi_mode_t mode;
     ESP_ERROR_CHECK(esp_wifi_get_mode(&mode));
 
@@ -567,6 +600,11 @@ void kill_wifi(void){
     ESP_ERROR_CHECK(esp_wifi_stop());
     ESP_ERROR_CHECK(esp_wifi_deinit());
     ESP_ERROR_CHECK(esp_event_loop_delete_default());
+    #elif HW == HW_ESP_WROOM_32D
+        printf("Can't kill wifi in 32D\n");
+        ESP_ERROR_CHECK(esp_event_loop_delete_default());
+    #endif
+
 }
 
 static void demo_sequential_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_LEN)
@@ -586,17 +624,19 @@ static void demo_sequential_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_L
             break;
         }
     }
-    printf("Onward! esp_wifi_stop has been run. Time to start station.... (TODO) \n ");
-    //https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/wifi.html#wi-fi-deinit-phase
-
     kill_wifi();
     
+    #if HW == HW_ESP_WROOM_32
     bool sta_succ = initialise_sta_wifi(PARAM_ESP_WIFI_SSID);
     if (!sta_succ) { 
         //restart sequential wifi
         kill_wifi();
         demo_sequential_wifi(PARAM_ESP_WIFI_SSID,PARAM_SSID_LEN);
     }
+    #elif HW == HW_ESP_WROOM_32D
+    printf("Not restarting wifi yet...\n");
+    bool sta_succ = initialise_sta_wifi(PARAM_ESP_WIFI_SSID);
+    #endif
 }
 
 
@@ -621,17 +661,22 @@ void app_main(void)
 
     get_chip_id(chipid, UNIQUE_ID_LENGTH);
 
+    CV_LED_Code_t initial_led_state = led_off;
 
+    init_cv_ledc(initial_led_state);
+    
 
-    printf("MQTT IS INIT\n");
+    
+    
     #ifdef UART_TEST_LOOP
-        printf("XRunning uart test task\n");
         run_cv_uart_test_task();
     #else
         //Start Wifi
         demo_sequential_wifi(chipid, UNIQUE_ID_LENGTH); //this returns on successful connection
         cv_mqtt_init(chipid, UNIQUE_ID_LENGTH, desired_mqtt_broker_ip);
     #endif
+    
+
 }
 
 

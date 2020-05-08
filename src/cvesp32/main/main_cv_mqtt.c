@@ -22,7 +22,8 @@
 
 #include "esp_log.h"
 #include "mqtt_client.h"
-#include "cv_uart.c" //TODO
+#include "cv_uart.c" 
+#include "cv_ledc.c"
 
 static const char *TAG_TEST = "PUBLISH_TEST";
 static EventGroupHandle_t mqtt_event_group;
@@ -502,7 +503,7 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
         } 
 
         
-        free(dataRx);
+        free(dataRx); //TODO if I return here, then isn't there a memory leak?
     }
     
     
@@ -526,9 +527,11 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 
             char* conn_msg = "1";
             mqtt_publish_to_topic(mqtt_client, mtopics.rx_conn,conn_msg);
+            set_ledc_code(0, led_breathe_slow);
             break;
         case MQTT_EVENT_DISCONNECTED:
-            ESP_LOGI(TAG_TEST, "MQTT_EVENT_DISCONNECTED");
+            ESP_LOGW(TAG_TEST, "MQTT_EVENT_DISCONNECTED");
+            set_ledc_code(0, led_breathe_fast);
             break;
         case MQTT_EVENT_SUBSCRIBED:
             ESP_LOGI(TAG_TEST, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
