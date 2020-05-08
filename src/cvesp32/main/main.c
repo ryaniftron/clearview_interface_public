@@ -1,3 +1,10 @@
+
+#define ignore_unused_function_and_vars
+#ifdef ignore_unused_function_and_vars
+	#pragma GCC diagnostic ignored "-Wunused-function" 
+	#pragma GCC diagnostic ignored "-Wunused-variable"
+#endif
+
 #include "string.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/portmacro.h"
