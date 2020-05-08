@@ -116,14 +116,14 @@ band_to_frequency_table = {
     'U7': 5438,
     'U8': 5456,
     'U9': 5985,
-    'D1': 5660,
-    'D2': 5695,
-    'D3': 5735,
-    'D4': 5770,
-    'D5': 5805,
-    'D6': 5878,
-    'D7': 5914,
-    'D8': 5839,
+    #'D1': 5660,
+    #'D2': 5695,
+    #'D3': 5735,
+    #'D4': 5770,
+    #'D5': 5805,
+    #'D6': 5878,
+    #'D7': 5914,
+    #'D8': 5839,
 }
 
 frequency_to_band_table = {}
@@ -136,6 +136,7 @@ def frequency_to_bandchannel(frequency):
     try:
         return frequency_to_band_table[frequency]
     except KeyError:
+        print("Frequency not allowed in clearview")
         return None
 
 def band_to_frequency(band):
