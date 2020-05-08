@@ -72,7 +72,7 @@ int sendData(const char* logName, const char* data)
 {
     const int len = strlen(data);
     const int txBytes = uart_write_bytes(UART_NUM, data, len);
-    ESP_LOGI(logName, "Wrote %d bytes", txBytes);
+    ESP_LOGI(logName, "Wrote %d bytes: %s", txBytes, data);
     return txBytes;
 }
 
