@@ -9,8 +9,8 @@ This document serves as a user manual for the ESP32 Wireless Dongle.
 * Fast Blinking = Hotspot Mode, No errors
 * Twinkling = Hotspot Mode, Connected Device
 * Bright Solid = Attempting Connection to Network
-* Fast Breathing = Connected to Network, Waiting for MQTT
-* Slow Breathing = Connected to Network and MQTT is Active
+* Slow Breathing = Connected to WiFi Network, Waiting for MQTT
+* Twinkling with 3 flashes = Connected to WiFi Network and MQTT is Active
 
 # Usage Guide
 After updating firmware of CV2.0 and pushing the latest OTA file to the dongle, follow the processes below
