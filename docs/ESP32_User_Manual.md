@@ -5,8 +5,9 @@ This document serves as a user manual for the ESP32 Wireless Dongle.
 ## Push Update
 
 # LED Codes
-* Slow Blinking = Hotspot Mode, No errors
-* Fast Blinking = Hotspot Mode, Errors exist and can be viewed
+* Slow Blinking = Hotspot Mode, Errors exist and can be viewed
+* Fast Blinking = Hotspot Mode, No errors
+* Twinkling = Hotspot Mode, Connected Device
 * Bright Solid = Attempting Connection to Network
 * Fast Breathing = Connected to Network, Waiting for MQTT
 * Slow Breathing = Connected to Network and MQTT is Active
