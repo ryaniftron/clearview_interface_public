@@ -575,6 +575,7 @@ static void mqtt_app_start(const char* mqtt_hostname)
         .port = 1883,
         .lwt_topic = mtopics.rx_conn,
         .lwt_msg = "0", //disconnected
+        .lwt_retain = 1
     }; 
 
     ESP_LOGI(TAG_TEST, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
