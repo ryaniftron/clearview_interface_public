@@ -8,6 +8,8 @@ Repo that contains scripts to control a ClearView receiver as well as the code f
 
 [ClearView Updates](http://proteanpaper.com/fwupdate.cgi?comp=iftrontech&manu=2)
 
+[Schematic](https://app.diagrams.net/#G1ESLkln7-GII8pgkHbnjATn4ECvti1PKN)
+
 ## Install
 
 * `$ git clone https://github.com/ryaniftron/clearview_interface_public.git`
