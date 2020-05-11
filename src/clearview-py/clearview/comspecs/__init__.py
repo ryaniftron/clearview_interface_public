@@ -10,18 +10,25 @@ clearview_specs = {
 
 cv_device_limits = {
     'min_seat_number': 1,   # set receiver address target
-    'max_seat_number': 8,
+    'max_seat_number': 8, #docs says this is actual 0-9,a-f but implementation seems to differ
+    'min_destination': 0,
+    'max_destination': 9,
+    'min_source_addr': 1,
+    'max_source_addr': 9,
     'min_antenna_mode': 0,
     'max_antenna_mode': 3,
     'min_channel': 0,   # band channel
     'max_channel': 7,
     'min_frequency': 5200,
     'max_frequency': 5999,
-    'band_groups': r"([0-9,a-f])",
-    'video_modes': r"([LSM])",
-    'osd_positions': r"([0-7])",
-    'osd_strings': r"(.{0,12})",    # TODO, what are the valid OSD chars? No idea. Let them all in?
-    'video_formats': r"([NPA])",
+    'video_formats': "[NPA]",
+    'lock_unlock': "[LU]",
+    'force_auto': "[FA]",
+    #'band_groups': r"([0-9,a-f])",
+    #'video_modes': r"([LSM])",
+    #'osd_positions': r"([0-7])",
+    #'osd_strings': r"(.{0,12})",    # TODO, what are the valid OSD chars? No idea. Let them all in?
+    #'video_formats': r"([NPA])",
 }
 
 # key = letter or number to send to clearview

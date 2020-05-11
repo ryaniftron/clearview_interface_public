@@ -8,107 +8,10 @@ import logging
 from collections import namedtuple
 import re
 import clearview
+from clearview.formatter import report_links, matched_command_tuples, matched_report_tuples
+from clearview.formatter import pattern_setters as patterns #TODO patterns used to be for both setters and getters which is not efficient. May have bugs of unknown patterns
 
 logger = logging.getLogger(__name__)
-
-patterns = {
-    "set_address": r'\n([0-9])([0-9])ADS([1-8])!\r',
-    "set_antenna_mode": r'\n([0-9])([0-9])AN([0-3])!\r',
-    "set_channel":  r'\n([0-9])([0-9])BC([0-7])!\r',
-    "set_band": r'\n([0-9])([0-9])BG([1-8,a-f])!\r',
-    "set_video_mode": r'\n([0-9])([0-9])MD([L,S,M])!\r',
-    "set_osd_visibility": r'\n([0-9])([0-9])OD([E,D])!\r',
-    "set_osd_position": r'\n([0-9])([0-9])ODP([0-7])!\r',
-    "set_id":  r'\n([0-9])([0-9])ID(.{0,12})!\r',
-    "reset_lock": r'\n([0-9])([0-9])RL!\r',
-    "set_video_format": r'\n([0-9])([0-9])VF([NAP])!\r',
-    "get_address": r'\n([0-9])([0-9])RPAD!\r', #TODO here and below
-    "get_channel": r'\n([0-9])([0-9])RPBC!\r',
-    "get_band": r'\n([0-9])([0-9])RPBG!\r',
-    "get_frequency": r'\n([0-9])([0-9])RPFR!\r',
-    "get_osd_string": r'\n([0-9])([0-9])RPID!\r',
-    "get_lock_format": r'\n([0-9])([0-9])RPLF!\r',
-    "get_mode": r'\n([0-9])([0-9])RPMD!\r',
-    "get_model_version": r'\n([0-9])([0-9])RPMV!\r',
-    "get_rssi": r'\n([0-9])([0-9])RPRS!\r',
-    "get_osd_state": r'\n([0-9])([0-9])RPOD!\r',
-    "get_video_format": r'\n([0-9])([0-9])RPVF!\r',
-}
-
-# The last part of the matched tuples is the data field that changes in the cv receiver
-matched_command_tuples = {
-    "set_address": namedtuple('set_address', ['rx_address',
-                                              'requestor_id',
-                                              'address']),
-    "set_antenna_mode": namedtuple('set_antenna_mode', ['rx_address',
-                                                        'requestor_id',
-                                                        'antenna_mode']),
-    "set_channel": namedtuple('set_channel', ['rx_address',
-                                              'requestor_id',
-                                              'channel']),
-    "set_band": namedtuple('set_band', ['rx_address',
-                                        'requestor_id',
-                                        'band']),
-    "set_video_mode": namedtuple('set_video_mode', ['rx_address',
-                                                    'requestor_id',
-                                                    'video_mode']),
-    "set_osd_visibility": namedtuple('set_osd_visibility', ['rx_address',
-                                                            'requestor_id',
-                                                            'osd_enable']),
-    "set_osd_position": namedtuple('set_osd_position', ['rx_address',
-                                                        'requestor_id',
-                                                        'osd_position']),
-    "set_id": namedtuple('set_id', ['rx_address',
-                                    'requestor_id',
-                                    'id']),
-    "reset_lock": namedtuple('reset_lock', ['rx_address',
-                                            'requestor_id']),
-    "set_video_format": namedtuple('video_format', ['rx_address',
-                                                    'requestor_id',
-                                                    'video_format']),
-}
-
-matched_report_tuples = {
-    "get_address": namedtuple('set_address', ['rx_address',
-                                              'requestor_id']),
-    "get_channel": namedtuple('set_address', ['rx_address',
-                                              'requestor_id']),
-    "get_band": namedtuple('set_address', ['rx_address',
-                                           'requestor_id']),
-    "get_frequency": namedtuple('set_address', ['rx_address',
-                                                'requestor_id']),
-    "get_osd_string": namedtuple('set_address', ['rx_address',
-                                                 'requestor_id']),
-    "get_lock_format": namedtuple('set_address', ['rx_address',
-                                                  'requestor_id']),
-    "get_mode": namedtuple('set_address', ['rx_address',
-                                           'requestor_id']),
-    "get_model_version": namedtuple('set_address', ['rx_address',
-                                                    'requestor_id']),
-    "get_rssi": namedtuple('set_address', ['rx_address',
-                                           'requestor_id']),
-    "get_osd_state": namedtuple('set_address', ['rx_address',
-                                                'requestor_id']),
-    "get_video_format": namedtuple('set_address', ['rx_address',
-                                                   'requestor_id']),
-}
-
-# link the getter name to the data field name and report name
-report_links = {
-    "get_address": ("address", "AD"),
-    "get_channel": ("channel", "BC"),
-    "get_band": ("band","BG"),
-    "get_frequency": ("frequency","FR"),
-    "get_osd_string": ("id","ID"),
-    "get_lock_format": ("lock_format","LF"),
-    "get_mode": ("video_mode","MD"),
-    "get_model_version": ("model_version","MV"),
-    "get_rssi": ("rssi","RS"),
-    "get_osd_state": ("osd_enable","OD"),
-    "get_video_format": ("video_format","VF"),
-
-}
-
 
 class ClearViewReceiver:
     def __init__(self, input_data=None, rx_addr=1):
@@ -254,7 +157,7 @@ class ClearViewSerialSimulator:
         # Address
 
         for pattern in patterns:
-            self.logger.debug("Attempting to match on pattern:", pattern)
+            self.logger.debug("Attempting to match on pattern: %s", pattern)
 
             try:
                 match = re.search(patterns[pattern], msg)
