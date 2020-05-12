@@ -155,7 +155,7 @@ void cvuart_send_command(const char* data)
 
 // Write 'data' to the serial port and put a response on dataRx. 
 // Returns the number of bytes read
-const int cvuart_send_report(const char* data, uint8_t* dataRx)
+int cvuart_send_report(const char* data, uint8_t* dataRx)
 {
     static const char *logName = "send_report";
 
