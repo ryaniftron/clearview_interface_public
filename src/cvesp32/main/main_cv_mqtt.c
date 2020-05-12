@@ -42,7 +42,7 @@ static int qos_test = 0;
 char device_name[20]; 
 #define DEVICE_TYPE "rx"
 #define PROTOCOL_VERSION "cv1"
-int node_number = 0;
+extern int node_number;
 bool active_status = false;
 # define MAX_TOPIC_LEN 75
 # define MAX_TOPIC_HEADER_LEN 10 // should encompass "/rx/cv1/" . room for null chars is not needed
