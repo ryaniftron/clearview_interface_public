@@ -34,6 +34,8 @@ static const int CONNECTED_BIT = BIT0;
 //#include "cv_mqtt.h"
 #include "main_cv_mqtt.c"
 #include "cv_ledc.c"
+#include "cv_server.c"
+#include "cv_utils.c"
 
 // Hardware selection
 #ifndef HW_ESP_WROOM_32
@@ -112,11 +114,6 @@ static int s_retry_num = 0; //current number of retries ESP32 has tried to conne
 // Can be used to notify user of failed connection
 static bool wifi_connect_fail = false;
 
-#define WIFI_CRED_MAXLEN 32
-char desired_ap_ssid[WIFI_CRED_MAXLEN];
-char desired_ap_pass[WIFI_CRED_MAXLEN];
-char desired_friendly_name[WIFI_CRED_MAXLEN];
-char desired_mqtt_broker_ip[WIFI_CRED_MAXLEN];
 
 /*
 typedef enum {
@@ -143,6 +140,7 @@ typedef enum {
 
 
 // TODO improve file serving like in here: https://github.com/espressif/esp-idf/blob/master/examples/protocols/http_server/file_serving/main/file_server.c
+// https://github.com/espressif/esp-idf/blob/a2263571b5ffb4071c4d4abbd8115e0f694dd9fe/examples/protocols/http_server/simple/main/main.c
 #define root_text \
     "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
     <strong>ClearView ESP32 Config </strong><br> \
@@ -160,10 +158,17 @@ typedef enum {
     *note: Leave empty for defaults<br> \
 "
 
-#define fail_connect_text \ 
+#define test_page_text \
+    "<strong>ClearView ESP32 Test Page </strong><br> \
+    <form action=\"/ask_for_lock\" method> \
+        <label for=\"req_lock\">Lock?</label><br> \
+        <input type=\"submit\" value=\"Test UART\">\
+"
+
+#define fail_connect_text \
     "Failed to connect to wifi<br> \
-    Attempted SSID: TODO<br> \ 
-    Attemped Password: TODO<br> \ 
+    Attempted SSID: TODO<br> \
+    Attemped Password: TODO<br> \
     <form action=\"/\" method> \
         <input type=\"submit\" value=\"Return to Main\">\
     </form> \
@@ -207,201 +212,127 @@ typedef enum {
     "
 
 
-static void set_credential(char* credentialName, char* val){
-    printf("##Setting Credential %s = %s\n", credentialName, val);
-    if (strlen(val) > WIFI_CRED_MAXLEN) {
-        ESP_LOGE(TAG, "\t Unable to set credential.");
-    }
+// static void
+// http_server_netconn_serve(struct netconn *conn)
+// {
+// 	struct netbuf *inbuf;
+// 	char *buf, *payload, *start, *stop;
+// 	u16_t buflen;
+// 	err_t err;
 
-    if (strcmp(credentialName, "ssid") == 0) {
-        strcpy(desired_ap_ssid, val);
-    } else if (strcmp(credentialName, "password") == 0) {
-        strcpy(desired_ap_pass, val);
-    } else if (strcmp(credentialName, "device_name") == 0) {
-        strcpy(desired_friendly_name, val);
-    } else if (strcmp(credentialName, "broker_ip") == 0) {
-        strcpy(desired_mqtt_broker_ip, val);
-    } else {
-        ESP_LOGE(TAG, "Unexpected Credential of %s", credentialName);
-        return;
-    }
+//    // Read the data from the port, blocking if nothing yet there.
+//    // We assume the request (the part we care about) is in one netbuf 
+// 	err = netconn_recv(conn, &inbuf);
 
-    //Todo store the value in eeprom
+// 	if (err == ERR_OK) {
+//         // TODO capture the possible error code form netbuf_data
+// 		netbuf_data(inbuf, (void**)&buf, &buflen);
+// 		// find the first and seconds space (those delimt the url)
+// 		start = strstr(buf, " ") + 1;
+// 		stop = strstr(start + 1, " ");	
+// 		// allocate memory for the payload
+// 		payload = (char *) malloc(stop - start + 1);
+// 		memcpy(payload, start, stop - start);
+// 		payload[stop - start] = '\0';
 
-}
-
-// parse the request payload for credentials for the wifi device
-// Successful parse returns true
-static bool parse_net_credentials(char* payload){
-    ///example: /config_esp32?ssid=a&password=x&device_name=z
-    printf("Parsing these creds: %s\n", payload);
-
-    char credentialSearchTerms[5][15] = {"ssid","password","device_name","broker_ip","\0"};
-
-    char *start,*stop,*arg1, *k, *knext; 
-    
-    int nConfTerms = 4;
-    for (int i = 0 ; i < nConfTerms ; i++){
-        k = credentialSearchTerms[i];
-        //knext = credentialSearchTerms[i+1];
-        knext = "&";
-        printf("\tGetting Param %s\n", k);
-        start = strstr(payload, k);
-        if (start == NULL){
-            printf("Error. Start parameter not found in %s\n", payload);
-            return false;
-        }
-        start += 1 + strlen(k);
-        stop = strstr(start + 1,  knext);
-        printf("\t\tStart:%s\n",start);
-        
-
-        if (stop == NULL) {
-            if (i == nConfTerms - 1){ //last credential to parse.
-                printf("DEBUG: End term in %s\n", payload); 
-                set_credential(k,start);
-                printf("DEBUG2\n");
-            } else {
-                printf("Error. End parameter not found in %s\n", payload);
-                return false;
-            }
-
-        }else{
-            printf("\t\tStop:%s\n",stop);
-            stop = stop; //remove the '='
-
-            // allocate memory for the payload
-            arg1 = (char *) malloc(stop - start + 1);
-            memcpy(arg1, start, stop - start);
-            arg1[stop - start] = '\0';
-            printf("\targ1:%s\n", arg1);
-            set_credential(k,arg1);
-            free(arg1);
-        }
-    }
-    switch_to_sta = true;
-    return true;
-}
-
-static void
-http_server_netconn_serve(struct netconn *conn)
-{
-	struct netbuf *inbuf;
-	char *buf, *payload, *start, *stop;
-	u16_t buflen;
-	err_t err;
-
-   // Read the data from the port, blocking if nothing yet there.
-   // We assume the request (the part we care about) is in one netbuf 
-	err = netconn_recv(conn, &inbuf);
-
-	if (err == ERR_OK) {
-        // TODO capture the possible error code form netbuf_data
-		netbuf_data(inbuf, (void**)&buf, &buflen);
-		// find the first and seconds space (those delimt the url)
-		start = strstr(buf, " ") + 1;
-		stop = strstr(start + 1, " ");	
-		// allocate memory for the payload
-		payload = (char *) malloc(stop - start + 1);
-		memcpy(payload, start, stop - start);
-		payload[stop - start] = '\0';
-
-		// For now  only GET results in a valid response
-		if (strncmp(buf, "GET /", 5) == 0){
-            netconn_write(conn, HDR_200, sizeof(HDR_200)-1, NETCONN_NOCOPY);
-			//printf("GET = '%s' \n", payload);
-            if (strcmp(payload, "/") == 0 || strcmp(payload, "/?") == 0) { //give the root website
-                //TODO instead of using a global bool, figure out something more robust
-                if (wifi_connect_fail){
-                    netconn_write(conn, fail_connect_text, sizeof(fail_connect_text)-1, NETCONN_NOCOPY);
-                    wifi_connect_fail = false; //reset fail to connect so a user can try again
-                } else {
-                    netconn_write(conn, root_text, sizeof(root_text)-1, NETCONN_NOCOPY);
-                    set_ledc_code(0, led_blink_slow);
-                }
+// 		// For now  only GET results in a valid response
+// 		if (strncmp(buf, "GET /", 5) == 0){
+//             netconn_write(conn, HDR_200, sizeof(HDR_200)-1, NETCONN_NOCOPY);
+// 			//printf("GET = '%s' \n", payload);
+//             if (strcmp(payload, "/") == 0 || strcmp(payload, "/?") == 0) { //give the root website
+//                 //TODO instead of using a global bool, figure out something more robust
+//                 if (wifi_connect_fail){
+//                     //netconn_write(conn, fail_connect_text, sizeof(fail_connect_text)-1, NETCONN_NOCOPY);
+//                     send_html(conn, fail_connect_text);
+//                     wifi_connect_fail = false; //reset fail to connect so a user can try again
+//                 } else {
+//                     netconn_write(conn, root_text, sizeof(root_text)-1, NETCONN_NOCOPY);
+//                     //send_html(conn, root_text);
+//                     set_ledc_code(0, led_blink_slow);
+//                 }
                 
-            }else if (strcmp(payload, "/favicon.ico") == 0) {
-                //do nothing
-            }else if (strcmp(payload, "/scan_wifi?") == 0) {
-                netconn_write(conn, wifi_scan_text, sizeof(wifi_scan_text)-1, NETCONN_NOCOPY);
-            }else if (strncmp(payload, "/config_esp32", strlen("/config_esp32")) == 0){
-                printf("Got a config filestring\n");
-                //GET='GET /config_esp32?ssid=A&password=B&device_name=C '
-                if (parse_net_credentials(payload)){
-                    netconn_write(conn, wifi_attempt_connect, sizeof(wifi_attempt_connect)-1, NETCONN_NOCOPY);
-                    switch_to_sta = true;
-                }else {
-                    netconn_write(conn, config_esp32_parse_fail, sizeof(config_esp32_parse_fail)-1, NETCONN_NOCOPY);
-                }
-            }else{  
-                //char* errmsg = sprintf("Uncaptured GET='%s' \n", *payload);
-                //printf("Uncaptured GET='%s' \n", &payload);
-                //netconn_write(conn, errmsg, sizeof(errmsg)-1, NETCONN_NOCOPY);              
-            }
+//             }else if (strcmp(payload, "/favicon.ico") == 0) {
+//                 //do nothing
+//             }else if (strcmp(payload, "/scan_wifi?") == 0) {
+//                 //netconn_write(conn, wifi_scan_text, sizeof(wifi_scan_text)-1, NETCONN_NOCOPY);
+//                 send_html(conn, wifi_scan_text);
+//             }else if (strncmp(payload, "/config_esp32", strlen("/config_esp32")) == 0){
+//                 printf("Got a config filestring\n");
+//                 //GET='GET /config_esp32?ssid=A&password=B&device_name=C '
+//                 if (parse_net_credentials(payload)){
+//                     //netconn_write(conn, wifi_attempt_connect, sizeof(wifi_attempt_connect)-1, NETCONN_NOCOPY);
+//                     send_html(conn, wifi_attempt_connect);
+//                     switch_to_sta = true;
+//                 }else {
+//                     //netconn_write(conn, config_esp32_parse_fail, sizeof(config_esp32_parse_fail)-1, NETCONN_NOCOPY);
+//                     send_html(conn, config_esp32_parse_fail);
+//                 }
+//             } else if (strncmp(payload, "/test", strlen("/test")) == 0){
+//                 send_html(conn, test_page_text);
+//                 //netconn_write(conn, test_page_text, sizeof(test_page_text)-1, NETCONN_NOCOPY);
+//                 //netconn_write(conn, test_page_text, sizeof(test_page_text)-1, NETCONN_NOCOPY);
+//             }else{ 
+
+//                 //char* errmsg = sprintf("Uncaptured GET='%s' \n", *payload);
+//                 //printf("Uncaptured GET='%s' \n", &payload);
+//                 //netconn_write(conn, errmsg, sizeof(errmsg)-1, NETCONN_NOCOPY);              
+//             }
 
             
                        
 			
-		}else if (strncmp(buf, "POST /", 6) == 0){
-			// send '501 Not implementd' reply  
-			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
-		}else if (strncmp(buf, "PUT /", 5) == 0){
-			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
-		}else if (strncmp(buf, "PATCH /", 7) == 0){
-			// send '501 Not implementd' reply  
-			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
-		}else if (strncmp(buf, "DELETE /", 8) == 0){
-			// send '501 Not implementd' reply  
-			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
-		}else{
-			// 	Any unrecognized verb will automatically 
-			//	result in '501 Not implementd' reply 
-			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
-		}
-		free(payload);
-	}
-  	// Close the connection (server closes in HTTP) and clean up after ourself 
-	netconn_close(conn);
-	netbuf_delete(inbuf);
-}
+// 		}else if (strncmp(buf, "POST /", 6) == 0){
+// 			// send '501 Not implementd' reply  
+// 			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
+// 		}else if (strncmp(buf, "PUT /", 5) == 0){
+// 			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
+// 		}else if (strncmp(buf, "PATCH /", 7) == 0){
+// 			// send '501 Not implementd' reply  
+// 			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
+// 		}else if (strncmp(buf, "DELETE /", 8) == 0){
+// 			// send '501 Not implementd' reply  
+// 			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
+// 		}else{
+// 			// 	Any unrecognized verb will automatically 
+// 			//	result in '501 Not implementd' reply 
+// 			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
+// 		}
+// 		free(payload);
+// 	}
+//   	// Close the connection (server closes in HTTP) and clean up after ourself 
+// 	netconn_close(conn);
+// 	netbuf_delete(inbuf);
+// }
 
 
-static void http_server(void *pvParameters)
-{
+// static void http_server(void *pvParameters)
+// {
     
-	uint32_t port;
-	if (pvParameters == NULL){
-		port = 80;
-	}else{
-		port = (uint32_t) pvParameters;
-	}
-	// printf("\n Creating socket at\n %d \n", (uint32_t) pvParameters);
-	struct netconn *conn, *newconn;
-	err_t err;
-	conn = netconn_new(NETCONN_TCP);
-	netconn_bind(conn, NULL,  port);
-	netconn_listen(conn);
-	do {
-		err = netconn_accept(conn, &newconn);
-		if (err == ERR_OK) {
-			http_server_netconn_serve(newconn);
-			netconn_delete(newconn);
-		}
-	} while(err == ERR_OK);
-	netconn_close(conn);
-	netconn_delete(conn);
+// 	uint32_t port;
+// 	if (pvParameters == NULL){
+// 		port = 80;
+// 	}else{
+// 		port = (uint32_t) pvParameters;
+// 	}
+// 	// printf("\n Creating socket at\n %d \n", (uint32_t) pvParameters);
+// 	struct netconn *conn, *newconn;
+// 	err_t err;
+// 	conn = netconn_new(NETCONN_TCP);
+// 	netconn_bind(conn, NULL,  port);
+// 	netconn_listen(conn);
+// 	do {
+// 		err = netconn_accept(conn, &newconn);
+// 		if (err == ERR_OK) {
+// 			http_server_netconn_serve(newconn);
+// 			netconn_delete(newconn);
+// 		}
+// 	} while(err == ERR_OK);
+// 	netconn_close(conn);
+// 	netconn_delete(conn);
     
-}
+// }
 
-static void get_chip_id(char* ssid, const int UNIQUE_ID_LENGTH){
-    uint64_t chipid = 0LL;
-    esp_efuse_mac_get_default((uint8_t*) (&chipid));
-    uint16_t chip = (uint16_t)(chipid >> 32);
-    //esp_read_mac(chipid);
-    snprintf(ssid, UNIQUE_ID_LENGTH, "CV_%04X%08X", chip, (uint32_t)chipid);
-    printf("SSID created from chip id: %s\n", ssid);
-    return;
-}
+
 
 
 static void ap_event_handler(void* arg, esp_event_base_t event_base,
@@ -625,8 +556,12 @@ static void demo_sequential_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_L
 {
     printf("Starting ESP32 both mode.\n"); 
     initialize_softAP_wifi(PARAM_ESP_WIFI_SSID,PARAM_SSID_LEN);
-    printf("Starting http server\n");
-    xTaskCreate(&http_server, "http_server", 2048, NULL, 5, NULL);
+    //printf("Starting http server\n");
+    //xTaskCreate(&http_server, "http_server", 2048, NULL, 5, NULL);
+
+    start_cv_webserver();
+
+
     printf("Waiting for  switch_to_sta\n");;
     while (true){
         vTaskDelay(2000 / portTICK_PERIOD_MS);
@@ -669,19 +604,14 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     tcpip_adapter_init();
-    //init_uart();
-
     const int UNIQUE_ID_LENGTH = 16;
     char chipid[UNIQUE_ID_LENGTH];
-
     get_chip_id(chipid, UNIQUE_ID_LENGTH);
 
     CV_LED_Code_t initial_led_state = led_off;
 
     init_cv_ledc(initial_led_state);
-    
-
-    
+        
     
     #ifdef UART_TEST_LOOP
         run_cv_uart_test_task();
