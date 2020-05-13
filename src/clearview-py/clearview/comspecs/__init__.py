@@ -12,7 +12,7 @@ cv_device_limits = {
     'min_seat_number': 1,   # set receiver address target
     'max_seat_number': 8, #docs says this is actual 0-9,a-f but implementation seems to differ
     'min_destination': 0,
-    'max_destination': 9,
+    'max_destination': 8,
     'min_source_addr': 1,
     'max_source_addr': 9,
     'min_antenna_mode': 0,
@@ -21,15 +21,24 @@ cv_device_limits = {
     'max_channel': 7,
     'min_frequency': 5200,
     'max_frequency': 5999,
-    'video_formats': "[NPA]",
+    'max_id_length': 12,    # Used for pilot handle. More than this limit breaks the parser
+    'max_um_length': 45,     # Rough limit. OSD will truncate
+    'video_formats': "[NPA]",  # camera type = NTSC, AUTO, PAL  
     'lock_unlock': "[LU]",
     'force_auto': "[FA]",
-    #'band_groups': r"([0-9,a-f])",
-    #'video_modes': r"([LSM])",
-    #'osd_positions': r"([0-7])",
-    #'osd_strings': r"(.{0,12})",    # TODO, what are the valid OSD chars? No idea. Let them all in?
-    #'video_formats': r"([NPA])",
+    'antenna_modes': "[0-3]",
+    'bands': "[0-9,a-f]",
+    'video_modes': "[LSM]",     # live, spectrum, menu  
+    'osd_visibilities': "[ED]",  # Enable, Disable
+    'osd_positions': "[0-7]",
+    'osd_text_chars': "[^%s%s%s]"%(
+        clearview_specs["message_start_char"],
+        clearview_specs["message_end_char"],
+       clearview_specs["message_csum"]
+    ),
+    'cursor_commands': "[+-EPMX]",
 }
+
 
 # key = letter or number to send to clearview
 # value = Displayed Band Name
