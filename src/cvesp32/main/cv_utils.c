@@ -58,58 +58,5 @@ static void set_credential(char* credentialName, char* val){
 
 }
 
-// parse the request payload for credentials for the wifi device
-// Successful parse returns true
-// static bool parse_net_credentials(char* payload){
-//     ///example: /config_esp32?ssid=a&password=x&device_name=z
-//     printf("Parsing these creds: %s\n", payload);
-
-//     char credentialSearchTerms[5][15] = {"ssid","password","device_name","broker_ip","\0"};
-
-//     char *start,*stop,*arg1, *k, *knext; 
-    
-//     int nConfTerms = 4;
-//     for (int i = 0 ; i < nConfTerms ; i++){
-//         k = credentialSearchTerms[i];
-//         //knext = credentialSearchTerms[i+1];
-//         knext = "&";
-//         printf("\tGetting Param %s\n", k);
-//         start = strstr(payload, k);
-//         if (start == NULL){
-//             printf("Error. Start parameter not found in %s\n", payload);
-//             return false;
-//         }
-//         start += 1 + strlen(k);
-//         stop = strstr(start + 1,  knext);
-//         printf("\t\tStart:%s\n",start);
-        
-
-//         if (stop == NULL) {
-//             if (i == nConfTerms - 1){ //last credential to parse.
-//                 printf("DEBUG: End term in %s\n", payload); 
-//                 set_credential(k,start);
-//                 printf("DEBUG2\n");
-//             } else {
-//                 printf("Error. End parameter not found in %s\n", payload);
-//                 return false;
-//             }
-
-//         }else{
-//             printf("\t\tStop:%s\n",stop);
-//             stop = stop; //remove the '='
-
-//             // allocate memory for the payload
-//             arg1 = (char *) malloc(stop - start + 1);
-//             memcpy(arg1, start, stop - start);
-//             arg1[stop - start] = '\0';
-//             printf("\targ1:%s\n", arg1);
-//             set_credential(k,arg1);
-//             free(arg1);
-//         }
-//     }
-//     extern bool switch_to_sta;
-//     switch_to_sta = true;
-//     return true;
-// }
 
 #endif // CV_UTILS_C
