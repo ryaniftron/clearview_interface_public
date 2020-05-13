@@ -8,20 +8,16 @@ import atexit
 import logging
 from collections import namedtuple
 import re
-
+import sys
 import string
 
 from clearview.comspecs import clearview_specs, cv_device_limits
-logging.basicConfig()
 
-import sys
-
-logging.basicConfig()
 logger = logging.getLogger(__name__)
-
 
 # These are all the command types that can get sent to a CV
 command_identifier_dict = {
+    # command_name : command_identifier 
     "set_address": 'ADS',
     "set_antenna_mode": 'AN',
     "set_channel": 'BC',
@@ -29,9 +25,11 @@ command_identifier_dict = {
     "set_video_mode": 'MD',
     "set_osd_visibility": 'OD',
     "set_osd_position": 'ODP',
-    "set_id":  'ID',
+    "set_id": 'ID',
+    "set_user_message": 'UM',
     "reset_lock": 'RL',
     "set_video_format": 'VF',
+    "move_cursor": 'WP',
     "get_address": 'RPAD',
     "get_channel": 'RPBC',
     "get_band": 'RPBG',
@@ -47,6 +45,7 @@ command_identifier_dict = {
 
 # These are all the response types that return from a CV
 response_identifier_dict = {
+    # response_name : response_identifier 
     "get_address": 'AD',
     "get_channel": 'BC',
     "get_band": 'BG',
@@ -60,7 +59,8 @@ response_identifier_dict = {
     "get_video_format": 'VF',
 }
 
-command_identifier_set = command_identifier_dict.values()
+"""The two character commands"""
+command_identifier_set = command_identifier_dict.values() 
 response_identifier_set = response_identifier_dict.values()
 
 
@@ -99,23 +99,59 @@ base_pattern = fmt.format(base_pattern,
                           end_char=general_formatter["end_char"],
                           csum=general_formatter["csum"])
 
-base_pattern_allid = fmt.format(base_pattern,
+base_pattern_tocv = fmt.format(base_pattern,
                                 target_dest="([%s-%s])"%(cv_device_limits['min_destination'],
                                                         cv_device_limits['max_destination']),
                                 source_dest="([%s-%s])"%(cv_device_limits['min_source_addr'],
                                                         cv_device_limits['max_source_addr']),     
-)                           
+)    
 
+base_pattern_fromcv = fmt.format(base_pattern,
+                                target_dest="([%s-%s])"%(cv_device_limits['min_source_addr'],
+                                                        cv_device_limits['max_source_addr']),
+                                source_dest="([%s-%s])"%(cv_device_limits['min_destination'],
+                                                        cv_device_limits['max_destination']),   
+)
+
+# Regex patterns for payloads
 pattern_setter_payload_limits = {
     "set_address": "[%s-%s]"%(cv_device_limits["min_seat_number"],
-                              cv_device_limits["max_seat_number"]),
+                              cv_device_limits["max_seat_number"],),
+    "set_antenna_mode": cv_device_limits["antenna_modes"],
+    "set_channel": "[%s-%s]"%(cv_device_limits["min_channel"],
+                              cv_device_limits["max_channel"],),
+    "set_band": cv_device_limits["bands"],
+    "set_video_mode": cv_device_limits["video_modes"],   
+    "set_osd_visibility": cv_device_limits["osd_visibilities"],
+    "set_osd_position": cv_device_limits["osd_positions"],
+    "set_id":  cv_device_limits["osd_text_chars"] +  # "[^\n\r%]{0,12}",
+              "{0,%d}"%cv_device_limits["max_id_length"],
+    "set_user_message": cv_device_limits["osd_text_chars"] +
+                "{0,%d}"%cv_device_limits["max_um_length"],
+    "reset_lock": '',                   # No parameters
+    "set_video_format": cv_device_limits["video_formats"],
+    "move_cursor": cv_device_limits["cursor_commands"],
 }
+
+# None of the getters have parameters to match so they are all empty strings
 pattern_getter_payload_limits = {
-    "get_address": "",
-    "get_lock_format": "",
+    "get_address": '',
+    "get_channel": '',
+    "get_band": '',
+    "get_frequency": '',
+    "get_osd_string": '',
+    "get_lock_format": '',
+    "get_mode": '',
+    "get_model_version": '',
+    "get_rssi": '',
+    "get_osd_state": '',
+    "get_video_format": '',
 }
+
 pattern_response_payload_limits = {
     "get_address": "(%s)"%pattern_setter_payload_limits["set_address"],
+    "get_channel": "(%s)"%pattern_setter_payload_limits["set_channel"],
+    "get_band": "(%s)"%pattern_setter_payload_limits["set_band"],
     "get_lock_format": "(%s)(%s)(%s)"%(cv_device_limits["video_formats"],
                                    cv_device_limits["force_auto"],
                                    cv_device_limits["lock_unlock"]),
@@ -124,22 +160,30 @@ pattern_response_payload_limits = {
 
 pattern_setters = {} 
 for pattern_name in pattern_setter_payload_limits:
-    pattern_setters[pattern_name] = fmt.format(base_pattern_allid,
-                                    payload = command_identifier_dict[pattern_name] +
-                                              pattern_setter_payload_limits[pattern_name]
-                                    )
+    payload_limit = pattern_setter_payload_limits[pattern_name]
+    command_id = command_identifier_dict[pattern_name]
+
+    if payload_limit is not None:
+        pattern_setters[pattern_name] = fmt.format(base_pattern_tocv,
+                                        payload=command_id +
+                                                payload_limit
+                                        )
 
 pattern_getters = {} 
 for pattern_name in pattern_getter_payload_limits:
-    pattern_getters[pattern_name] = fmt.format(base_pattern_allid,
-                                    payload = command_identifier_dict[pattern_name] + 
-                                        pattern_getter_payload_limits[pattern_name]
-                                    )
+    payload_limit = pattern_getter_payload_limits[pattern_name]
+    command_id = command_identifier_dict[pattern_name]
+
+    if payload_limit is not None:
+        pattern_getters[pattern_name] = fmt.format(base_pattern_tocv,
+                                        payload=command_id +
+                                                payload_limit
+                                        )
 
 
 pattern_responses = {}
 for pattern_name in pattern_response_payload_limits:
-    pattern_responses[pattern_name] = fmt.format(base_pattern_allid,
+    pattern_responses[pattern_name] = fmt.format(base_pattern_fromcv,
                                     payload = response_identifier_dict[pattern_name] + 
                                         pattern_response_payload_limits[pattern_name]
                                     )
@@ -202,6 +246,7 @@ matched_command_tuples = {
     "set_video_format": namedtuple('video_format', ['rx_address',
                                                     'requestor_id',
                                                     'video_format']),
+    #TODO move_cursor
 }
 
 matched_report_tuples = {
@@ -240,8 +285,8 @@ matched_response_tuples = {
 
 # link the getter name to the data field name and report name
 report_links = {
-    #"get_address": ("address", command_identifier_dict["get_address"]),
-    "get_channel": ("channel", "BC"), #TODO fill in the rest with command_identifier_dict
+    "get_address": ("address", command_identifier_dict["get_address"]),
+    "get_channel": ("channel", "BC"), #TODO fill in the rest with command_identifier_dict instead of dupe code
     "get_band": ("band","BG"),
     "get_frequency": ("frequency","FR"),
     "get_osd_string": ("id","ID"),
@@ -254,7 +299,7 @@ report_links = {
 }
 
 
-def format_command(target_dest, source_dest, command, *args):
+def format_command(command_name, target_dest, source_dest, command_identifier, *extra_params):
     """Returns a fully formatted command for CV. Accepts variable arguments to append to command.
     target_dest: Which receiver to target
     source_dest: Where the message came from
@@ -270,33 +315,42 @@ def format_command(target_dest, source_dest, command, *args):
         return None
     if not check_source_dest(source_dest):
         return None
-    if not check_command_identifier(command):
+    if not check_command_identifier(command_identifier):
         return None
 
+    # Convert extra_params to strings
     args_str = []
-    for arg in args:
+    for arg in extra_params:
         args_str.append(str(arg))
 
+    # Concatentate extra args
     extra_args = r''.join(args_str)
     
     # Passed all checks. Format the command
     return fmt.format(base_format, 
                       target_dest=target_dest, 
                       source_dest=source_dest,
-                      payload=command + extra_args)
+                      payload=command_identifier + extra_args)
 
-def create_command(target_dest, command_name, source_dest=9, *args):
+def create_command(command_name,
+                   target_dest=clearview_specs["bc_id"],
+                   source_dest=clearview_specs["mess_src"],
+                   extra_params=()):
     "Perform pre-checks for both getters and setters"
     try:
         command_identifier = command_identifier_dict[command_name]
     except KeyError:
-        logger.error("command_name of '%s' not found in send_command"%command_name)
+        logger.error("command_name of '%s' not found in create_command"%command_name)
+        return None
 
-    # Check the variable argument limits
-    
-    return format_command(target_dest, source_dest, command_identifier, *args)
+    # TODO Check the variable argument limits other than that they are iterable
+    try:
+        iter(extra_params)
+    except TypeError:
+        logger.error("In create_command, extra_params of %s must be an iterable"%extra_params)
+        return None
 
-
+    return format_command(command_name, target_dest, source_dest, command_identifier, *extra_params)
 
 
 
@@ -315,50 +369,87 @@ def check_source_dest(dest):
         logger.error("source_destination of '%s' out of range in check_source_dest"%dest)
         return False
 
-def check_command_identifier(command):
-    if command not in command_identifier_set:
-        logger.error("Command of '%s' not found in check_command_identifier"%command)
+def check_command_identifier(command_identifier):
+    if command_identifier not in command_identifier_set:
+        logger.error("Command_identifier of '%s' not found in check_command_identifier"%command_identifier)
         return False
     else:
         return True
 
-def create_setter_command(target_dest, command_name, source_dest=9, *args):
+def create_setter_command(command_name,
+                          target_dest=clearview_specs["bc_id"],
+                          source_dest=clearview_specs["mess_src"],
+                          extra_params=()):
     """ Create a setter command to be sent to a clearview"""
+    # Change the calling function if extra_params exists or not
+    # if extra_params:
+    cmd = create_command(command_name, target_dest, source_dest, extra_params)
+    # else:
+    #     cmd = create_command(command_name, target_dest, source_dest)
 
-    cmd = create_command(target_dest, command_name, source_dest, *args) 
     if cmd == None:
         return None
-    
-    pattern = pattern_setters[command_name]
+    try:
+        pattern = re.compile(pattern_setters[command_name],re.DOTALL)
+    except KeyError:
+        logger.error("No pattern_setter of %s"%command_name)
+        return None
     match = re.search(pattern, cmd)
     if match is None:
-        logger.error("Setting of '%s' not possible because extra command parameter(s) in"
-                        "'%s' are invalid. Attempted to match %s "%
-                        (command_name,repr(cmd), repr(pattern)))
+        logger.error("Creating setter of '%s' not possible because extra command parameter(s) in " 
+                        "%s are invalid. Attempted to match total command %s"%
+                        (command_name,repr(cmd), repr(pattern.pattern)))
+
+        extra_params_s = ''.join(str(e) for e in extra_params)
+        if command_name in pattern_setter_payload_limits:
+            payload_regex = pattern_setter_payload_limits[command_name]
+
+        elif command_name in pattern_getter_payload_limits:
+            payload_regex = pattern_getter_payload_limits[command_name]
+        else:
+            raise AttributeError("In response command %s, Unexpected Extra Parameters %s"%(command_name, extra_params_s))
+        
+        
+        logger.error("\tPerhaps the payload of %s didn't match the pattern %s"%(repr(extra_params_s), repr(payload_regex)))
         return None
     else:
         return cmd
 
 
 
-def create_getter_command(target_dest, command_name, source_dest=9, *args):
-    """ Create a getter command to be sent to a clearview"""
-    cmd = create_command(target_dest, command_name, source_dest, *args) 
+def create_report_request(command_name,
+                         target_dest=clearview_specs["bc_id"],
+                         source_dest=clearview_specs["mess_src"],
+                         extra_params=()):
+    """ Create a report request to be sent to a clearview"""
+    cmd = create_command(command_name, target_dest, source_dest, extra_params) 
     if cmd == None:
         return None
-    
-    pattern = pattern_getters[command_name]
+    try:
+        pattern = re.compile(pattern_getters[command_name], re.DOTALL)
+    except KeyError:
+        logger.error("No pattern_getter of %s"%command_name)
+        return None
     match = re.search(pattern, cmd)
     if match is None:
-        logger.error("Getting of '%s' not possible because extra command parameter(s) in"
-                        "'%s' are invalid. Attempted to match %s "%
-                        (command_name,cmd.strip(), pattern))
+        logger.error("Creating report of '%s' not possible because extra command parameter(s) in " 
+                        "%s are invalid. Attempted to match total command %s"%
+                        (command_name,repr(cmd), repr(pattern)))
+
+        extra_params_s = ''.join(str(e) for e in extra_params)
+        if command_name in pattern_response_payload_limits:
+            payload_regex = pattern_response_payload_limits[command_name]
+        else:
+            raise AttributeError("In response command %s, Unexpected Extra Parameters %s"%(command_name, extra_params_s))
+        
+        
+        logger.error("\tPerhaps the payload of %s didn't match the pattern %s"%(repr(extra_params_s), repr(payload_regex)))
         return None
     else:
         return cmd
 
 def match_response(response):
-    """Take any response from a ClearView and return the parsed response and command type"""
+    """Take any report response from a ClearView and return the parsed response and command type"""
 
     for pattern_name, pattern in pattern_responses.items():
         
@@ -367,7 +458,7 @@ def match_response(response):
         if match:
             nt = matched_response_tuples[pattern_name]._make(match.groups())
             return nt, pattern_name
-    print("Unable to match response %s to any patter"% repr(response))
+    logger.warning("Unable to match response %s to any pattern"% repr(response))
     return None
 
 def extract_data(nt, pattern_name):
@@ -380,25 +471,26 @@ def extract_data(nt, pattern_name):
         return None
 
 def main():
-    print()
-    print(create_setter_command(1, "set_address", 8, 4))
-    nt, pname = match_response("\n91LFPAU%\r")
-    print(extract_data(nt, pname))
 
-    # glf = matched_response_tuples["get_lock_format"]
-    # if isinstance(nt, glf):
-    #     print("ISLOCK")
-    # else:
-    #     print("NOTYPE")
-    #     print(type(nt))
-    #     print(type(glf))
-    #     print(nt.__dict__)
-    #     print(glf.__name__)
+    # Form a setter with parameters
+    print(create_setter_command("set_address",extra_params=(5,)).strip())
+
+    # Form a setter without parameters
+    print(create_setter_command("reset_lock").strip())
+
+    # Show a setter failing with out of range payload
+    # print(create_setter_command("set_channel",extra_params=(-1,)))
+
+    # Show a report generation failed with out of range extra params
+    try:
+        create_report_request("get_channel",extra_params=("MyExtraStuff"))
+    except AttributeError:
+        print(" Showing report generation failed with out of range extra params")
+
+    # print(create_report_request("get_address").strip())
+    # nt, pname = match_response("\n91LFPAU%\r")
+
     
-    # print(create_getter_command(1, "get_lock_format", 8))
-    # print(pattern_setters["set_address"])
-    # print(pattern_setters["set_band"])
-    pass
 
 if __name__ == "__main__":
     main()
