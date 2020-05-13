@@ -35,6 +35,7 @@ static size_t expected_size = 0;
 static size_t expected_published = 0;
 static size_t actual_published = 0;
 static int qos_test = 0;
+#define MQTT_PORT 1883
 
 
 
@@ -151,6 +152,19 @@ mqtt_topics mtopics = {
     .rx_stat_variable=status_variable_topic,
     .rx_resp_target=rx_resp_targeted_topic,
 };
+
+#define STATIC_STATUS_FMT \
+"{\"dev\":\"rx\",\
+  \"ver\":\"TODO_VER\",\
+  \"fw\":\"TODO_FW\",\
+  \"nn\":\"%s\",\
+}"
+
+#define STATIC_VARIABLE_FMT \
+"{\"Node\":\"rx\",\
+}"
+
+
 
 
 
@@ -273,7 +287,7 @@ void update_all_mqtt_topics(){
 // http://www.cplusplus.com/reference/cstdio/vsprintf/
 // https://stackoverflow.com/questions/1056411/how-to-pass-variable-number-of-arguments-to-printf-sprintf
 
-
+//Subscribe the 'client' to 'topic'
 static bool mqtt_subscribe_single(esp_mqtt_client_handle_t client, char* topic){
     int msg_id = esp_mqtt_client_subscribe(client,topic , qos_test);
     if (msg_id == -1){
@@ -286,6 +300,7 @@ static bool mqtt_subscribe_single(esp_mqtt_client_handle_t client, char* topic){
     }
 }
 
+//Unsubscribe to 'client' from 'topic'
 static bool mqtt_unsubscribe_single(esp_mqtt_client_handle_t client, char* topic)
 {
     int msg_id = esp_mqtt_client_unsubscribe(client,topic);
@@ -299,6 +314,7 @@ static bool mqtt_unsubscribe_single(esp_mqtt_client_handle_t client, char* topic
     }
 }
 
+//Subscribe to all topics stored in mtopics
 static bool mqtt_subscribe_to_topics(esp_mqtt_client_handle_t client) 
 {
     // Any topic sub fails will result in a true return value
@@ -316,9 +332,10 @@ static bool mqtt_subscribe_to_topics(esp_mqtt_client_handle_t client)
     return !sub_fail;
 }
 
+//Publish to topic with QOS0, no retain
 static void mqtt_publish_to_topic(esp_mqtt_client_handle_t client, char* topic, char* message)
 {   
-    char* tag = "mqtt_publish_to_topic";
+    char* tag = "mqtt_publish_QOS0";
     int topic_len = strlen(topic);
     if (topic_len==0) {
         ESP_LOGE(tag, "Topic name is zero length. ");
@@ -327,6 +344,20 @@ static void mqtt_publish_to_topic(esp_mqtt_client_handle_t client, char* topic, 
     }
 
     esp_mqtt_client_publish(client, topic, message, 0, qos_test, 0);
+}
+
+//Publish to topic with QOS1 and retain it
+static void mqtt_publish_retained(esp_mqtt_client_handle_t client, char* topic, char* message)
+{   
+    char* tag = "mqtt_publish_RETAINED";
+    int topic_len = strlen(topic);
+    if (topic_len==0) {
+        ESP_LOGE(tag, "Topic name is zero length. ");
+        ESP_LOGE(tag, "    ==>unsent message: '%s'", message);
+        return;
+    }
+
+    esp_mqtt_client_publish(client, topic, message, 0, 1, 1);
 }
 
 
@@ -526,7 +557,7 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
             mqtt_subscribe_to_topics(client);
 
             char* conn_msg = "1";
-            mqtt_publish_to_topic(mqtt_client, mtopics.rx_conn,conn_msg);
+            mqtt_publish_retained(mqtt_client, mtopics.rx_conn,conn_msg);
             set_ledc_code(0, led_breathe_slow);
             break;
         case MQTT_EVENT_DISCONNECTED:
@@ -572,10 +603,11 @@ static void mqtt_app_start(const char* mqtt_hostname)
     const esp_mqtt_client_config_t mqtt_cfg = {
         .event_handle = mqtt_event_handler,
         .host = mqtt_hostname,
-        .port = 1883,
+        .port = MQTT_PORT,
         .lwt_topic = mtopics.rx_conn,
         .lwt_msg = "0", //disconnected
-        .lwt_retain = 1
+        .lwt_retain = 1,
+        .keepalive = 10,
     }; 
 
     ESP_LOGI(TAG_TEST, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
