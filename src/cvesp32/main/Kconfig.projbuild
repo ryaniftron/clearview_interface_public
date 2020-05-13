@@ -47,5 +47,17 @@ menu "Example Configuration"
         default "localhost"
         help 
             The IP address of the MQTT Broker
+
+    config FRIENDLY_NAME
+        string "Friendly Name of ESP32"
+        default "MyESP32_Name"
+        help
+            The easy to read name of the ESP32
+
+    config NODE_NUMBER
+        string "Default node number on startup"
+        default "0"
+        help
+            Which node number 0-7 the unit starts on
         
 endmenu
