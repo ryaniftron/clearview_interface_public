@@ -59,7 +59,7 @@ bool active_status = false;
 #define VARIABLE_STATUS_FMT \
 "{\"node_number\":\"%i\"\
 }"
-#define VARIABLE_STATUS_REQ "status_variable?"
+#define VARIABLE_STATUS_REQ "status_var?"
 
 //*******************
 //** Format Topic Defines **
@@ -119,13 +119,13 @@ const char* receiver_response_target_fmt = "%s/%s/resp_target/%s"; //receiver_se
 //respond to these 16-18
 
 //16 All command topic for *ESP* 
-const char* receiver_command_esp_all_topic_fmt = "rx/cv1/cmd_esp_all";
+const char* receiver_command_esp_all_topic_fmt = "%s/%s/cmd_esp_all";
 
 //17 Send command to an *ESP* at a node_number
-const char* receiver_command_esp_node_topic_fmt = "rx/cv1/cmd_esp_node/%d"; // node_number
+const char* receiver_command_esp_node_topic_fmt = "%s/%s/cmd_esp_node/%d"; // node_number
 
 //18 Send command to an *ESP* at a specific receiver
-const char* receiver_command_esp_targeted_topic_fmt = "rx/cv1/cmd_esp_target/%s"; // receiver_serial_num
+const char* receiver_command_esp_targeted_topic_fmt = "%s/%s/cmd_esp_target/%s"; // receiver_serial_num
 
 // A type to hold mqtt_topics that are possible to use
 typedef struct
