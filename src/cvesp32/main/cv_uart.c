@@ -71,10 +71,9 @@ void init_uart() {
 int sendData(const char* logName, const char* data)
 {
     const int len = strlen(data);
-    printf("LEN: %d", len);
     if (len>1){ 
         const int txBytes = uart_write_bytes(UART_NUM, data, len);
-        ESP_LOGI(logName, "Wrote %d bytes: %s", txBytes, data);
+        ESP_LOGD(logName, "Wrote %d bytes: %s", txBytes, data);
         return txBytes;
     } else {
         ESP_LOGW(logName, "Ignoring single byte write of %02x", data[0]);
@@ -92,7 +91,7 @@ int receiveData(const char* logName, uint8_t* data, TickType_t ticks_to_wait)
     const int rxBytes = uart_read_bytes(UART_NUM, data, RX_BUF_SIZE, ticks_to_wait);
     if (rxBytes > 0) {
         data[rxBytes] = 0;
-        ESP_LOGI(logName, "Read %d bytes: '%s'", rxBytes, data);
+        ESP_LOGD(logName, "Read %d bytes: '%s'", rxBytes, data);
         //ESP_LOG_BUFFER_HEXDUMP(RX_TASK_TAG, data, rxBytes, ESP_LOG_INFO);
     } else {
         ESP_LOGI(logName, "No data available in buffer\n");
@@ -101,48 +100,6 @@ int receiveData(const char* logName, uint8_t* data, TickType_t ticks_to_wait)
     return rxBytes;
 }
 
-
-static void tx_task()
-{
-    static const char *TX_TASK_TAG = "TX_TASK";
-    esp_log_level_set(TX_TASK_TAG, ESP_LOG_INFO);
-    while (1) {
-        sendData(TX_TASK_TAG, "Hello world\r\n");
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
-    }
-}
-static void tx_task2()
-{
-    static const char *TX_TASK_TAG = "TX_TASK2";
-    esp_log_level_set(TX_TASK_TAG, ESP_LOG_INFO);
-    while (1) {
-        sendData(TX_TASK_TAG, "Hello world2\r\n");
-        vTaskDelay(5000 / portTICK_PERIOD_MS);
-    }
-}
-
-
-
-
-static void rx_task()
-{
-    static const char *RX_TASK_TAG = "RX_TASK";
-    esp_log_level_set(RX_TASK_TAG, ESP_LOG_INFO);
-    uint8_t* data = (uint8_t*) malloc(RX_BUF_SIZE+1);
-    while (1) {
-        size_t * cached_data_len;
-        ESP_ERROR_CHECK(uart_get_buffered_data_len(UART_NUM, (size_t*)&cached_data_len));
-        const int rxBytes = uart_read_bytes(UART_NUM, data, RX_BUF_SIZE, 1000 / portTICK_RATE_MS);
-        if (rxBytes > 0) {
-            data[rxBytes] = 0;
-            ESP_LOGI(RX_TASK_TAG, "Read %d bytes: '%s'", rxBytes, data);
-            //ESP_LOG_BUFFER_HEXDUMP(RX_TASK_TAG, data, rxBytes, ESP_LOG_INFO);
-        } else {
-            ESP_LOGI(RX_TASK_TAG, "No data available in buffer\n");
-        }
-    }
-    free(data);
-}
 
 void cvuart_send_command(const char* data)
 {
