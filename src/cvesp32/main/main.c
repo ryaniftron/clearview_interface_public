@@ -97,6 +97,8 @@ static const int CONNECTED_BIT = BIT0;
 
 static const char *TAG = "cv-esp32";
 
+#define SKIP_SOFTAP
+
 bool switch_to_sta = false;
 
 /* FreeRTOS event group to signal when we are connected*/
@@ -598,8 +600,10 @@ void app_main(void)
 	//Initialize NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-      ESP_ERROR_CHECK(nvs_flash_erase());
-      ret = nvs_flash_init();
+        // NVS partition was truncated and needs to be erased
+        // Retry nvs_flash_init
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
 
@@ -617,12 +621,20 @@ void app_main(void)
         run_cv_uart_test_task();
     #else
         //Start Wifi
-        demo_sequential_wifi(chipid, UNIQUE_ID_LENGTH); //this returns on successful connection
-
+        #ifdef SKIP_SOFTAP
+            strcpy(desired_ap_ssid, AP_TARGET_SSID);
+            strcpy(desired_ap_pass, AP_TARGET_PASS);
+            strcpy(desired_mqtt_broker_ip, CONFIG_BROKER_IP);
+            strcpy(desired_friendly_name, CONFIG_FRIENDLY_NAME);
+            //strcpy(node_number, CONFIG_NODE_NUMBER);
+            initialise_sta_wifi(chipid);
+        #else
+            demo_sequential_wifi(chipid, UNIQUE_ID_LENGTH); //this returns on successful connection
+        #endif //SKIP_SOFTAP
         //only after in sequential wifi do we start mqtt. Give it some time
         vTaskDelay(2000 / portTICK_PERIOD_MS);
         cv_mqtt_init(chipid, UNIQUE_ID_LENGTH, desired_mqtt_broker_ip);
-    #endif
+    #endif // UART_TEST_LOOP
     
 
 }
