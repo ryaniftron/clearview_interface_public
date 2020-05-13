@@ -21,6 +21,7 @@ from collections import namedtuple
 import logging
 from . import sim
 from . import comspecs
+from . import formatter
 
 clearview_specs = comspecs.clearview_specs
 
@@ -128,35 +129,35 @@ class ClearView:
 
         num_tries = self._get_robust_retries(mode="send", robust=robust)
 
-        if 0 <= rcvr_target <= 8 and 1 <= new_target <= 8:
-            cmd = self._format_write_command(int(rcvr_target), "ADS" + str(new_target))
-            if self._serial is None:
-                return cmd
+        
+        cmd = self._format_setter_command("set_address",
+                                          target_dest=rcvr_target, 
+                                          extra_params = (new_target,))
+        if self._serial is None:
+            return cmd
 
-            while num_tries > 0:
-                self._write_serial(cmd)
+        while num_tries > 0:
+            self._write_serial(cmd)
 
-                # If successful, expect this to NOT return an address because the receiver
-                # is no longer at that address. This does not guarantee success because the
-                # receiver could not be exist on either the old or new channel
-                if robust:
-                    rx_no_longer_old_addr = not (self.get_address(rcvr_target=rcvr_target) is None)
+            # If successful, expect this to NOT return an address because the receiver
+            # is no longer at that address. This does not guarantee success because the
+            # receiver could not be exist on either the old or new channel
+            if robust:
+                rx_no_longer_old_addr = not (self.get_address(rcvr_target=rcvr_target) is None)
 
-                    # If successful, expect this to return an address. This is the more important
-                    # test of success
-                    rx_is_now_new_addr = (self.get_address(rcvr_target=new_target) is not None)
+                # If successful, expect this to return an address. This is the more important
+                # test of success
+                rx_is_now_new_addr = (self.get_address(rcvr_target=new_target) is not None)
 
-                    if rx_no_longer_old_addr and rx_is_now_new_addr:
-                        return True
-                    else:
-                        self.logger.warning("Failed set_address with %s tries left", num_tries)
-                        num_tries = num_tries - 1
+                if rx_no_longer_old_addr and rx_is_now_new_addr:
+                    return True
                 else:
-                    return True     # was in robust mode. assume it worked
-            return False
-        else:
-            self.logger.error("set_address. Receiver %s out of range" % rcvr_target)
-            return -1
+                    self.logger.warning("Failed set_address with %s tries left", num_tries)
+                    num_tries = num_tries - 1
+            else:
+                return True     # was in robust mode. assume it worked
+            
+
 
     def set_antenna_mode(self, rcvr_target, antenna_mode):
         """AN => Set antenna mode between legacy, L,R,CV
@@ -164,53 +165,55 @@ class ClearView:
         Robust Mode: Not supported
         """
 
-        if 0 <= antenna_mode <= 3:
-            cmd = self._format_write_command(str(rcvr_target), "AN" + str(antenna_mode))
-            self._write_serial(cmd)
-        else:
-            self.logger.error("Error. Unsupported antenna mode of %s" % antenna_mode)
+        cmd = self._format_setter_command("set_antenna_mode",
+                                            target_dest=rcvr_target, 
+                                            extra_params = (antenna_mode,))
+        return self._write_serial(cmd)
+   
 
     def set_band_channel(self, rcvr_target, band_channel, robust = False):
         """BC = > Sets band channel. 0-7"""
 
         num_tries = self._get_robust_retries(mode="send", robust=robust)
 
-        if 0 <= band_channel <= 7:
-            while num_tries > 0:
-                sleep(0.25)
-                self._clear_serial_in_buffer()
-                cmd = self._format_write_command(str(rcvr_target), "BC" + str(band_channel))
-                
-                if self._serial is None:
-                    return cmd
 
-                self._write_serial(cmd)
-                sleep(0.25)
-                if robust:
-                    bc = self.get_band_channel(rcvr_target=rcvr_target)
-                    if bc is not None:
-                        if bc.channel == band_channel:
-                            return True
-                    else:
-                        self.logger.warning("Failed set_band_channel with %s tries left", num_tries)
-                    num_tries = num_tries - 1
+        while num_tries > 0:
+            sleep(0.25)
+            self._clear_serial_in_buffer()
+            cmd = self._format_setter_command("set_channel",
+                                              target_dest=rcvr_target, 
+                                              extra_params = (band_channel,))
+            
+            if self._serial is None:
+                return cmd
+
+            self._write_serial(cmd)
+            sleep(0.25)
+            if robust:
+                bc = self.get_band_channel(rcvr_target=rcvr_target)
+                if bc is not None:
+                    if bc.channel == band_channel:
+                        return True
                 else:
-                    return True     # not robust, no need query. just return true
-            return False
+                    self.logger.warning("Failed set_band_channel with %s tries left", num_tries)
+                num_tries = num_tries - 1
+            else:
+                return True     # not robust, no need query. just return true
+        return False
 
-        else:
-            self.logger.error("Error. set_band_channel target of %s is out of range" % band_channel)
+        
 
     def set_band_group(self, rcvr_target, band_group):
         """BG = > Sets band. 0-9,a-f"""
-
-        # TODO add check if 0-9 and a-f
-        cmd = self._format_write_command(str(rcvr_target), "BG" + str(band_group))
+        cmd = self._format_setter_command("set_band",
+                                           target_dest=rcvr_target, 
+                                           extra_params = (band_group,))
         return self._write_serial(cmd)
 
     def set_custom_frequency(self, rcvr_target, frequency):
-        """#FR = > Sets frequency of receiver and creates custom frequency if needed"""
+        """#FR = > Sets frequency of receiver by finding band and channel"""
         # This command does not yet work in ClearView v1.20
+        
         min_freq = comspecs.cv_device_limits["min_frequency"]
         max_freq = comspecs.cv_device_limits["max_frequency"]
 
@@ -225,9 +228,9 @@ class ClearView:
 
                 #channel number
                 channel_command = self.set_band_channel(rcvr_target=rcvr_target,
-                                                   band_channel=channel_num)                
+                                                        band_channel=channel_num)                
                 band_command = self.set_band_group(rcvr_target=rcvr_target,
-                                              band_group=cv_band)
+                                                   band_group=cv_band)
             else:
 
                 # TODO when CV supports any frequency, not just in the band/channel charts, just have this throw
@@ -256,44 +259,59 @@ class ClearView:
         avail_modes = ["live", "spectrum", "menu"]
         if mode in avail_modes:
             if mode == "live":
-                cmd = self._format_write_command(str(rcvr_target), "MDL")
+                modeK = 'L'
             elif mode == "spectrum":
-                cmd = self._format_write_command(str(rcvr_target), "MDS")
+                modeK = 'S'
             elif mode == "menu":
-                cmd = self._format_write_command(str(rcvr_target), "MDM")
+                modeK = 'M'
             else:
-                print("Errror. How tf did I get here?")
+                raise Exception
+            cmd = self._format_setter_command("set_video_mode",
+                                              target_dest=rcvr_target, 
+                                              extra_params = (modeK,))
             return self._write_serial(cmd)
         else:
-            print("Error. unsupported video mode")
+            self.logger.error("Unsupported video mode of %s"%mode)
 
     def show_osd(self, rcvr_target):
         """ ODE shows/enables the osd"""
 
-        cmd = self._format_write_command(str(rcvr_target), "ODE")
+        cmd = self._format_setter_command("set_osd_visibility",
+                                          target_dest=rcvr_target, 
+                                          extra_params = ("E",))   # Enable
         return self._write_serial(cmd)
 
     def hide_osd(self, rcvr_target):
         """ODD hides/disables the osd"""
 
-        cmd = self._format_write_command(str(rcvr_target), "ODD")
+        cmd = self._format_setter_command("set_osd_visibility",
+                                    target_dest=rcvr_target, 
+                                    extra_params = ("D",))    # Disable
         return self._write_serial(cmd)
 
     def set_osd_at_predefined_position(self, rcvr_target, desired_position):
-        """Set OSD at integer position"""
-        if 0 <= desired_position <= 7:
-            cmd = self._format_write_command(str(rcvr_target), "ODP" + str(desired_position))
-            self._write_serial(cmd)
+        """Set OSD at integer position, 0-7"""
+        
+        cmd = self._format_setter_command("set_osd_position",
+                                target_dest=rcvr_target, 
+                                extra_params = (desired_position,)) 
+        return self._write_serial(cmd)
 
     def set_osd_string(self, rcvr_target, osd_str):
         """ ID => Sets OSD string"""
-        osd_str_max_sz = 12
-        osd_str = osd_str[:osd_str_max_sz]
-        cmd = self._format_write_command(str(rcvr_target), "ID" + str(osd_str))
+        osd_str_cut = osd_str[:comspecs.cv_device_limits['max_id_length']]
+
+        if osd_str_cut != osd_str:
+            self.logger.warning("Truncating osd_string from '%s' to '%s'"%(osd_str,osd_str_cut))
+        
+        cmd = self._format_setter_command("set_id",
+                                target_dest=rcvr_target, 
+                                extra_params = (osd_str_cut,)) 
         return self._write_serial(cmd)
 
     def set_osd_string_positional(self, rcvr_target, starting_index, osd_str):
-        """ IDP => Sets OSD positional string"""
+        """ IDP => Sets OSD positional string, starting at a certain character in the OSD"""
+        raise NotImplementedError
         osd_str_max_len = 4
 
         print("Before cut: ", osd_str, "with supplied length of ", len(osd_str), " and max total length of ", osd_str_max_len)
@@ -305,7 +323,7 @@ class ClearView:
 
         old_osd_string = ''.join([char for char in '*'])
         new_osd_string = new_osd_string.replace(old_osd_string,new_osd_string)
-        raise NotImplementedError
+        
   
 
     def reboot(self, rcvr_target):
@@ -313,7 +331,7 @@ class ClearView:
         # This command does not yet work in ClearView v1.20
         raise NotImplementedError
 
-        # cmd = self._format_write_command(str(rcvr_target),"RBR")
+
         # self._write_serial(cmd)
         # sleep(0.1)
         # self._write_serial(cmd)
@@ -321,38 +339,44 @@ class ClearView:
     def reset_lock(self, rcvr_target):
         """RL => Reset Lock """
 
-        cmd = self._format_write_command(str(rcvr_target), "RL")
+        cmd = self._format_setter_command("reset_lock",
+                                target_dest=rcvr_target)   
         return self._write_serial(cmd)
 
     def set_video_format(self, rcvr_target, video_format):
         """VF => Temporary Set video format.
-        options are 'N' (ntsc),'P' (pal),'A' (auto)
+        video_format = [N or NTSC , P or PAL , A or AUTO]
         """
 
         desired_video_format = video_format.lower()
         if desired_video_format == "n" or desired_video_format == "ntsc":
-            cmd = self._format_write_command(str(rcvr_target), "VFN")
+            vf = 'N'
         elif desired_video_format == "p" or desired_video_format == "pal":
-            cmd = self._format_write_command(str(rcvr_target), "VFP")
+            vf = 'P'
         elif desired_video_format == "a" or desired_video_format == "auto":
-            cmd = self._format_write_command(str(rcvr_target), "VFA")
+            vf = 'A'
         else:
-            print("Error. Invalid video format in set_temporary_video_format of ", desired_video_format)
+            self.logger.error("Error. Invalid video format in set_temporary_video_format of ", desired_video_format)
             return None
+
+        cmd = self._format_setter_command("set_video_format",
+                        target_dest=rcvr_target, 
+                        extra_params = (vf,)) 
         return self._write_serial(cmd)
 
     def move_cursor(self, rcvr_target, desired_move):
-        # This command works but needs written out here
-        raise NotImplementedError
-
-        # TODO Use the _move_cursor() function
+        """ WP => Move cursor [+-EPMX]"""
+        cmd = self._format_setter_command("move_cursor",
+                        target_dest=rcvr_target, 
+                        extra_params = (desired_move,)) 
+        return self._write_serial(cmd)
 
     def set_temporary_osd_string(self, rcvr_target, osd_str):
         """  TID => Temporary set OSD string"""
         # This command does not yet work in ClearView v1.20
         raise NotImplementedError
 
-        # cmd = self._format_write_command(str(rcvr_target),"TID" + str(osd_str))
+        # cmd = TODO
         # self._write_serial(cmd)
 
     def set_temporary_video_format(self, rcvr_target, video_format):
@@ -362,13 +386,13 @@ class ClearView:
 
         # desired_video_format = video_format.lower()
         # if desired_video_format == "n" or desired_video_format == "ntsc":
-        #     cmd = self._format_write_command(str(rcvr_target),"TVFN")
+        #     
         #     self._write_serial(cmd)
         # elif desired_video_format == "p" or desired_video_format == "pal":
-        #     cmd = self._format_write_command(str(rcvr_target),"TVFP")
+        #    
         #     self._write_serial(cmd)
         # elif desired_video_format == "a" or desired_video_format == "auto":
-        #     cmd = self._format_write_command(str(rcvr_target),"TVFA")
+        #     
         #     self._write_serial(cmd)
         # else:
         #     print("Error. Invalid video format in set_temporary_video_format of ",desired_video_format)
@@ -378,22 +402,30 @@ class ClearView:
 
         Query: No query available
         """
-        osd_str_max_sz = 50
-        osd_str = osd_str[:osd_str_max_sz]
-        cmd = self._format_write_command(str(rcvr_target), "UM" + str(osd_str))
+        osd_str_cut = osd_str[:comspecs.cv_device_limits['max_um_length']]
+
+        if osd_str_cut != osd_str:
+            self.logger.warning("Truncating user message string from '%s' to '%s'"%(osd_str,osd_str_cut))
+        
+        cmd = self._format_setter_command("set_user_message",
+                                target_dest=rcvr_target, 
+                                extra_params = (osd_str_cut,))
+
         return self._write_serial(cmd)
 
     def send_report_cstm(self, rcvr_target, custom_command=None):
         """ #RP XX => Custom report"""
+        
+        # TODO. This knows the expected format.
+        # Add a parameter to try parsing the return value
+        # It knows which report it's expecting
 
         while True:
             #self._clear_serial_in_buffer()
             if custom_command is not None:
-                cmd = self._format_write_command(str(rcvr_target),
-                                                 custom_command)
+                cmd = TODO + custom_command
             else:
-                cmd = self._format_write_command(str(rcvr_target),
-                                                 input('Enter a command'))
+                cmd = TODO +  input('Enter a command')
             self._write_serial(cmd)
             # sleep(0.05)
             report = self._read_until_termchar()
@@ -437,25 +469,20 @@ class ClearView:
 
     def get_address(self, rcvr_target):
         """RPAD => Get the address of a unit if it's connected. Only useful to see what units are connected to the bus
-        Returns namedtuple of receiver address with fields requestor_id, rx_address, and replied_address"""
+        """
         # TODO do I try to recatch serial exceptions here?
-        report_name = "RPAD"
-        pattern = r'\n([0-9])([0-9])AD([1-8])%\r'   # TODO replace hardcoded values with variables
-        reply_named_tuple = namedtuple('address_report', ['requestor_id', 'rx_address', 'replied_address'])
+        report_name = "get_address"
+        return self._run_report(rcvr_target, report_name)
 
-        return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
-
-    def get_band_channel(self, rcvr_target):
-        """RPBC => Get the band's channel number
-        Returns namedtuple of receiver band channel with fields requestor_id, rx_address, and channel"""
+    def get_channel(self, rcvr_target):
+        """RPBC => Get the channel number
+        """
 
         # TODO do I try to recatch serial exceptions here?
-        report_name = "RPBC"
-        pattern = r'\n([0-9])([0-9])BC([0-7])%\r'   # TODO replace hardcoded values with variables
-        reply_named_tuple = namedtuple('band_channel_report', ['requestor_id', 'rx_address', 'channel'])
-        return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
+        report_name = "get_channel"
+        return self._run_report(rcvr_target, report_name)
 
-    def get_band_group(self, rcvr_target):
+    def get_band(self, rcvr_target):
         """RPBG => Get the band group
         Returns namedtuple of receiver band with fields requestor_id, rx_address, and band_index
 
@@ -463,98 +490,74 @@ class ClearView:
         Change variable from band_index to band_name"""
 
         # TODO do I try to recatch serial exceptions here?
-        report_name = "RPBG"
-        pattern = r'\n([0-9])([0-9])BG([1-8,a-f])%\r'   # TODO replace hardcoded values with variables
-        reply_named_tuple = namedtuple('band_group_report', ['requestor_id', 'rx_address', 'band_index'])
-        return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
+        report_name = "get_band"
+        return self._run_report(rcvr_target, report_name)
 
     def get_frequency(self, rcvr_target):
         """RPFR => Get the frequency
-        Returns namedtuple of receiver band channel with fields requestor_id, rx_address, and channel"""
+        """
 
         # TODO do I try to recatch serial exceptions here?
-        report_name = "RPFR"
-        n_digits_frequency = 4
-        pattern = r'\n([0-9])([0-9])FR([0-9]{4})%\r'#%n_digits_frequency  # TODO replace hardcoded values with variables
-        reply_named_tuple = namedtuple('frequency_report', ['requestor_id', 'rx_address', 'frequency'])
-        return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
+        report_name = "get_frequency"
+        return self._run_report(rcvr_target, report_name)
 
     def get_osd_string(self, rcvr_target):
         """ RPID => Get the osd string, also called the "ID". Not to be confused with receiver address.
-        Returns a namedtuple of receiver osd string with fields requestor_id, rx_address, and osd_string
         """
         # TODO do I try to recatch serial exceptions here?
-        report_name = "RPID"
-        pattern = r'\n([0-9])([0-9])ID(.{0,12})%\r'  # TODO replace hardcoded values with variables
-        reply_named_tuple = namedtuple('osd_string_report', ['requestor_id', 'rx_address', 'osd_string'])
-        return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
+        report_name = "get_osd_string"
+        return self._run_report(rcvr_target, report_name)
 
     def get_lock_format(self, rcvr_target):
         """ RPLF => Get the lock format. Used to tell if receiver is locked to the video signal
-        Returns a namedtuple of receiver lock format with fields requestor_id, rx_address, chosen_camera_type, forced_or_auto,locked_or_unlocked
         """
         # TODO do I try to recatch serial exceptions here?
-        report_name = "RPLF"
-        pattern = r'\n([0-9])([0-9])LF([NP])([FA])([LU])%\r'  #TODO replace hardcoded values with variables
-        reply_named_tuple = namedtuple('osd_lock_report', ['requestor_id', 'rx_address', 'chosen_camera_type', 'forced_or_auto', 'locked_or_unlocked'])
-        return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
+        report_name = "get_lock_format"
+        return self._run_report(rcvr_target, report_name)
 
     def get_mode(self, rcvr_target):
         """ RPMD => Get the mode : live, menu, or spectrum analyzer
         Returns a namedtuple of receiver mode with fields requestor_id, rx_address, mode
         """
         # TODO do I try to recatch serial exceptions here?
-        report_name = "RPMD"
-        pattern = r'\n([0-9])([0-9])MD([LMS])%\r'  # TODO replace hardcoded values with variables
-        reply_named_tuple = namedtuple('osd_mode_report', ['requestor_id', 'rx_address', 'mode'])
-        return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
+        report_name = "get_mode"
+        return self._run_report(rcvr_target, report_name)
 
     def get_model_version(self, rcvr_target):
         """ RPMV => Get the model version for hardware and software versions
-        Returns a namedtuple of model_version with fields requestor_id, rx_address, hardware_version, and software_version_major, software_version_minor
         """
         # TODO do I try to recatch serial exceptions here?
-        report_name = "RPMV"
-        pattern = r'\n([0-9])([0-9])MV (CV[0-9].[0-9])-V([0-9]{2}.[0-9]{2})([A-Z]:[A-Z])%\r'  # TODO replace hardcoded values with variables
-        reply_named_tuple = namedtuple('model_version_report', ['requestor_id', 'rx_address', 'hardware_version', 'software_version_major', 'software_version_minor'])
-        return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
+        report_name = "get_model_version"
+        return self._run_report(rcvr_target, report_name)
 
     def get_rssi(self, rcvr_target):
         """ RPRS => Get the rssi of each antenna
-        Returns a namedtuple of rssi with fields requestor_id, rx_address, TODO,TODO,TODO,TODO
         """
         # TODO do I try to recatch serial exceptions here?
-        report_name = "RPRS"
-        pattern = r'\n([0-9])([0-9])RS([0-9]+),([0-9]+),([0-9]+),([0-9]+)%\r'  # TODO replace hardcoded values with variables
-        reply_named_tuple = namedtuple('rssi_report', ['requestor_id', 'rx_address', 'TODO_a', 'TODO_b', 'TODO_c', 'TODO_d'])
-        return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
+        report_name = "get_rssi"
+        return self._run_report(rcvr_target, report_name)
 
     def get_osd_state(self, rcvr_target):
         """ RPOD => Get if OSD is enabled or disabled
-        Returns a namedtuple of osd_state with fields requestor_id, rx_address, osd_state
         """
         # TODO do I try to recatch serial exceptions here?
-        report_name = "RPOD"
-        pattern =r'\n([0-9])([0-9])OD([ED])%\r'  # TODO replace hardcoded values with variables
-        reply_named_tuple = namedtuple('osd_state_report', ['requestor_id', 'rx_address', 'osd_state'])
-        return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
+        report_name = "get_osd_state"
+        return self._run_report(rcvr_target, report_name) 
 
     def get_video_format(self, rcvr_target):
         """ RPVF => Get Video Format (pal,ntsc,auto)
-            Returns a namedtuple of video_format with fields requestor_id, rx_address, video_format
         """
         # TODO do I try to recatch serial exceptions here?
-        report_name = "RPVF"
+        report_name = "get_video_format"
 
-        pattern = r'\n([0-9])([0-9])VF([NAP])%\r'  # TODO replace hardcoded values with variables
-        reply_named_tuple = namedtuple('video_format_report', ['requestor_id', 'rx_address', 'video_format'])
-        return self._run_report(rcvr_target, report_name, pattern, reply_named_tuple)
+        return self._run_report(rcvr_target, report_name)
 
 
     def get_report_cstm_by_input(self, rcvr_target): #RP XX => Custom report
         while True:
             self._clear_serial_in_buffer()
-            cmd = self._format_write_command(str(rcvr_target),"RP" + input('Enter a report type:'))
+            raise NotImplementedError
+            #,"RP" + input('Enter a report type:'))
             self._write_serial(cmd)
             sleep(0.05)
             report = self._read_until_termchar()
@@ -606,16 +609,7 @@ class ClearView:
             return -1
         return True                 # Success
 
-    def _run_command(self,rcvr_target,message ):
-        "Check rcvr_target range, format the command, and send it"
-        if self._check_within_range(val=rcvr_target,min=0,max=8) is False: 
-            self.logger.critical("Error. rcvr_target id of %s is not valid.",rcvr_target)
-            return None
-
-        cmd = self._format_write_command(str(rcvr_target),message)
-        self._write_serial(cmd)
-
-    def _run_report(self, rcvr_target, report_name, pattern, reply_named_tuple):
+    def _run_report(self, rcvr_target, report_name):
         """ 
         _run_report is hidden. It's to be used to send reports and parse responses
         
@@ -632,14 +626,23 @@ class ClearView:
         Exception:
             TODO
         """
-        if self._check_within_range(val=rcvr_target,min=0,max=8) is False:
-            self.logger.critical("Error. rcvr_target id of %s is not valid.",rcvr_target)
-            return None
-        cmd = self._format_write_command(str(rcvr_target),report_name)
+        cmd = self._format_report_request(report_name,
+                                          target_dest=rcvr_target)
         
         if self._serial is None: # Return the formatted command
-            return (cmd, report_name, pattern, reply_named_tuple)
+            return cmd
 
+        raise NotImplementedError # The code below hasn't been updated with the new formatter
+        # Because the expected reply is known based on the formatter, grab it here
+        # If no reply, bail out
+
+        # Otherwise, match the reply on a regex pattern from the new formatter
+        #   If matched, form it into the nT and return it
+
+        # if no match,try running the reply on all the possible replies
+        #   if match, give warning that somethings' not setup but return nT
+        # Otherwise,  return None with a warning that the reply isn't parsable
+        
         self._clear_serial_in_buffer()
         
         self._write_serial(cmd)
@@ -670,7 +673,7 @@ class ClearView:
     # ###########################
 
     def _send_custom_command(self,rcvr_target,cstm_cmd):
-        cmd = self._format_write_command(str(rcvr_target),cstm_cmd)
+        cmd = self.TODO
         self._write_serial(cmd)
 
     def _read_serial_blocking(self,line_ending_char): #waits for data to come in as long as it takes
@@ -682,11 +685,32 @@ class ClearView:
                 return rv #ignore the line ending byte
             rv += ch.decode() #push the bytes onto a string by decoding and appending
 
-    def _format_write_command(self,rcvr_target,message): #formats sending commands with starting chars, addresses, csum, message and ending char. Arguments may be strings or ints
-        return self.msg_start_char + str(rcvr_target) + str(self.mess_src) + str(message) + self.csum + self.msg_end_char
+    def _format_setter_command(self, 
+                               command_name,
+                               target_dest=clearview_specs["bc_id"],
+                               source_dest=clearview_specs["mess_src"],
+                               extra_params=()):
+        return formatter.create_setter_command(
+            command_name=command_name,
+            target_dest=target_dest,
+            source_dest=source_dest,
+            extra_params=extra_params
+        )
+
+    def _format_report_request(self, 
+                               command_name,
+                               target_dest=clearview_specs["bc_id"],
+                               source_dest=clearview_specs["mess_src"],
+                               extra_params=()):
+        return formatter.create_report_request(
+            command_name=command_name,
+            target_dest=target_dest,
+            source_dest=source_dest,
+            extra_params=extra_params
+        )
 
     def _move_cursor(self,rcvr_target,direction):
-        cmd = self._format_write_command(str(rcvr_target),"WP"+direction)
+        cmd = TODO
         self._write_serial(cmd)
     
     def _print(self,*args,**kwargs):
