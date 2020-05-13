@@ -35,8 +35,8 @@ static size_t expected_size = 0;
 static size_t expected_published = 0;
 static size_t actual_published = 0;
 static int qos_test = 0;
-#define MQTT_PORT 1883
-
+#define CVMQTT_PORT 1883 
+#define CVMQTT_KEEPALIVE 10  //10 seconds before it sends a keepalive msg
 
 
 // CV Defines
@@ -603,11 +603,11 @@ static void mqtt_app_start(const char* mqtt_hostname)
     const esp_mqtt_client_config_t mqtt_cfg = {
         .event_handle = mqtt_event_handler,
         .host = mqtt_hostname,
-        .port = MQTT_PORT,
+        .port = CVMQTT_PORT,
         .lwt_topic = mtopics.rx_conn,
         .lwt_msg = "0", //disconnected
         .lwt_retain = 1,
-        .keepalive = 10,
+        .keepalive = CVMQTT_KEEPALIVE,
     }; 
 
     ESP_LOGI(TAG_TEST, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
