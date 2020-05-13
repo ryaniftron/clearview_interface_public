@@ -71,9 +71,15 @@ void init_uart() {
 int sendData(const char* logName, const char* data)
 {
     const int len = strlen(data);
-    const int txBytes = uart_write_bytes(UART_NUM, data, len);
-    ESP_LOGI(logName, "Wrote %d bytes: %s", txBytes, data);
-    return txBytes;
+    printf("LEN: %d", len);
+    if (len>1){ 
+        const int txBytes = uart_write_bytes(UART_NUM, data, len);
+        ESP_LOGI(logName, "Wrote %d bytes: %s", txBytes, data);
+        return txBytes;
+    } else {
+        ESP_LOGW(logName, "Ignoring single byte write of %02x", data[0]);
+        return 0;
+    }
 }
 
 int receiveData(const char* logName, uint8_t* data, TickType_t ticks_to_wait)
