@@ -25,7 +25,7 @@
 #include "cv_uart.c" 
 #include "cv_ledc.c"
 
-static const char *TAG_TEST = "PUBLISH_TEST";
+static const char *TAG_TEST = "CV_MQTT";
 static EventGroupHandle_t mqtt_event_group;
 const static int CONNECTED_BIT2 = BIT0;
 static esp_mqtt_client_handle_t mqtt_client = NULL;
@@ -48,9 +48,25 @@ bool active_status = false;
 # define MAX_TOPIC_LEN 75
 # define MAX_TOPIC_HEADER_LEN 10 // should encompass "/rx/cv1/" . room for null chars is not needed
 
+#define STATIC_STATUS_FMT \
+"{\"dev\":\"rx\",\
+  \"ver\":\"TODO_VER\",\
+  \"fw\":\"TODO_FW\",\
+  \"nn\":\"%s\"\
+}"
+#define STATIC_STATUS_REQ "status_static?"
+
+#define VARIABLE_STATUS_FMT \
+"{\"node_number\":\"%i\"\
+}"
+#define VARIABLE_STATUS_REQ "status_variable?"
+
 //*******************
 //** Format Topic Defines **
 //*******************
+
+
+//Listen to these #1-#9
 
 //1 Send command to all receivers
 const char* receiver_command_all_topic_fmt = "%s/%s/cmd_all";
@@ -80,7 +96,7 @@ const char* receiver_request_node_active_topic_fmt = "%s/%s/req_node_active/%d";
 //9 Make a request to a specific receiver
 const char* receiver_request_targeted_topic_fmt = "%s/%s/req_target/%s";//,"receiver_serial_num")
 
-//        # Subscribe Topics
+//send on these #10-#15
 
 //10 Response for all
 const char* receiver_response_all_topic_fmt = "%s/%s/resp_all";
@@ -100,6 +116,18 @@ const char* status_variable_fmt = "status_variable/%s"; // receiver_serial_numbe
 //15
 const char* receiver_response_target_fmt = "%s/%s/resp_target/%s"; //receiver_serial_number
 
+//respond to these 16-18
+
+//16 All command topic for *ESP* 
+const char* receiver_command_esp_all_topic_fmt = "rx/cv1/cmd_esp_all";
+
+//17 Send command to an *ESP* at a node_number
+const char* receiver_command_esp_node_topic_fmt = "rx/cv1/cmd_esp_node/%d"; // node_number
+
+//18 Send command to an *ESP* at a specific receiver
+const char* receiver_command_esp_targeted_topic_fmt = "rx/cv1/cmd_esp_target/%s"; // receiver_serial_num
+
+// A type to hold mqtt_topics that are possible to use
 typedef struct
 {
     char* rx_cmd_all; //1
@@ -117,9 +145,13 @@ typedef struct
     char* rx_stat_static;   //13
     char* rx_stat_variable; //14
     char* rx_resp_target; //15
+    char* rx_cmd_esp_all; //16
+    char* rx_cmd_esp_node; //17
+    char* rx_cmd_esp_targeted; //18
 } mqtt_topics;
 
-char rx_cmd_all_topic[MAX_TOPIC_LEN];
+//Allocate memory for the topic names
+char rx_cmd_all_topic[MAX_TOPIC_LEN]; //1
 char rx_cmd_node_topic[MAX_TOPIC_LEN];
 char rx_cmd_targeted_topic[MAX_TOPIC_LEN];
 char rx_kick_topic[MAX_TOPIC_LEN];
@@ -134,9 +166,13 @@ char rx_conn_topic[MAX_TOPIC_LEN];
 char status_static_topic[MAX_TOPIC_LEN];
 char status_variable_topic[MAX_TOPIC_LEN];
 char rx_resp_targeted_topic[MAX_TOPIC_LEN];
+char rx_cmd_esp_all_topic[MAX_TOPIC_LEN];
+char rx_cmd_esp_node_topic[MAX_TOPIC_LEN];
+char rx_cmd_esp_targeted_topic[MAX_TOPIC_LEN]; //18
 
+//Initialize the topics used in the struct
 mqtt_topics mtopics = {
-    .rx_cmd_all=rx_cmd_all_topic,
+    .rx_cmd_all=rx_cmd_all_topic, //1
     .rx_cmd_node=rx_cmd_node_topic,
     .rx_cmd_targeted=rx_cmd_targeted_topic,
     .rx_kick=rx_kick_topic,
@@ -150,24 +186,11 @@ mqtt_topics mtopics = {
     .rx_conn=rx_conn_topic,
     .rx_stat_static=status_static_topic,
     .rx_stat_variable=status_variable_topic,
-    .rx_resp_target=rx_resp_targeted_topic,
+    .rx_resp_target=rx_resp_targeted_topic, //15
+    .rx_cmd_esp_all=rx_cmd_esp_all_topic, //16
+    .rx_cmd_esp_node=rx_cmd_esp_node_topic,
+    .rx_cmd_esp_targeted=rx_cmd_esp_targeted_topic, //18
 };
-
-#define STATIC_STATUS_FMT \
-"{\"dev\":\"rx\",\
-  \"ver\":\"TODO_VER\",\
-  \"fw\":\"TODO_FW\",\
-  \"nn\":\"%s\",\
-}"
-
-#define STATIC_VARIABLE_FMT \
-"{\"Node\":\"rx\",\
-}"
-
-
-
-
-
 
 
 void update_mqtt_pub_node_topics()
@@ -199,6 +222,13 @@ void update_mqtt_sub_node_topics()
     snprintf(mtopics.rx_req_node_active,
             MAX_TOPIC_LEN,
             receiver_request_node_active_topic_fmt,
+            DEVICE_TYPE,
+            PROTOCOL_VERSION,
+            node_number);
+            
+    snprintf(mtopics.rx_cmd_esp_node,
+            MAX_TOPIC_LEN,
+            receiver_command_esp_node_topic_fmt,
             DEVICE_TYPE,
             PROTOCOL_VERSION,
             node_number);
@@ -275,6 +305,21 @@ void update_mqtt_sub_topics()
             DEVICE_TYPE,
             PROTOCOL_VERSION,
             device_name);
+    
+    //todo1
+    snprintf(mtopics.rx_cmd_esp_all,
+            MAX_TOPIC_LEN,
+            receiver_command_esp_all_topic_fmt,
+            DEVICE_TYPE,
+            PROTOCOL_VERSION,
+            device_name);
+    //todo2
+    snprintf(mtopics.rx_cmd_esp_targeted,
+            MAX_TOPIC_LEN,
+            receiver_command_esp_targeted_topic_fmt,
+            DEVICE_TYPE,
+            PROTOCOL_VERSION,
+            device_name);
 }
 
 // Populate the mqtt_topic objects with the correct values
@@ -329,6 +374,9 @@ static bool mqtt_subscribe_to_topics(esp_mqtt_client_handle_t client)
     sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_req_node_all);
     sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_req_node_active);
     sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_req_targeted);
+    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_cmd_esp_all);
+    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_cmd_esp_node);
+    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_cmd_esp_targeted);
     return !sub_fail;
 }
 
@@ -360,6 +408,41 @@ static void mqtt_publish_retained(esp_mqtt_client_handle_t client, char* topic, 
     esp_mqtt_client_publish(client, topic, message, 0, 1, 1);
 }
 
+void send_variable_status(esp_mqtt_client_handle_t client){
+    size_t needed = snprintf(NULL, 0, VARIABLE_STATUS_FMT, node_number)+1;
+    char* message = (char*)malloc(needed);
+    snprintf(message, needed, VARIABLE_STATUS_FMT, node_number);
+    mqtt_publish_to_topic(client, mtopics.rx_stat_variable, message);
+    free(message);
+}
+
+void send_static_status(esp_mqtt_client_handle_t client){
+    extern char desired_friendly_name[];
+    size_t needed = snprintf(NULL, 0, STATIC_STATUS_FMT, desired_friendly_name)+1;
+    char* message = (char*)malloc(needed);
+    snprintf(message, needed, STATIC_STATUS_FMT, desired_friendly_name);
+    mqtt_publish_to_topic(client, mtopics.rx_stat_static, message);
+    free(message);
+}
+
+static bool process_command_esp(esp_mqtt_client_handle_t client, char* cmd){
+    char* TAG_proc_esp = "PROCESS_ESP_CMD";
+    //Variable will get asked more often, so check it first
+    char* match = VARIABLE_STATUS_REQ; 
+    if (strncmp(cmd,match,strlen(match))==0) {
+        send_variable_status(client);
+        return true;
+    }
+
+    match = STATIC_STATUS_REQ;
+    if (strncmp(cmd,match,strlen(match))==0) {
+        send_static_status(client);
+        return true;
+    }
+
+    ESP_LOGW(TAG_proc_esp, "Unprocessed ESP command of %s", cmd);
+    return false;
+}
 
 //Parses a message. 
 //   * Command Topics
@@ -373,11 +456,9 @@ static void mqtt_publish_retained(esp_mqtt_client_handle_t client, char* topic, 
 // Note: 
 static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,char* topic, int data_len, char* data)
 {
-    printf("Xdname: '%.*s'",5,device_name);
-    printf("TOPIC=%.*s\r\n", topic_len, topic);
-    printf("DATA=%.*s\r\n", data_len, data);
+    
     data[data_len] = 0;
-    char* ptag = "process_parser";
+    char* ptag = "MQTT_PROCESSOR";
     esp_log_level_set(ptag,ESP_LOG_DEBUG);
 
     //Check the topic header "rx/cv1" for a match
@@ -450,6 +531,57 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
                 return false; //short circuit the rest of the parser
             }
         } 
+
+        match = "esp_";
+        if (strncmp(topic,match,strlen(match))==0) {    // <topic_header>cmd_esp
+            ESP_LOGI(ptag,"matched cmd_esp...");
+            topic += strlen(match);
+            topic_len -= strlen(match);
+            
+            match = "all";
+            if (strncmp(topic,match,strlen(match))==0) {    // <topic_header>cmd_all
+                ESP_LOGI(ptag,"matched cmd_esp_all");
+                process_command_esp(client,data);
+                return true;
+            } //end match_cmd_esp_all
+
+            match = "node/";
+            if (strncmp(topic,match,strlen(match))==0) { // <topic_header>cmd_node/
+                topic += strlen(match);
+                topic_len -= strlen(match);
+
+                //match node number
+                long int node_num_parsed = strtol(topic,NULL,10);
+                if (node_num_parsed == node_number){
+                    ESP_LOGI(ptag, "matched cmd_esp_node/<node_number>");
+                    process_command_esp(client,data);
+                    return true;
+                } else {
+                    //TODO output an error message on an MQTT_Error Topic
+                    ESP_LOGW(ptag, "Nonmatching node number. Got %ld. Expected %d",node_num_parsed,node_number );
+                    return false; //short circuit the rest of the parser
+                }
+            } //end match_cmd_esp_node/
+            
+            match = "target/";
+            if (strncmp(topic,match,strlen(match))==0) { // <topic_header>cmd_target/
+                topic += strlen(match);
+                topic_len -= strlen(match);
+
+                if (strncmp(topic,device_name,15)==0){
+                    //TODO remove magic number 15
+                    ESP_LOGI(ptag, "matched cmd_esp_target/<device_name>");
+                    process_command_esp(client,data);
+                    return true;
+                } else {
+                    //TODO output an error message on an MQTT_Error Topic
+                    printf("dname: '%.*s'",5,device_name);
+                    ESP_LOGW(ptag, "Nonmatching device name. Got %.*s. Expected %.*s",topic_len,topic, 15,device_name); //TODO magic 15
+                    return false; //short circuit the rest of the parser
+                }
+            } //end match_cmd_esp_target/
+            ESP_LOGW(ptag, "Fell through matching esp_XXXX");
+        } //end match cmd_esp
     } //end match cmd_
 
     
@@ -541,6 +673,8 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
     //if kick: esp_mqtt_client_stop(client)
     
     ESP_LOGW(ptag, "No match on TOPIC=%.*s\r\n", topic_len, topic);
+    printf("TOPIC=%.*s\r\n", topic_len, topic);
+    printf("DATA=%.*s\r\n", data_len, data);
     return false;
 }
 
