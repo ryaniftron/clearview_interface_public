@@ -1,52 +1,43 @@
-menu "Example Configuration"
+menu "ClearView ESP32 Configuration"
 
     config ESP_WIFI_SSID
-        string "WiFi SSID"
+        string "ESP32 SoftAP Fallback SSID (typically overwritten on boot)"
         default "esp_softap_ssid"
         help
-            SSID (network name) for the esp to generate
+            Fallback SSID (network name) for the ESP to generate when in HotSpot Mode. 
+            ClearView typically overwrites it with the serial number of the ESP32.
 
     config ESP_WIFI_PASSWORD
-        string "WiFi Password"
+        string "ESP32 SoftAP Password (Leave empty for unsecured)"
         default ""
         help
-            WiFi password (WPA or WPA2) for the example to use.
+            Password to join the ESP HotSpot Network.
+            Leave it empty for an unsecured hotspot. 
 
     config ESP_MAX_STA_CONN
         int "Maximal station connections"
         default 4
+        range 1 4
         help
             Max number of the STA connects to AP.
 
     config NETWORK_SSID
-        string "Network SSID to connect to as a station"
-        default "networK_ssid"
+        string "Network SSID of the network to connect to as a station/client"
+        default "network_ssid"
         help
-            SSID (network name) for the example to connect to.
+            SSID (network name) of the network the ESP would like to join as a client in station mode
 
     config NETWORK_PASSWORD
-        string "WiFi Password"
-        default "mynetworkpassword"
+        string "WiFi Password of the network to connect to as a station/client"
+        default "network_password"
         help
-            WiFi password (WPA or WPA2) for the example to use.
-
-    config EXAMPLE_SUBSCIBE_TOPIC
-        string "MQTT topic to subscribe to"
-        default "/hellotopic_sub"
-        help 
-            A MQTT topic to subscribe to
-
-    config EXAMPLE_PUBLISH_TOPIC
-        string "MQTT topic to publish to"
-        default "/hellotopic_pub"
-        help 
-            A MQTT topic to publish to
+            WiFi password of the network the ESP would like to join as a client in station mode
 
     config BROKER_IP
-        string "MQTT broker IP"
+        string "MQTT Broker IP. Examples are 'localhost' or '192.168.88.18'"
         default "localhost"
         help 
-            The IP address of the MQTT Broker
+            The IP address of the MQTT Broker. Set to the IP address of the computer running the MQTT broker
 
     config FRIENDLY_NAME
         string "Friendly Name of ESP32"
@@ -55,9 +46,88 @@ menu "Example Configuration"
             The easy to read name of the ESP32
 
     config NODE_NUMBER
-        string "Default node number on startup"
-        default "0"
+        int "Default node number (also called seat number) for startup. Range 0-7"
+        default 0
+        range 0 7
         help
-            Which node number 0-7 the unit starts on
+            Which node number between 0 and 7 (inclusive) the unit starts on
+
+    menu "Enable and Disable CV Features"
+
+        config ENABLE_SERIAL
+            bool "Enable Serial Communication"
+            default True
+
+        config ENABLE_LED
+            bool "Enable LED codes"
+            default True
         
-endmenu
+        choice 
+            prompt "Allowed WiFi Modes. Can Disable Wifi"
+            optional
+            config SOFTAP_ALLOWED
+                bool "Only Allow SoftAP WiFi"
+                default False
+            config STA_ALLOWED
+                bool "Only Allow Station WiFi"
+                default False
+            config BOTH_WIFI_ALLOWED
+                bool "Both WiFi Modes Allowed"
+                default True
+        endchoice
+
+        if SOFTAP_ALLOWED || STA_ALLOWED || BOTH_WIFI_ALLOWED # Wifi is on
+            if BOTH_WIFI_ALLOWED
+                choice 
+                    prompt "Startup Wifi Mode"
+                    
+                    config STARTUP_WIFI_SOFTAP
+                        bool "Start in SoftAP"
+                        default False
+
+                    config STARTUP_WIFI_STA
+                        bool "Start in STA"
+                        default False
+
+                    config STARTUP_STA_IF_CREDS_ELSE_SOFTAP
+                        bool "Start in STA if valid WiFi Creds otherwise SoftAP"
+                        default True
+                endchoice
+            endif # BOTH_WIFI_ALLOWED
+
+        # MQTT can run if STA or both allowed
+        if STA_ALLOWED || BOTH_WIFI_ALLOWED
+            config ENABLE_MQTT
+                bool "Enable MQTT"
+                default true
+        endif # STA_ALLOWED || BOTH_WIFI_ALLOWED
+
+            choice 
+                prompt "Web Server"
+                optional
+                #if BOTH_WIFI_ALLOWED           # If all three choices use if/endif, Web Server is never available
+                config WEB_SERVER_BOTH
+                    bool "Allowed in Both Modes"
+                    default True
+                    depends on BOTH_WIFI_ALLOWED # Need to use depend here for some reason
+                #endif # BOTH_WIFI_ALLOWED
+                
+                if BOTH_WIFI_ALLOWED || SOFTAP_ALLOWED
+                    config WEB_SERVER_SOFTAP_ONLY
+                        bool "Only in SoftAP"
+                        default True
+                endif # BOTH_WIFI_ALLOWED || SOFTAP_ALLOWED
+                
+                if BOTH_WIFI_ALLOWED || STA_ALLOWED
+                    config WEB_SERVER_STA_ONLY
+                        bool "Only in STA"
+                        default False
+                endif  # BOTH_WIFI_ALLOWED || STA_ALLOWED
+            endchoice
+                
+        endif # SOFTAP_ALLOWED || STA_ALLOWED || BOTH_WIFI_ALLOWED # Wifi is on
+      
+
+    endmenu 
+        
+endmenu 
