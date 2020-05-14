@@ -21,8 +21,7 @@
 
 #include "esp_log.h"
 #include "tcpip_adapter.h"
-static EventGroupHandle_t wifi_event_group;
-static const int CONNECTED_BIT = BIT0;
+
 
 
 #include "lwip/err.h"
@@ -31,11 +30,36 @@ static const int CONNECTED_BIT = BIT0;
 #include "lwip/api.h"
 
 //Components
-//#include "cv_mqtt.h"
-#include "main_cv_mqtt.c"
-#include "cv_ledc.c"
-#include "cv_server.c"
+
 #include "cv_utils.c"
+
+#if CONFIG_ENABLE_MQTT == 1
+    #include "main_cv_mqtt.c"
+#else
+    #warning CV MQTT is disabled
+#endif // CONFIG_ENABLE_MQTT == 1
+
+#if CONFIG_ENABLE_LED == 1
+    #include "cv_ledc.c"
+# else
+    #warning CV LED is disabled
+#endif
+
+#if WEB_SERVER_ON == 1
+    #include "cv_server.c"
+#else
+    #warning CV Web Server is disabled
+#endif //WEB_SERVER_ON == 1
+#define WEB_SERVER_ON CONFIG_WEB_SERVER_BOTH || CONFIG_WEB_SERVER_SOFTAP_ONLY || CONFIG_WEB_SERVER_STA_ONLY
+
+
+#if CONFIG_ENABLE_SERIAL
+    #include "cv_uart.c"
+#else
+    #warning CV_UART is disabled
+#endif //CONFIG_ENABLE_SERIAL
+
+
 
 // Hardware selection
 #ifndef HW_ESP_WROOM_32
@@ -51,7 +75,7 @@ static const int CONNECTED_BIT = BIT0;
     #define HW HW_ESP_WROOM_32
 #endif
 
-//TODO set up enum to link states to LED codes
+#define WIFI_ON CONFIG_SOFTAP_ALLOWED || CONFIG_STA_ALLOWED || CONFIG_BOTH_WIFI_ALLOWED
 
 
 
@@ -95,9 +119,12 @@ static const int CONNECTED_BIT = BIT0;
 #define SOFTAP_PASS               CONFIG_ESP_WIFI_PASSWORD
 #define SOFTAP_MAX_STA_CONN       CONFIG_ESP_MAX_STA_CONN
 
+
 static const char *TAG = "cv-esp32";
 
-#define SKIP_SOFTAP
+#if WIFI_ON == true
+static EventGroupHandle_t wifi_event_group;
+//static const int CONNECTED_BIT = BIT0;
 
 bool switch_to_sta = false;
 
@@ -212,130 +239,6 @@ typedef enum {
 #define config_esp32_parse_fail \
     " Error: config_esp32 Parse Fail <br> \
     "
-
-
-// static void
-// http_server_netconn_serve(struct netconn *conn)
-// {
-// 	struct netbuf *inbuf;
-// 	char *buf, *payload, *start, *stop;
-// 	u16_t buflen;
-// 	err_t err;
-
-//    // Read the data from the port, blocking if nothing yet there.
-//    // We assume the request (the part we care about) is in one netbuf 
-// 	err = netconn_recv(conn, &inbuf);
-
-// 	if (err == ERR_OK) {
-//         // TODO capture the possible error code form netbuf_data
-// 		netbuf_data(inbuf, (void**)&buf, &buflen);
-// 		// find the first and seconds space (those delimt the url)
-// 		start = strstr(buf, " ") + 1;
-// 		stop = strstr(start + 1, " ");	
-// 		// allocate memory for the payload
-// 		payload = (char *) malloc(stop - start + 1);
-// 		memcpy(payload, start, stop - start);
-// 		payload[stop - start] = '\0';
-
-// 		// For now  only GET results in a valid response
-// 		if (strncmp(buf, "GET /", 5) == 0){
-//             netconn_write(conn, HDR_200, sizeof(HDR_200)-1, NETCONN_NOCOPY);
-// 			//printf("GET = '%s' \n", payload);
-//             if (strcmp(payload, "/") == 0 || strcmp(payload, "/?") == 0) { //give the root website
-//                 //TODO instead of using a global bool, figure out something more robust
-//                 if (wifi_connect_fail){
-//                     //netconn_write(conn, fail_connect_text, sizeof(fail_connect_text)-1, NETCONN_NOCOPY);
-//                     send_html(conn, fail_connect_text);
-//                     wifi_connect_fail = false; //reset fail to connect so a user can try again
-//                 } else {
-//                     netconn_write(conn, root_text, sizeof(root_text)-1, NETCONN_NOCOPY);
-//                     //send_html(conn, root_text);
-//                     set_ledc_code(0, led_blink_slow);
-//                 }
-                
-//             }else if (strcmp(payload, "/favicon.ico") == 0) {
-//                 //do nothing
-//             }else if (strcmp(payload, "/scan_wifi?") == 0) {
-//                 //netconn_write(conn, wifi_scan_text, sizeof(wifi_scan_text)-1, NETCONN_NOCOPY);
-//                 send_html(conn, wifi_scan_text);
-//             }else if (strncmp(payload, "/config_esp32", strlen("/config_esp32")) == 0){
-//                 printf("Got a config filestring\n");
-//                 //GET='GET /config_esp32?ssid=A&password=B&device_name=C '
-//                 if (parse_net_credentials(payload)){
-//                     //netconn_write(conn, wifi_attempt_connect, sizeof(wifi_attempt_connect)-1, NETCONN_NOCOPY);
-//                     send_html(conn, wifi_attempt_connect);
-//                     switch_to_sta = true;
-//                 }else {
-//                     //netconn_write(conn, config_esp32_parse_fail, sizeof(config_esp32_parse_fail)-1, NETCONN_NOCOPY);
-//                     send_html(conn, config_esp32_parse_fail);
-//                 }
-//             } else if (strncmp(payload, "/test", strlen("/test")) == 0){
-//                 send_html(conn, test_page_text);
-//                 //netconn_write(conn, test_page_text, sizeof(test_page_text)-1, NETCONN_NOCOPY);
-//                 //netconn_write(conn, test_page_text, sizeof(test_page_text)-1, NETCONN_NOCOPY);
-//             }else{ 
-
-//                 //char* errmsg = sprintf("Uncaptured GET='%s' \n", *payload);
-//                 //printf("Uncaptured GET='%s' \n", &payload);
-//                 //netconn_write(conn, errmsg, sizeof(errmsg)-1, NETCONN_NOCOPY);              
-//             }
-
-            
-                       
-			
-// 		}else if (strncmp(buf, "POST /", 6) == 0){
-// 			// send '501 Not implementd' reply  
-// 			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
-// 		}else if (strncmp(buf, "PUT /", 5) == 0){
-// 			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
-// 		}else if (strncmp(buf, "PATCH /", 7) == 0){
-// 			// send '501 Not implementd' reply  
-// 			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
-// 		}else if (strncmp(buf, "DELETE /", 8) == 0){
-// 			// send '501 Not implementd' reply  
-// 			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
-// 		}else{
-// 			// 	Any unrecognized verb will automatically 
-// 			//	result in '501 Not implementd' reply 
-// 			netconn_write(conn, HDR_501, sizeof(HDR_501)-1, NETCONN_NOCOPY);
-// 		}
-// 		free(payload);
-// 	}
-//   	// Close the connection (server closes in HTTP) and clean up after ourself 
-// 	netconn_close(conn);
-// 	netbuf_delete(inbuf);
-// }
-
-
-// static void http_server(void *pvParameters)
-// {
-    
-// 	uint32_t port;
-// 	if (pvParameters == NULL){
-// 		port = 80;
-// 	}else{
-// 		port = (uint32_t) pvParameters;
-// 	}
-// 	// printf("\n Creating socket at\n %d \n", (uint32_t) pvParameters);
-// 	struct netconn *conn, *newconn;
-// 	err_t err;
-// 	conn = netconn_new(NETCONN_TCP);
-// 	netconn_bind(conn, NULL,  port);
-// 	netconn_listen(conn);
-// 	do {
-// 		err = netconn_accept(conn, &newconn);
-// 		if (err == ERR_OK) {
-// 			http_server_netconn_serve(newconn);
-// 			netconn_delete(newconn);
-// 		}
-// 	} while(err == ERR_OK);
-// 	netconn_close(conn);
-// 	netconn_delete(conn);
-    
-// }
-
-
-
 
 static void ap_event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
@@ -554,6 +457,7 @@ void kill_wifi(void){
 
 }
 
+
 static void demo_sequential_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_LEN)
 {
     printf("Starting ESP32 both mode.\n"); 
@@ -591,52 +495,61 @@ static void demo_sequential_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_L
     #endif
 }
 
-
+#endif // WIFI_ON
 
 
 
 void app_main(void)
 {
-	//Initialize NVS
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        // NVS partition was truncated and needs to be erased
-        // Retry nvs_flash_init
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
+	// //Initialize NVS
+    // esp_err_t ret = nvs_flash_init();
+    // if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    //     // NVS partition was truncated and needs to be erased
+    //     // Retry nvs_flash_init
+    //     ESP_ERROR_CHECK(nvs_flash_erase());
+    //     ret = nvs_flash_init();
+    // }
+    // ESP_ERROR_CHECK(ret);
 
     tcpip_adapter_init();
     const int UNIQUE_ID_LENGTH = 16;
     char chipid[UNIQUE_ID_LENGTH];
     get_chip_id(chipid, UNIQUE_ID_LENGTH);
 
-    CV_LED_Code_t initial_led_state = led_off;
+    #if CONFIG_ENABLE_LED == true
+        CV_LED_Code_t initial_led_state = led_off;
+        init_cv_ledc(initial_led_state);
+    #endif //CONFIG_ENABLE_LED
 
-    init_cv_ledc(initial_led_state);
-        
+      
     
     #ifdef UART_TEST_LOOP
         run_cv_uart_test_task();
-    #else
+    #else //Normal program logic
         //Start Wifi
-        #ifdef SKIP_SOFTAP
+        #if CONFIG_STARTUP_WIFI_STA == 1
             strcpy(desired_ap_ssid, AP_TARGET_SSID);
             strcpy(desired_ap_pass, AP_TARGET_PASS);
             strcpy(desired_mqtt_broker_ip, CONFIG_BROKER_IP);
             strcpy(desired_friendly_name, CONFIG_FRIENDLY_NAME);
             //strcpy(node_number, CONFIG_NODE_NUMBER);
             initialise_sta_wifi(chipid);
-        #else
+        #elif STARTUP_ 
             demo_sequential_wifi(chipid, UNIQUE_ID_LENGTH); //this returns on successful connection
         #endif //SKIP_SOFTAP
         //only after in sequential wifi do we start mqtt. Give it some time
         vTaskDelay(2000 / portTICK_PERIOD_MS);
-        cv_mqtt_init(chipid, UNIQUE_ID_LENGTH, desired_mqtt_broker_ip);
+
+        #if CONFIG_ENABLE_SERIAL
+            init_uart();
+        #endif //CONFIG_ENABLE_SERIAL
+        
+        #if CONFIG_ENABLE_MQTT == 1
+            cv_mqtt_init(chipid, UNIQUE_ID_LENGTH, desired_mqtt_broker_ip);
+        #endif //CONFIG_ENABLE_MQTT == 1
     #endif // UART_TEST_LOOP
     
-
+    printf("END OF MAIN\n");
 }
 
 
