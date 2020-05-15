@@ -97,6 +97,7 @@ void _change_led_state(ledc_channel_config_t led_channel_conft){
 
 // This changes what pattern the LED is doing
 void set_ledc_code(int channel, CV_LED_Code_t led_code){
+    #if CONFIG_ENABLE_LED
     if (led_code == led_unprogrammed){
         ESP_LOGW(TAG_LEDC, "Can't set LED to unprogrammed because it's reserved");
     } else if (led_code == led_off){
@@ -104,7 +105,6 @@ void set_ledc_code(int channel, CV_LED_Code_t led_code){
     } else if (led_code == led_on){
         ESP_LOGW(TAG_LEDC, "Setting LED state to reserved state.");
         _led_state = led_code;
-
     } else {
         _led_state = led_code; //update local variable here
     }
@@ -112,6 +112,9 @@ void set_ledc_code(int channel, CV_LED_Code_t led_code){
 
     ledc_channel_config_t led_channel_conft = ledc_channel[channel];
     _change_led_state(led_channel_conft); //change pin voltage if it's a fixed state
+    #else
+    ESP_LOGI(TAG_LEDC, "Ignoring set_ledc_code to %i", led_code);
+    #endif //CONFIG_ENABLE_LED
 }
 
 void breathe_led(ledc_channel_config_t led_channel_conft){
@@ -203,6 +206,7 @@ void _ledc_task(){
 }
 
 void init_cv_ledc(CV_LED_Code_t initial_led_state){
+    #if CONFIG_ENABLE_LED
     if (_ledc_init){ //LED is already initialized
 
         ESP_LOGW(TAG_LEDC, "CV_LEDC has already been initialized");
@@ -221,8 +225,11 @@ void init_cv_ledc(CV_LED_Code_t initial_led_state){
         _ledc_init = true;
 
         ESP_LOGI(TAG_LEDC, "CV_LEDC initialized. Starting xTask for LEDC");
-        xTaskCreate(_ledc_task, "ledc_task", 1024*2, NULL, configMAX_PRIORITIES, NULL);
+        xTaskCreate(_ledc_task, "ledc_task", 1024*4, NULL, configMAX_PRIORITIES, NULL);
     }
+    #else
+    ESP_LOGW(TAG_LEDC, "CV_LEDC Init Ignored; LED is disabled");
+    #endif //CONFIG_ENABLE_LED
 }
 
 
