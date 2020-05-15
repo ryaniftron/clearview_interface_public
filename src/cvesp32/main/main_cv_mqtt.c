@@ -22,8 +22,11 @@
 
 #include "esp_log.h"
 #include "mqtt_client.h"
-#include "cv_uart.c" 
+#include "cv_uart.c"
+#if CONFIG_ENABLE_LED == 1
 #include "cv_ledc.c"
+#endif 
+
 
 static const char *TAG_TEST = "CV_MQTT";
 static EventGroupHandle_t mqtt_event_group;
@@ -688,15 +691,20 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
         case MQTT_EVENT_CONNECTED:
             ESP_LOGI(TAG_TEST, "MQTT_EVENT_CONNECTED");
             xEventGroupSetBits(mqtt_event_group, CONNECTED_BIT2);
+            ESP_LOGI(TAG_TEST, "Delaying 5s before sub");
+            vTaskDelay(5000/ portTICK_PERIOD_MS);
             mqtt_subscribe_to_topics(client);
-
+            ESP_LOGI(TAG_TEST, "Delaying 5s before pub");
+            vTaskDelay(5000/ portTICK_PERIOD_MS);
             char* conn_msg = "1";
             mqtt_publish_retained(mqtt_client, mtopics.rx_conn,conn_msg);
-            set_ledc_code(0, led_breathe_slow);
+            // set_ledc_code(0, led_breathe_slow);
             break;
         case MQTT_EVENT_DISCONNECTED:
             ESP_LOGW(TAG_TEST, "MQTT_EVENT_DISCONNECTED");
-            set_ledc_code(0, led_breathe_fast);
+            #if CONFIG_ENABLE_LED == 1
+                set_ledc_code(0, led_breathe_fast);
+            #endif//CONFIG_ENABLE_LED == 1
             break;
         case MQTT_EVENT_SUBSCRIBED:
             ESP_LOGI(TAG_TEST, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
@@ -745,8 +753,10 @@ static void mqtt_app_start(const char* mqtt_hostname)
     }; 
 
     ESP_LOGI(TAG_TEST, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
-    ESP_LOGI(TAG_TEST, "Connecting to broker IP %s",mqtt_cfg.host );
+    ESP_LOGI(TAG_TEST, "Connecting to broker IP '%s'",mqtt_cfg.host );
     mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
+    ESP_LOGI(TAG_TEST, "client_init is init");
+    ESP_LOGI(TAG_TEST, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
 }
 
 
@@ -770,15 +780,12 @@ static void get_string(char *line, size_t size)
 
 void cv_mqtt_init(char* chipid, uint8_t chip_len, const char* mqtt_hostname) 
 {
-    printf("Starting MQTT\n");
     strncpy(device_name,chipid,chip_len);
     //printf("CHIPLEN%d\n",chip_len);
     //printf("CHIPID: %.*s\n",chip_len,chipid);
     //printf("DNAME: %.*s\n",chip_len,device_name);
     
-    mqtt_app_start(mqtt_hostname);
-
-    init_uart();
+    mqtt_app_start(mqtt_hostname);    
 
 
     //Stop client just to be safe
@@ -789,5 +796,6 @@ void cv_mqtt_init(char* chipid, uint8_t chip_len, const char* mqtt_hostname)
     ESP_LOGI(TAG_TEST, "Note free memory: %d bytes", esp_get_free_heap_size());
     xEventGroupWaitBits(mqtt_event_group, CONNECTED_BIT2, false, true, portMAX_DELAY);
     
+    ESP_LOGI(TAG_TEST, "MQTT Init is finished");
 }
         
