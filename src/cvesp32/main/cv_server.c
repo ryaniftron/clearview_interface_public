@@ -55,6 +55,9 @@ const char* TAG_SERVER = "CV_SERVER";
     <input type=\"submit\" value=\"Set Node Number\">\
     "
 
+// URI Defines
+#define CV_CONFIG_WIFI_URI "/config_wifi"
+#define CV_CONFIG_WIFI_INSTANT_URI "/config_wifi_instant"
 
 //TODO make these a struct
 bool ssid_ready = false;
@@ -93,6 +96,7 @@ static esp_err_t config_wifi_get_handler(httpd_req_t *req)
     char*  buf;
     size_t buf_len;
 
+
     /* Read URL query string length and allocate memory for length + 1,
      * extra byte for null termination */
     buf_len = httpd_req_get_url_query_len(req) + 1;
@@ -104,7 +108,7 @@ static esp_err_t config_wifi_get_handler(httpd_req_t *req)
             /* Get value of expected key from query string */
             if (httpd_query_key_value(buf, "ssid", param, sizeof(param)) == ESP_OK) {
                 ESP_LOGI(TAG_SERVER, "Found URL query parameter => ssid=%s", param);
-                ssid_ready = true;
+                ssid_ready = true; //TODO state machine set false
                 set_credential("ssid", param);
             }
             if (httpd_query_key_value(buf, "password", param, sizeof(param)) == ESP_OK) {
@@ -126,12 +130,74 @@ static esp_err_t config_wifi_get_handler(httpd_req_t *req)
         free(buf);
 
         if (ssid_ready && password_ready && device_name_ready && broker_ip_ready){
-            ESP_LOGI(TAG_SERVER, "All WiFi Creds received");
-            char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"3\"; url=\"https://192.168.0.1/\" />";
-            httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);    
-            httpd_resp_send_chunk(req, NULL, 0);
+            
+
+            //Match the URI to determine whether to send instantly or not
+            printf("%s\n", req->uri);
+            bool is_instant = false;
+            bool is_matched = false;
+
+            bool uri_match;
+            uri_match = httpd_uri_match_wildcard(CV_CONFIG_WIFI_URI, req->uri, strlen(CV_CONFIG_WIFI_URI));
+            if (uri_match) {
+                is_instant = false;
+                is_matched = true;
+            }
+            uri_match = httpd_uri_match_wildcard(CV_CONFIG_WIFI_INSTANT_URI, req->uri, strlen(CV_CONFIG_WIFI_INSTANT_URI));;
+            if (uri_match) {
+                            is_instant = false;
+                            is_matched = true;
+            }
+            if (!is_matched){
+                //ESP_LOGI(TAG_SERVER, LOG_FMT("URI '%s' unmatched"), req->uri);
+                ESP_LOGE(TAG_SERVER, "Unmatched URI");
+            }
+
+            /*
+            // TODO add in content in the response to say "form submitted".
+            // Redirect both address immediately to "/wifi_config_saved". Save _is_instant. 
+            // Set up /wifi_config_saved to serve the saved wifi settings. 
+            // Try encoding the data as a json file encoding using the HTML headers */
+
+            if (is_instant){
+                ESP_LOGI(TAG_SERVER, "All WiFi Creds received. Configuring now");
+                // HTML Redirect https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections
+                httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 
+                char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"0; URL=http://192.168.4.1/\">";
+                httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);
+                httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);     
+                httpd_resp_send_chunk(req, NULL, 0);
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+            } else {
+                ESP_LOGI(TAG_SERVER, "All WiFi Creds received. Sending Delayed Redirect");
+                httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 
+                char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"3; URL=http://192.168.4.1/\">";
+                httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);
+                httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);     
+                httpd_resp_send_chunk(req, NULL, 0);
+                vTaskDelay(6000 / portTICK_PERIOD_MS);
+            }
+            
+            // TODO the redirect may be causing an issue as far as timing and switching out of the ode
+            // Maybe this should return with no delay? 
+            /* 
+            W (164882) httpd_txrx: httpd_sock_err: error in send : 113
+            ESP_ERROR_CHECK failed: esp_err_t 0xb006 (ERROR) at 0x40090df4
+            0x40090df4: _esp_error_check_failed at /home/ryan/esp/esp-idf/components/esp32/panic.c:726
+
+            file: "../main/cv_server.c" line 208
+            func: serve_title
+            expression: httpd_resp_send_chunk(req, line, HTTPD_RESP_USE_STRLEN)
+            */
+            
+            // HTTP Redirect Method
+            // https://esp32.com/viewtopic.php?t=11012
+            // httpd_resp_set_type(req, "text/html");
+            // httpd_resp_set_status(req, "307 Temporary Redirect");
+            // httpd_resp_set_hdr(req, "Location", "http://192.168.4.1/wifi_confirmation");
+            // httpd_resp_send(req, NULL, 0);
+
             extern bool switch_to_sta;
-            vTaskDelay(4000 / portTICK_PERIOD_MS);
             switch_to_sta = true;
         }
     }
@@ -140,6 +206,7 @@ static esp_err_t config_wifi_get_handler(httpd_req_t *req)
 }
 
 void serve_title(httpd_req_t *req) {
+    printf("%s\n", req->uri);
     const int UNIQUE_ID_LENGTH = 16;
     char chipid[UNIQUE_ID_LENGTH];
     get_chip_id(chipid, UNIQUE_ID_LENGTH);
@@ -155,9 +222,12 @@ void serve_node_and_lock(httpd_req_t *req){
     extern int node_number;
     char* lock_status = "TODO";
 
-    size_t needed = snprintf(NULL, 0, HTML_ROOT_SUBTITLE, node_number, lock_status)+1;
+    // Display the node number 1 higher than stored in the back end. 
+    // Back end
+    int ui_node_number = node_number+1;
+    size_t needed = snprintf(NULL, 0, HTML_ROOT_SUBTITLE, ui_node_number, lock_status)+1;
     char* line = (char*)malloc(needed);
-    snprintf(line, needed, HTML_ROOT_SUBTITLE, node_number, lock_status);
+    snprintf(line, needed, HTML_ROOT_SUBTITLE, ui_node_number, lock_status);
     //ESP_LOGI(TAG_SERVER, "Node and Lock Request %d ,%s", node_number, "TODO");
     // size_t needed = snprintf(NULL, 0, HTML_ROOT_SUBTITLE, node_number, lock_status);
     
@@ -256,8 +326,16 @@ static const httpd_uri_t config_settings_uri = {
     .handler   = config_settings_get_handler
 };
 
+// When a user manually submits wifi config. Issues a confirmation page
 static const httpd_uri_t config_wifi_uri = {
-    .uri       = "/config_wifi",
+    .uri       = CV_CONFIG_WIFI_URI,
+    .method    = HTTP_GET,
+    .handler   = config_wifi_get_handler
+};
+
+// Used to submit wifi credentials without promting or redirecting
+static const httpd_uri_t config_wifi_instant_uri = {
+        .uri   = CV_CONFIG_WIFI_INSTANT_URI,
     .method    = HTTP_GET,
     .handler   = config_wifi_get_handler
 };
@@ -356,6 +434,7 @@ static httpd_handle_t start_cv_webserver(void){
         httpd_register_uri_handler(server, &hello_uri);
         httpd_register_uri_handler(server, &root_uri);
         httpd_register_uri_handler(server, &config_wifi_uri);
+        httpd_register_uri_handler(server, &config_wifi_instant_uri);
         httpd_register_uri_handler(server, &config_settings_uri);
         httpd_register_uri_handler(server, &settings_uri);
 
