@@ -33,24 +33,24 @@
 
 #include "cv_utils.c"
 
-#if CONFIG_ENABLE_MQTT == 1
-    #include "main_cv_mqtt.c"
-#else
+
+#include "main_cv_mqtt.c"
+#if CONFIG_ENABLE_MQTT != 1
     #warning CV MQTT is disabled
-#endif // CONFIG_ENABLE_MQTT == 1
+#endif // CONFIG_ENABLE_MQTT != 1
 
-#if CONFIG_ENABLE_LED == 1
-    #include "cv_ledc.c"
-# else
+
+#include "cv_ledc.c"
+#if CONFIG_ENABLE_LED != 1
     #warning CV LED is disabled
-#endif
+#endif //CONFIG_ENABLE_LED != 1
 
-#if WEB_SERVER_ON == 1
-    #include "cv_server.c"
-#else
-    #warning CV Web Server is disabled
-#endif //WEB_SERVER_ON == 1
 #define WEB_SERVER_ON CONFIG_WEB_SERVER_BOTH || CONFIG_WEB_SERVER_SOFTAP_ONLY || CONFIG_WEB_SERVER_STA_ONLY
+#include "cv_server.c"
+#if WEB_SERVER_ON != 1
+    #warning CV Web Server is disabled
+#endif //WEB_SERVER_ON != 1
+
 
 
 #if CONFIG_ENABLE_SERIAL
@@ -76,7 +76,11 @@
 #endif
 
 #define WIFI_ON CONFIG_SOFTAP_ALLOWED || CONFIG_STA_ALLOWED || CONFIG_BOTH_WIFI_ALLOWED
-
+#if WIFI_ON == 1
+#warning "WIFI ON"
+#else
+#warning "WIFI OFF"
+#endif
 
 
 
@@ -122,9 +126,9 @@
 
 static const char *TAG = "cv-esp32";
 
-#if WIFI_ON == true
+#if WIFI_ON == 1
 static EventGroupHandle_t wifi_event_group;
-//static const int CONNECTED_BIT = BIT0;
+static const int CONNECTED_BIT = BIT0;
 
 bool switch_to_sta = false;
 
@@ -516,10 +520,10 @@ void app_main(void)
     char chipid[UNIQUE_ID_LENGTH];
     get_chip_id(chipid, UNIQUE_ID_LENGTH);
 
-    #if CONFIG_ENABLE_LED == true
-        CV_LED_Code_t initial_led_state = led_off;
-        init_cv_ledc(initial_led_state);
-    #endif //CONFIG_ENABLE_LED
+
+    CV_LED_Code_t initial_led_state = led_off;
+    init_cv_ledc(initial_led_state);
+
 
       
     
@@ -527,24 +531,24 @@ void app_main(void)
         run_cv_uart_test_task();
     #else //Normal program logic
         //Start Wifi
-        #if CONFIG_STARTUP_WIFI_STA == 1
+        #if CONFIG_STARTUP_WIFI_STA | CONFIG_STA_ALLOWED
             strcpy(desired_ap_ssid, AP_TARGET_SSID);
             strcpy(desired_ap_pass, AP_TARGET_PASS);
             strcpy(desired_mqtt_broker_ip, CONFIG_BROKER_IP);
             strcpy(desired_friendly_name, CONFIG_FRIENDLY_NAME);
             //strcpy(node_number, CONFIG_NODE_NUMBER);
             initialise_sta_wifi(chipid);
-        #elif STARTUP_ 
+        #elif CONFIG_STARTUP_WIFI_SOFTAP 
             demo_sequential_wifi(chipid, UNIQUE_ID_LENGTH); //this returns on successful connection
         #endif //SKIP_SOFTAP
         //only after in sequential wifi do we start mqtt. Give it some time
         vTaskDelay(2000 / portTICK_PERIOD_MS);
 
-        #if CONFIG_ENABLE_SERIAL
+
             init_uart();
-        #endif //CONFIG_ENABLE_SERIAL
+
         
-        #if CONFIG_ENABLE_MQTT == 1
+        #if CONFIG_ENABLE_MQTT
             cv_mqtt_init(chipid, UNIQUE_ID_LENGTH, desired_mqtt_broker_ip);
         #endif //CONFIG_ENABLE_MQTT == 1
     #endif // UART_TEST_LOOP
