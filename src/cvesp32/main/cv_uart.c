@@ -47,6 +47,7 @@ static bool _uart_is_init = false; //this is checked to make sure uart is active
 
 
 void init_uart() {
+    #if CONFIG_ENABLE_SERIAL
     if (_uart_is_init == true) {
         ESP_LOGW("INIT_UART", "UART is already initialized");
         return;
@@ -65,6 +66,9 @@ void init_uart() {
     ESP_ERROR_CHECK(uart_driver_install(UART_NUM, RX_BUF_SIZE * 2, 0, 0, NULL, 0));
 
     _uart_is_init = true;
+    #else
+    ESP_LOGW("INIT_UART", "Ignoring UART Init; UART is disabled");
+    #endif //CONFIG_ENABLE_SERIAL
 }
 
 // sends null terminated "data" to UART. 
