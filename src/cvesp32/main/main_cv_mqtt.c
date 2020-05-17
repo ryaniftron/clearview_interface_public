@@ -1,3 +1,6 @@
+#ifndef MAIN_CV_MQTT_C
+#define MAIN_CV_MQTT_C
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -383,6 +386,42 @@ static bool mqtt_subscribe_to_topics(esp_mqtt_client_handle_t client)
     return !sub_fail;
 }
 
+static bool mqtt_unsubscribe_to_node_topics(esp_mqtt_client_handle_t client){
+    bool unsub_fail = false;
+
+    unsub_fail &= !mqtt_unsubscribe_single(client, mtopics.rx_cmd_node); 
+    unsub_fail &= !mqtt_unsubscribe_single(client, mtopics.rx_req_node_all);
+    unsub_fail &= !mqtt_unsubscribe_single(client, mtopics.rx_req_node_active);
+    unsub_fail &= !mqtt_unsubscribe_single(client, mtopics.rx_cmd_esp_node);
+    return !unsub_fail;
+}
+
+static bool mqtt_subscribe_to_node_topics(esp_mqtt_client_handle_t client){
+    bool sub_fail = false;
+
+    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_cmd_node); 
+    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_req_node_all);
+    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_req_node_active);
+    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_cmd_esp_node);
+    return !sub_fail;
+}
+
+static bool update_subscriptions_new_node()
+{
+    // char* tag = "mqtt_update_subscritptions";
+
+    // //Using local mqtt_client handle
+    // if (mqtt_client == NULL){
+    //     ESP_LOGE(tag, "MQTT Client is NULL. Can't update subs.");
+    //     return false;
+    // } 
+    if (!mqtt_unsubscribe_to_node_topics(mqtt_client)) {
+        ESP_LOGW("update_subs", "Unsub failure");
+    }
+    update_mqtt_sub_node_topics();
+    return mqtt_subscribe_to_node_topics(mqtt_client);
+}
+
 //Publish to topic with QOS0, no retain
 static void mqtt_publish_to_topic(esp_mqtt_client_handle_t client, char* topic, char* message)
 {   
@@ -537,7 +576,7 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
 
         match = "esp_";
         if (strncmp(topic,match,strlen(match))==0) {    // <topic_header>cmd_esp
-            ESP_LOGI(ptag,"matched cmd_esp...");
+            ESP_LOGD(ptag,"matched cmd_esp...");
             topic += strlen(match);
             topic_len -= strlen(match);
             
@@ -613,7 +652,7 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
             //match node number
             long int node_num_parsed = strtol(topic,NULL,10);
             if (node_num_parsed == node_number){
-                ESP_LOGI(ptag, "matched req_node_all/<node_number>");
+                ESP_LOGI(ptag, "matched req_node_all/<node_number> => %s", data);
                 const int bytesRead = cvuart_send_report(data, dataRx);
                 if (bytesRead > 0){
                     mqtt_publish_to_topic(client, mtopics.rx_resp_target,(char* ) dataRx); //TODO reply by node topic?
@@ -713,10 +752,10 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
             ESP_LOGI(TAG_TEST, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
             break;
         case MQTT_EVENT_PUBLISHED:
-            ESP_LOGI(TAG_TEST, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
+            ESP_LOGD(TAG_TEST, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
             break;
         case MQTT_EVENT_DATA:
-            ESP_LOGI(TAG_TEST, "MQTT_EVENT_DATA");
+            ESP_LOGD(TAG_TEST, "MQTT_EVENT_DATA");
             //TODO the message may be broken up over multiple pieces of data
             if (!process_mqtt_message(client, event->topic_len,event->topic, event->data_len, event->data)) {
                 ESP_LOGI(TAG_TEST, "Failed to process");
@@ -753,7 +792,7 @@ static void mqtt_app_start(const char* mqtt_hostname)
     }; 
 
     ESP_LOGI(TAG_TEST, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
-    ESP_LOGI(TAG_TEST, "Connecting to broker IP '%s'",mqtt_cfg.host );
+    ESP_LOGI(TAG_TEST, "Connecting to broker IP '%s'",mqtt_cfg.host);
     mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
     ESP_LOGI(TAG_TEST, "client_init is init");
     ESP_LOGI(TAG_TEST, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
@@ -798,4 +837,4 @@ void cv_mqtt_init(char* chipid, uint8_t chip_len, const char* mqtt_hostname)
     
     ESP_LOGI(TAG_TEST, "MQTT Init is finished");
 }
-        
+#endif // MAIN_CV_MQTT_C

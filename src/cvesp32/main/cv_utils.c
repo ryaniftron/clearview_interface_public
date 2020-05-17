@@ -39,6 +39,9 @@ char desired_friendly_name[WIFI_CRED_MAXLEN];
 char desired_mqtt_broker_ip[WIFI_CRED_MAXLEN];
 int node_number = 0;
 
+
+bool nn_update_needed = false;
+
 static void get_chip_id(char* ssid, const int UNIQUE_ID_LENGTH){
     uint64_t chipid = 0LL;
     esp_efuse_mac_get_default((uint8_t*) (&chipid));
@@ -49,9 +52,23 @@ static void get_chip_id(char* ssid, const int UNIQUE_ID_LENGTH){
     return;
 }
 
+static void remove_ctrlchars(char *str) 
+{ 
+    // To keep track of non-space character count 
+    int count = 0; 
+  
+    // Traverse the given string. If current character 
+    // is not space, then place it at index 'count++' 
+    for (int i = 0; str[i]; i++) 
+        if (str[i] >= 30) 
+            str[count++] = str[i]; // here count is 
+                                   // incremented 
+    str[count] = '\0'; 
+} 
 
 
-static void set_credential(char* credentialName, char* val){
+// Return true if the crediential was set
+static bool set_credential(char* credentialName, char* val){
     printf("##Setting Credential %s = %s\n", credentialName, val);
     if (strlen(val) > WIFI_CRED_MAXLEN) {
         ESP_LOGE(TAG_UTILS, "\t Unable to set credential. Too long.");
@@ -67,19 +84,24 @@ static void set_credential(char* credentialName, char* val){
         strcpy(desired_mqtt_broker_ip, val);
     } else if (strcmp(credentialName, "node_number") == 0) {
         if (0 <= atoi(val) && atoi(val) <= 7){
+            int new_node_number = atoi(val);
+            if (node_number == new_node_number){
+                ESP_LOGW(TAG_UTILS, "No change in node_number");
+                return false;
+            }
             node_number = atoi(val);
-            ESP_LOGI(TAG_UTILS, "TODO change node subscriptions");
         } else {
-            ESP_LOGW(TAG_UTILS, "Ignoring node_number out of range");
+            ESP_LOGE(TAG_UTILS, "Ignoring node_number out of range");
+            return false;
         }
         
     } else {
         ESP_LOGE(TAG_UTILS, "Unexpected Credential of %s", credentialName);
-        return;
+        return false;
     }
 
     //Todo store the value in eeprom
-
+    return true; //successful value set
 }
 
 

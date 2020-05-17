@@ -5,6 +5,7 @@
 #include "lwip/api.h"
 #include "esp_http_server.h"
 #include "cv_utils.c"
+#include "main_cv_mqtt.c"
 
 #ifndef MIN
 #define MIN(a,b) (((a)<(b))?(a):(b)) //where does this come from? see http_server_simple example
@@ -81,7 +82,9 @@ static esp_err_t config_settings_get_handler(httpd_req_t *req)
             /* Get value of expected key from query string */
             if (httpd_query_key_value(buf, "node_number", param, sizeof(param)) == ESP_OK) {
                 ESP_LOGI(TAG_SERVER, "Found URL query parameter => node_number=%s", param);
-                set_credential("node_number", param);
+                if (set_credential("node_number", param)){
+                    update_subscriptions_new_node();
+                }
             }
         }
         free(buf);

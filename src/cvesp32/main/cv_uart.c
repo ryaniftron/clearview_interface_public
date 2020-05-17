@@ -18,7 +18,7 @@
 #define U2 2
 
 //pick one or the other
-#define CV_UART_TO_USE U2 // U1 or U2
+#define CV_UART_TO_USE U1 // U1 or U2
 
 #if CV_UART_TO_USE == U2
 #define TXD_PIN (GPIO_NUM_17) //U2TXD
