@@ -64,3 +64,9 @@ ClearView manufactures a ready to use module that plugs directly into the ClearV
 1. Plug into a ClearView 2.0
 1. If the firmware is not up to date, you will be able to update it wirelessly. The exact process is still in development
 
+## Third Party Links
+
+[Matthew Smith CV2.0 Mount](https://www.thingiverse.com/thing:4365784)
+
+[FlyFive33 CV2.0 Mount](https://www.thingiverse.com/thing:3651604)
+
