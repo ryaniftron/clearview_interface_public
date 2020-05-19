@@ -29,6 +29,7 @@
 #if CONFIG_ENABLE_LED == 1
 #include "cv_ledc.c"
 #endif 
+#include "cv_utils.c"
 
 
 static const char *TAG_TEST = "CV_MQTT";
@@ -66,6 +67,7 @@ bool active_status = false;
 "{\"node_number\":\"%i\"\
 }"
 #define VARIABLE_STATUS_REQ "status_var?"
+#define NODE_SET_CMD "node_number="
 
 //*******************
 //** Format Topic Defines **
@@ -356,11 +358,11 @@ static bool mqtt_unsubscribe_single(esp_mqtt_client_handle_t client, char* topic
 {
     int msg_id = esp_mqtt_client_unsubscribe(client,topic);
     if (msg_id == -1){
-        ESP_LOGI(TAG_TEST, "sent subscribe unsuccessful, topic: '%s', msg_id='%d'",topic, msg_id);
+        ESP_LOGI(TAG_TEST, "sent unsubscribe unsuccessful, topic: '%s', msg_id='%d'",topic, msg_id);
         return false;
     }
     else{
-        ESP_LOGI(TAG_TEST, "sent subscribe successful, topic: '%s', msg_id='%d'",topic, msg_id);
+        ESP_LOGI(TAG_TEST, "sent unsubscribe successful, topic: '%s', msg_id='%d'",topic, msg_id);
         return true;
     }
 }
@@ -481,6 +483,17 @@ static bool process_command_esp(esp_mqtt_client_handle_t client, char* cmd){
         send_static_status(client);
         return true;
     }
+
+    match = NODE_SET_CMD;
+    if (strncmp(cmd,match,strlen(match))==0) {
+        char* new_node_num = malloc(strlen("0")); //allocate for null terminated 1 character string
+        strcpy(new_node_num,cmd + strlen(match));
+        if (set_credential("node_number", new_node_num)){
+            update_subscriptions_new_node();
+            return true;
+        }
+    }
+
 
     ESP_LOGW(TAG_proc_esp, "Unprocessed ESP command of %s", cmd);
     return false;
@@ -636,11 +649,14 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
         
         match = "all";
         if (strncmp(topic,match,strlen(match))==0) {    // <topic_header>req_all
-            ESP_LOGI(ptag,"matched req_all");
-            const int bytesRead = cvuart_send_report(data, dataRx);
-            if (bytesRead > 0){
-                mqtt_publish_to_topic(client, mtopics.rx_resp_target, (char* )dataRx); //TODO reply by all topic?
-            }
+            cvuart_send_command(data);
+            // remove_ctrlchars(data);
+            ESP_LOGI(ptag,"matched req_all => '%s'", data);
+            // if (bytesRead > 0){
+            //     mqtt_publish_to_topic(client, mtopics.rx_resp_target, (char* )dataRx);
+            // } else {
+            //     mqtt_publish_to_topic(client, mtopics.rx_resp_target, ""); //TODO failure payload?
+            // }
             return true;
         } 
 
@@ -652,10 +668,12 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
             //match node number
             long int node_num_parsed = strtol(topic,NULL,10);
             if (node_num_parsed == node_number){
-                ESP_LOGI(ptag, "matched req_node_all/<node_number> => %s", data);
+                ESP_LOGI(ptag, "matched req_node_all/<node_number> => '%s'", data);
                 const int bytesRead = cvuart_send_report(data, dataRx);
                 if (bytesRead > 0){
                     mqtt_publish_to_topic(client, mtopics.rx_resp_target,(char* ) dataRx); //TODO reply by node topic?
+                } else {
+                    mqtt_publish_to_topic(client, mtopics.rx_resp_target, "");
                 }
                 return true;
             } else {
@@ -720,6 +738,8 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
     return false;
 }
 
+
+
 static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 {
     esp_mqtt_client_handle_t client = event->client;
@@ -730,11 +750,11 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
         case MQTT_EVENT_CONNECTED:
             ESP_LOGI(TAG_TEST, "MQTT_EVENT_CONNECTED");
             xEventGroupSetBits(mqtt_event_group, CONNECTED_BIT2);
-            ESP_LOGI(TAG_TEST, "Delaying 5s before sub");
-            vTaskDelay(5000/ portTICK_PERIOD_MS);
+            ESP_LOGI(TAG_TEST, "Delaying 1s before sub");
+            vTaskDelay(1000/ portTICK_PERIOD_MS);
             mqtt_subscribe_to_topics(client);
-            ESP_LOGI(TAG_TEST, "Delaying 5s before pub");
-            vTaskDelay(5000/ portTICK_PERIOD_MS);
+            ESP_LOGI(TAG_TEST, "Delaying 1s before pub");
+            vTaskDelay(1000/ portTICK_PERIOD_MS);
             char* conn_msg = "1";
             mqtt_publish_retained(mqtt_client, mtopics.rx_conn,conn_msg);
             // set_ledc_code(0, led_breathe_slow);
