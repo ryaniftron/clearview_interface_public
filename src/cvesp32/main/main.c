@@ -549,6 +549,7 @@ void app_main(void)
 
 
             init_uart();
+            run_cvuart_rx_task();
 
         
         #if CONFIG_ENABLE_MQTT
