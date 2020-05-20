@@ -56,24 +56,25 @@ menu "ClearView ESP32 Configuration"
 
         config ENABLE_SERIAL
             bool "Enable Serial Communication"
-            default True
+            default y
 
         config ENABLE_LED
             bool "Enable LED codes"
-            default True
+            default y
         
         choice 
             prompt "Allowed WiFi Modes. Can Disable Wifi"
             optional
+            default y 
             config SOFTAP_ALLOWED
                 bool "Only Allow SoftAP WiFi"
-                default False
+                default n
             config STA_ALLOWED
                 bool "Only Allow Station WiFi"
-                default False
+                default n
             config BOTH_WIFI_ALLOWED
                 bool "Both WiFi Modes Allowed"
-                default True
+                default y
         endchoice
 
         if SOFTAP_ALLOWED || STA_ALLOWED || BOTH_WIFI_ALLOWED # Wifi is on
@@ -83,15 +84,15 @@ menu "ClearView ESP32 Configuration"
                     
                     config STARTUP_WIFI_SOFTAP
                         bool "Start in SoftAP"
-                        default False
+                        default n
 
                     config STARTUP_WIFI_STA
                         bool "Start in STA"
-                        default False
+                        default n
 
                     config STARTUP_STA_IF_CREDS_ELSE_SOFTAP
                         bool "Start in STA if valid WiFi Creds otherwise SoftAP"
-                        default True
+                        default y
                 endchoice
             endif # BOTH_WIFI_ALLOWED
 
@@ -99,34 +100,39 @@ menu "ClearView ESP32 Configuration"
         if STA_ALLOWED || BOTH_WIFI_ALLOWED
             config ENABLE_MQTT
                 bool "Enable MQTT"
-                default true
+                default y
         endif # STA_ALLOWED || BOTH_WIFI_ALLOWED
 
             choice 
                 prompt "Web Server"
                 optional
+                default y
                 #if BOTH_WIFI_ALLOWED           # If all three choices use if/endif, Web Server is never available
                 config WEB_SERVER_BOTH
                     bool "Allowed in Both Modes"
-                    default True
+                    default y
                     depends on BOTH_WIFI_ALLOWED # Need to use depend here for some reason
                 #endif # BOTH_WIFI_ALLOWED
                 
                 if BOTH_WIFI_ALLOWED || SOFTAP_ALLOWED
                     config WEB_SERVER_SOFTAP_ONLY
                         bool "Only in SoftAP"
-                        default True
+                        default y
                 endif # BOTH_WIFI_ALLOWED || SOFTAP_ALLOWED
                 
                 if BOTH_WIFI_ALLOWED || STA_ALLOWED
                     config WEB_SERVER_STA_ONLY
                         bool "Only in STA"
-                        default False
+                        default n
                 endif  # BOTH_WIFI_ALLOWED || STA_ALLOWED
             endchoice
                 
         endif # SOFTAP_ALLOWED || STA_ALLOWED || BOTH_WIFI_ALLOWED # Wifi is on
-      
+
+        config CV_INITIAL_PROGRAM
+            bool "Enable Initial Firmware Program Version"
+            default n
+            # help "Turn this on to make the module function just for initial programming and test"
 
     endmenu 
         

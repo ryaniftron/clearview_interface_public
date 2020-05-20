@@ -56,6 +56,30 @@ const char* TAG_SERVER = "CV_SERVER";
     <input type=\"submit\" value=\"Set Node Number\">\
     "
 
+#define HTML_TEST \
+"<form action=\"/config_test\">\
+  <label for=\"LED\">Choose a LED State</label>\
+  <select id=\"led\" name=\"LED\" >\
+    <option value=\"ON\">Turn On</option>\
+    <option value=\"OFF\">Turn Off</option>\
+  </select>\
+  <input type=\"submit\" value = \"Set LED State\">\
+</form>\
+\
+<form action=\"/config_test\">\
+  <label for=\"user_message\">Enter User Message</label>\
+  <input type=\"text\" id=\"user_message\" name=\"UM\">\
+  <input type=\"submit\" value = \"Set User Message\">\
+</form>\
+\
+<form action=\"/config_test\">\
+  <input type=\"text\" id=\"req_lock\" name=\"RL\">\
+  <input type=\"submit\" value = \"Request Lock State\">\
+  %s\
+</form>\
+"
+ 
+
 // URI Defines
 #define CV_CONFIG_WIFI_URI "/config_wifi"
 #define CV_CONFIG_WIFI_INSTANT_URI "/config_wifi_instant"
@@ -65,6 +89,37 @@ bool ssid_ready = false;
 bool password_ready = false;
 bool device_name_ready = false;
 bool broker_ip_ready = false;
+
+static esp_err_t config_test_get_handler(httpd_req_t *req)
+{
+//Parse the URL QUERY
+    char*  buf;
+    size_t buf_len;
+    buf_len = httpd_req_get_url_query_len(req) + 1;
+    if (buf_len > 1) {
+        buf = malloc(buf_len);
+        if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
+            ESP_LOGI(TAG_SERVER, "Found URL query => %s", buf);
+            char param[32];
+            // /* Get value of expected key from query string */
+            // if (httpd_query_key_value(buf, "ssid", param, sizeof(param)) == ESP_OK) {
+            //     ESP_LOGI(TAG_SERVER, "Found URL query parameter => ssid=%s", param);
+            // }
+            // if (httpd_query_key_value(buf, "password", param, sizeof(param)) == ESP_OK) {
+            //     ESP_LOGI(TAG_SERVER, "Found URL query parameter => password=%s", param);
+            // }
+            // if (httpd_query_key_value(buf, "device_name", param, sizeof(param)) == ESP_OK) {
+            //     ESP_LOGI(TAG_SERVER, "Found URL query parameter => device_name=%s", param);
+            // }
+            // if (httpd_query_key_value(buf, "broker_ip", param, sizeof(param)) == ESP_OK) {
+            //     ESP_LOGI(TAG_SERVER, "Found URL query parameter => broker_ip=%s", param);
+            // }           
+        }
+        free(buf);
+    }
+    return ESP_OK;
+}
+
 
 static esp_err_t config_settings_get_handler(httpd_req_t *req)
 {
@@ -165,20 +220,20 @@ static esp_err_t config_wifi_get_handler(httpd_req_t *req)
             if (is_instant){
                 ESP_LOGI(TAG_SERVER, "All WiFi Creds received. Configuring now");
                 // HTML Redirect https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections
-                httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 
-                char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"0; URL=http://192.168.4.1/\">";
-                httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);
-                httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);     
-                httpd_resp_send_chunk(req, NULL, 0);
-                vTaskDelay(1000 / portTICK_PERIOD_MS);
+                // httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 
+                // char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"0; URL=http://192.168.4.1/\">";
+                // httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);
+                // httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);     
+                // httpd_resp_send_chunk(req, NULL, 0);
+                // vTaskDelay(1000 / portTICK_PERIOD_MS);
             } else {
                 ESP_LOGI(TAG_SERVER, "All WiFi Creds received. Sending Delayed Redirect");
-                httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 
-                char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"3; URL=http://192.168.4.1/\">";
-                httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);
-                httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);     
-                httpd_resp_send_chunk(req, NULL, 0);
-                vTaskDelay(6000 / portTICK_PERIOD_MS);
+                // httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 
+                // char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"3; URL=http://192.168.4.1/\">";
+                // httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);
+                // httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);     
+                // httpd_resp_send_chunk(req, NULL, 0);
+                //vTaskDelay(6000 / portTICK_PERIOD_MS);
             }
             
             // TODO the redirect may be causing an issue as far as timing and switching out of the ode
@@ -198,8 +253,10 @@ static esp_err_t config_wifi_get_handler(httpd_req_t *req)
             // httpd_resp_set_type(req, "text/html");
             // httpd_resp_set_status(req, "307 Temporary Redirect");
             // httpd_resp_set_hdr(req, "Location", "http://192.168.4.1/wifi_confirmation");
-            // httpd_resp_send(req, NULL, 0);
-
+            httpd_resp_send(req, NULL, 0);
+            printf("A\n");
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            printf("B\n");
             extern bool switch_to_sta;
             switch_to_sta = true;
         }
@@ -245,6 +302,10 @@ void serve_wificonfig(httpd_req_t *req){
 
 void serve_settingsconfig(httpd_req_t *req){
     ESP_ERROR_CHECK(httpd_resp_send_chunk(req, HTML_SETTINGS, HTTPD_RESP_USE_STRLEN));
+}
+
+void serve_test(httpd_req_t *req){
+    ESP_ERROR_CHECK(httpd_resp_send_chunk(req, HTML_TEST, HTTPD_RESP_USE_STRLEN));
 }
 
 static esp_err_t root_get_handler(httpd_req_t *req)
@@ -323,6 +384,20 @@ static esp_err_t hello_cv_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+static esp_err_t test_cv_get_handler(httpd_req_t *req)
+{
+    serve_title(req);
+    serve_test(req);
+    ESP_ERROR_CHECK(httpd_resp_send_chunk(req, NULL, 0));
+    return ESP_OK;
+}
+
+static const httpd_uri_t config_test_uri = {
+    .uri       = "/config_test",
+    .method    = HTTP_GET,
+    .handler   = config_test_get_handler
+};
+
 static const httpd_uri_t config_settings_uri = {
     .uri       = "/config_settings",
     .method    = HTTP_GET,
@@ -338,7 +413,7 @@ static const httpd_uri_t config_wifi_uri = {
 
 // Used to submit wifi credentials without promting or redirecting
 static const httpd_uri_t config_wifi_instant_uri = {
-        .uri   = CV_CONFIG_WIFI_INSTANT_URI,
+    .uri   = CV_CONFIG_WIFI_INSTANT_URI,
     .method    = HTTP_GET,
     .handler   = config_wifi_get_handler
 };
@@ -363,6 +438,16 @@ static const httpd_uri_t hello_uri = {
      * context to demonstrate it's usage */
     .user_ctx  = "Hello World"
 };
+
+
+static const httpd_uri_t test_uri = {
+    .uri       = "/test",
+    .method    = HTTP_GET,
+    .handler   = test_cv_get_handler,
+    /* Let's pass response string in user
+     * context to demonstrate it's usage */
+};
+
 
 // /* An HTTP POST handler */
 // static esp_err_t echo_cv_post_handler(httpd_req_t *req)
@@ -440,6 +525,10 @@ static httpd_handle_t start_cv_webserver(void){
         httpd_register_uri_handler(server, &config_wifi_instant_uri);
         httpd_register_uri_handler(server, &config_settings_uri);
         httpd_register_uri_handler(server, &settings_uri);
+        #ifdef CONFIG_CV_INITIAL_PROGRAM
+        httpd_register_uri_handler(server, &test_uri);
+        httpd_register_uri_handler(server, &config_test_uri);
+        #endif
 
         return server;
     }
