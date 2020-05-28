@@ -649,14 +649,15 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
         
         match = "all";
         if (strncmp(topic,match,strlen(match))==0) {    // <topic_header>req_all
-            cvuart_send_command(data);
-            // remove_ctrlchars(data);
-            ESP_LOGI(ptag,"matched req_all => '%s'", data);
-            // if (bytesRead > 0){
-            //     mqtt_publish_to_topic(client, mtopics.rx_resp_target, (char* )dataRx);
-            // } else {
-            //     mqtt_publish_to_topic(client, mtopics.rx_resp_target, ""); //TODO failure payload?
-            // }
+            ESP_LOGI(ptag,"matched req_all => '%s'", data); 
+            int repCount = cvuart_send_report(data, dataRx);
+            if (repCount > 0){
+                mqtt_publish_to_topic(client, mtopics.rx_resp_target, (char* )dataRx);
+                remove_ctrlchars((char*)dataRx);
+            } else {
+                mqtt_publish_to_topic(client, mtopics.rx_resp_target, ""); //TODO failure payload?
+            }
+            free(dataRx);
             return true;
         } 
 
@@ -669,16 +670,19 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
             long int node_num_parsed = strtol(topic,NULL,10);
             if (node_num_parsed == node_number){
                 ESP_LOGI(ptag, "matched req_node_all/<node_number> => '%s'", data);
-                const int bytesRead = cvuart_send_report(data, dataRx);
-                if (bytesRead > 0){
-                    mqtt_publish_to_topic(client, mtopics.rx_resp_target,(char* ) dataRx); //TODO reply by node topic?
+                int repCount = cvuart_send_report(data, dataRx);
+                if (repCount > 0){
+                    mqtt_publish_to_topic(client, mtopics.rx_resp_target, (char* )dataRx);
+                    remove_ctrlchars((char*)dataRx);
                 } else {
-                    mqtt_publish_to_topic(client, mtopics.rx_resp_target, "");
+                    mqtt_publish_to_topic(client, mtopics.rx_resp_target, ""); //TODO failure payload?
                 }
+                free(dataRx);
                 return true;
             } else {
                 //TODO output an error message on an MQTT_Error Topic
                 ESP_LOGW(ptag, "Nonmatching node number. Got %ld. Expected %d",node_num_parsed,node_number );
+                free(dataRx);
                 return false; //short circuit the rest of the parser
             }
         } 
@@ -692,14 +696,19 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
             long int node_num_parsed = strtol(topic,NULL,10);
             if (node_num_parsed == node_number){
                 ESP_LOGI(ptag, "matched req_node_active/<node_number>");
-                const int bytesRead = cvuart_send_report(data, dataRx);
-                if (bytesRead > 0){
-                    mqtt_publish_to_topic(client, mtopics.rx_resp_target,(char* ) dataRx); //TODO reply by active node topic?
+                int repCount = cvuart_send_report(data, dataRx);
+                if (repCount > 0){
+                    mqtt_publish_to_topic(client, mtopics.rx_resp_target, (char* )dataRx);
+                    remove_ctrlchars((char*)dataRx);
+                } else {
+                    mqtt_publish_to_topic(client, mtopics.rx_resp_target, ""); //TODO failure payload?
                 }
+                free(dataRx);
                 return true;
             } else {
                 //TODO output an error message on an MQTT_Error Topic
                 ESP_LOGW(ptag, "Nonmatching node number. Got %ld. Expected %d",node_num_parsed,node_number );
+                free(dataRx);
                 return false; //short circuit the rest of the parser
             }
         } 
@@ -716,17 +725,17 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
                 if (bytesRead > 0){
                     mqtt_publish_to_topic(client, mtopics.rx_resp_target, (char* ) dataRx);
                 }
+                free(dataRx);
                 return true;
             } else {
                 //TODO output an error message on an MQTT_Error Topic
                 printf("dname: '%.*s'",5,device_name);
                 ESP_LOGW(ptag, "Nonmatching device name. Got %.*s. Expected %.*s",topic_len,topic, 15,device_name); //TODO magic 15
+                free(dataRx);
                 return false; //short circuit the rest of the parser
             }
         } 
 
-        
-        free(dataRx); //TODO if I return here, then isn't there a memory leak?
     }
     
     

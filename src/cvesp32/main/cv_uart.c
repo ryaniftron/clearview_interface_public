@@ -18,7 +18,7 @@
 #define U2 2
 
 //pick one or the other
-#define CV_UART_TO_USE U1 // U1 or U2
+#define CV_UART_TO_USE U2 // U1 or U2
 
 #if CV_UART_TO_USE == U2
 #define TXD_PIN (GPIO_NUM_17) //U2TXD
@@ -34,7 +34,7 @@
 #define UART_NUM UART_NUM_1
 
 //general uart settings
-static const int RX_BUF_SIZE = 1024;
+static const int RX_BUF_SIZE = 128;
 static bool _uart_is_init = false; //this is checked to make sure uart is active before sending
 #define REPORT_REPLY_TIME 100 //how many ms to wait for a reply after a send. Should be >50ms
 
@@ -67,6 +67,7 @@ void init_uart() {
     //Set pin can be last. Always seems to be after param_config: 
     // https://github.com/espressif/esp-idf/issues/4830#issuecomment-590651741
     ESP_ERROR_CHECK(uart_set_pin(UART_NUM, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    ESP_ERROR_CHECK(gpio_pullup_dis(RXD_PIN));
     // We won't use a buffer for sending data.
     
 
@@ -110,17 +111,18 @@ int receiveData(const char* logName, uint8_t* data, TickType_t ticks_to_wait)
 }
 
 
-void cvuart_send_command(const char* data)
+bool cvuart_send_command(const char* data)
 {
     static const char *logName = "send_command";
     if (_uart_is_init)
     {
         sendData(logName, data);
+        return true;
     }
     else
     {
         ESP_LOGE(logName, "cv_uart must be initialized.");
-        return;
+        return false;
     }
 }
 
@@ -184,7 +186,7 @@ int cvuart_send_report(const char* data, uint8_t* dataRx)
     const int rxBytes = uart_read_bytes(UART_NUM, dataRx, RX_BUF_SIZE, respone_wait_tics);
     if (rxBytes > 0) {
         dataRx[rxBytes] = 0;
-        ESP_LOGI(logName, "Read %d bytes: '%s'", rxBytes, dataRx);
+        ESP_LOGD(logName, "Read %d bytes: '%s'", rxBytes, dataRx);
         //ESP_LOG_BUFFER_HEXDUMP(RX_TASK_TAG, data, rxBytes, ESP_LOG_INFO);
     } else {
         ESP_LOGI(logName, "No data available in buffer\n");
