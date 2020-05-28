@@ -17,5 +17,6 @@
         "stdio.h": "c",
         "protocol_examples_common.h": "c",
         "typeinfo": "c"
-    }
+    },
+    "C_Cpp.dimInactiveRegions": false
 } 

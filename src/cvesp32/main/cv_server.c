@@ -110,9 +110,12 @@ static esp_err_t config_test_get_handler(httpd_req_t *req)
                 size_t needed = snprintf(NULL, 0, "\n09UM%s%%\r",param)+1;
                 char* line = (char*)malloc(needed);
                 snprintf(line, needed,  "\n09UM%s%%\r",param);
-                cvuart_send_command(line);
-                remove_ctrlchars(line);
-                httpd_resp_send_chunk(req, line, HTTPD_RESP_USE_STRLEN);
+                if (cvuart_send_command(line)){
+                    remove_ctrlchars(line);
+                    httpd_resp_send_chunk(req, line, HTTPD_RESP_USE_STRLEN);
+                } else {
+                    httpd_resp_send_chunk(req, "Error: uart disabled", HTTPD_RESP_USE_STRLEN);
+                }
 
             }
             if (httpd_query_key_value(buf, "RL", param, sizeof(param)) == ESP_OK) {
@@ -122,8 +125,10 @@ static esp_err_t config_test_get_handler(httpd_req_t *req)
                 if (repCount > 0){
                     remove_ctrlchars((char*)dataRx);
                     httpd_resp_send_chunk(req, (char*)dataRx, HTTPD_RESP_USE_STRLEN);
-                } else {
+                } else if (repCount == 0 ) {
                     httpd_resp_send_chunk(req, "No uart response", HTTPD_RESP_USE_STRLEN);
+                } else if (repCount == -1) {
+                    httpd_resp_send_chunk(req, "Error: uart disabled", HTTPD_RESP_USE_STRLEN);
                 }
                     // cvuart_send_report("\n09RPMV%%\r", dataRx);
                     // cvuart_send_report("\n09RPVF%%\r", dataRx);

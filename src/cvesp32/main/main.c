@@ -74,7 +74,7 @@
 #endif
 
 #define WIFI_ON CONFIG_SOFTAP_ALLOWED || CONFIG_STA_ALLOWED || CONFIG_BOTH_WIFI_ALLOWED
-#if WIFI_ON == 1
+#if WIFI_ON
 #warning "WIFI ON"
 #else
 #warning "WIFI OFF"
@@ -423,6 +423,9 @@ static bool initialise_sta_wifi(char* PARAM_HOSTNAME)
                  wifi_config.sta.ssid,wifi_config.sta.password);
         wifi_connect_fail = false;
         set_ledc_code(0, led_breathe_fast);
+        # if WEB_SERVER_ON
+            start_cv_webserver();
+        #endif //WEB_SERVER_ON
     } else if (bits & WIFI_FAIL_BIT) {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
                  wifi_config.sta.ssid,wifi_config.sta.password);
