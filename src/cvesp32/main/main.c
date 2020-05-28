@@ -354,9 +354,10 @@ static void initialize_softAP_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID
              wifi_config.ap.ssid, wifi_config.ap.password);
              //TODO password connection/security may not work well
     }
-    ESP_LOGI(TAG, "Login and go to http://192.168.4.1/ \n");
-    
-
+      
+    # if WEB_SERVER_ON
+        start_cv_webserver();
+    #endif //WEB_SERVER_ON
 }
 
 // Connect as station to AP
@@ -472,7 +473,7 @@ static void demo_sequential_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_L
     //printf("Starting http server\n");
     //xTaskCreate(&http_server, "http_server", 2048, NULL, 5, NULL);
 
-    start_cv_webserver();
+    
 
 
     printf("Waiting for  switch_to_sta\n");;
@@ -543,13 +544,16 @@ void app_main(void)
             initialise_sta_wifi(chipid);
         #elif CONFIG_STARTUP_WIFI_SOFTAP 
             demo_sequential_wifi(chipid, UNIQUE_ID_LENGTH); //this returns on successful connection
+        #elif CONFIG_SOFTAP_ALLOWED
+            initialize_softAP_wifi(chipid, UNIQUE_ID_LENGTH);
         #endif //SKIP_SOFTAP
         //only after in sequential wifi do we start mqtt. Give it some time
         vTaskDelay(2000 / portTICK_PERIOD_MS);
 
 
             init_uart();
-            run_cvuart_rx_task();
+
+            //run_cvuart_rx_task();
 
         
         #if CONFIG_ENABLE_MQTT

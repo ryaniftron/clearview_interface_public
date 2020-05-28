@@ -11,7 +11,10 @@
 #define MIN(a,b) (((a)<(b))?(a):(b)) //where does this come from? see http_server_simple example
 #endif //MIN
 
+#define WEBSERVER_ENABLE
+
 const char* TAG_SERVER = "CV_SERVER";
+static bool _server_started = false;
 
 #define HTML_ROOT_TITLE \
 "<h2><center>ClearView Wireless %s  </center></h2>" //supply chip_id
@@ -257,9 +260,7 @@ static esp_err_t config_wifi_get_handler(httpd_req_t *req)
             // httpd_resp_set_status(req, "307 Temporary Redirect");
             // httpd_resp_set_hdr(req, "Location", "http://192.168.4.1/wifi_confirmation");
             httpd_resp_send(req, NULL, 0);
-            printf("A\n");
             vTaskDelay(1000 / portTICK_PERIOD_MS);
-            printf("B\n");
             extern bool switch_to_sta;
             switch_to_sta = true;
         }
@@ -395,61 +396,61 @@ static esp_err_t test_cv_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-// static const httpd_uri_t config_test_uri = {
-//     .uri       = "/config_test",
-//     .method    = HTTP_GET,
-//     .handler   = config_test_get_handler
-// };
+static const httpd_uri_t config_test_uri = {
+    .uri       = "/config_test",
+    .method    = HTTP_GET,
+    .handler   = config_test_get_handler
+};
 
-// static const httpd_uri_t config_settings_uri = {
-//     .uri       = "/config_settings",
-//     .method    = HTTP_GET,
-//     .handler   = config_settings_get_handler
-// };
+static const httpd_uri_t config_settings_uri = {
+    .uri       = "/config_settings",
+    .method    = HTTP_GET,
+    .handler   = config_settings_get_handler
+};
 
-// // When a user manually submits wifi config. Issues a confirmation page
-// static const httpd_uri_t config_wifi_uri = {
-//     .uri       = CV_CONFIG_WIFI_URI,
-//     .method    = HTTP_GET,
-//     .handler   = config_wifi_get_handler
-// };
+// When a user manually submits wifi config. Issues a confirmation page
+static const httpd_uri_t config_wifi_uri = {
+    .uri       = CV_CONFIG_WIFI_URI,
+    .method    = HTTP_GET,
+    .handler   = config_wifi_get_handler
+};
 
-// // Used to submit wifi credentials without promting or redirecting
-// static const httpd_uri_t config_wifi_instant_uri = {
-//     .uri   = CV_CONFIG_WIFI_INSTANT_URI,
-//     .method    = HTTP_GET,
-//     .handler   = config_wifi_get_handler
-// };
+// Used to submit wifi credentials without promting or redirecting
+static const httpd_uri_t config_wifi_instant_uri = {
+    .uri   = CV_CONFIG_WIFI_INSTANT_URI,
+    .method    = HTTP_GET,
+    .handler   = config_wifi_get_handler
+};
 
-// static const httpd_uri_t settings_uri = {
-//     .uri       = "/settings",
-//     .method    = HTTP_GET,
-//     .handler   = settings_get_handler
-// };
+static const httpd_uri_t settings_uri = {
+    .uri       = "/settings",
+    .method    = HTTP_GET,
+    .handler   = settings_get_handler
+};
 
-// static const httpd_uri_t root_uri = {
-//     .uri       = "/",
-//     .method    = HTTP_GET,
-//     .handler   = root_get_handler
-// };
+static const httpd_uri_t root_uri = {
+    .uri       = "/",
+    .method    = HTTP_GET,
+    .handler   = root_get_handler
+};
 
-// static const httpd_uri_t hello_uri = {
-//     .uri       = "/hello",
-//     .method    = HTTP_GET,
-//     .handler   = hello_cv_get_handler,
-//     /* Let's pass response string in user
-//      * context to demonstrate it's usage */
-//     .user_ctx  = "Hello World"
-// };
+static const httpd_uri_t hello_uri = {
+    .uri       = "/hello",
+    .method    = HTTP_GET,
+    .handler   = hello_cv_get_handler,
+    /* Let's pass response string in user
+     * context to demonstrate it's usage */
+    .user_ctx  = "Hello World"
+};
 
 
-// static const httpd_uri_t test_uri = {
-//     .uri       = "/test",
-//     .method    = HTTP_GET,
-//     .handler   = test_cv_get_handler,
-//     /* Let's pass response string in user
-//      * context to demonstrate it's usage */
-// };
+static const httpd_uri_t test_uri = {
+    .uri       = "/test",
+    .method    = HTTP_GET,
+    .handler   = test_cv_get_handler,
+    /* Let's pass response string in user
+     * context to demonstrate it's usage */
+};
 
 
 // /* An HTTP POST handler */
@@ -514,6 +515,10 @@ static esp_err_t test_cv_get_handler(httpd_req_t *req)
 
 
 static httpd_handle_t start_cv_webserver(void){
+    if (_server_started) {
+        ESP_LOGW(TAG_SERVER, "SERVER is already running");
+        return NULL;
+    }
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     ESP_LOGI(TAG_SERVER, "Starting server on port: '%d'", config.server_port);
@@ -523,23 +528,26 @@ static httpd_handle_t start_cv_webserver(void){
     ESP_LOGI(TAG_SERVER, "Server started");
     
     if (ret == ESP_OK){
-        // // Set URI handlers
-        // ESP_LOGI(TAG_SERVER, "Registering URI handlers");
-        // httpd_register_uri_handler(server, &hello_uri);
-        // httpd_register_uri_handler(server, &root_uri);
-        // httpd_register_uri_handler(server, &config_wifi_uri);
-        // httpd_register_uri_handler(server, &config_wifi_instant_uri);
-        // httpd_register_uri_handler(server, &config_settings_uri);
-        // httpd_register_uri_handler(server, &settings_uri);
-        // #ifdef CONFIG_CV_INITIAL_PROGRAM
-        // httpd_register_uri_handler(server, &test_uri);
-        // httpd_register_uri_handler(server, &config_test_uri);
-        // #endif
+        // Set URI handlers
+        ESP_LOGI(TAG_SERVER, "Registering URI handlers");
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &hello_uri));
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &root_uri));
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &config_wifi_uri));
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &config_wifi_instant_uri));
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &config_settings_uri));
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &settings_uri));
+        #ifdef CONFIG_CV_INITIAL_PROGRAM
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &test_uri));
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &config_test_uri));
+        #endif
 
+        ESP_LOGI(TAG_SERVER, "Webserver started. Login and go to http://192.168.4.1/ \n");
+        _server_started = true;
         return server;
     }
 
     ESP_LOGI(TAG_SERVER, "Error starting server!");
+    _server_started = false;
     return NULL;
 }
 
@@ -548,6 +556,7 @@ static void stop_cv_webserver(httpd_handle_t server)
 {
     // Stop the httpd server
     httpd_stop(server);
+    _server_started = false;
 }
 
 //TODO link the disconnect and connect handlers to joinging/leaving the wifi?
