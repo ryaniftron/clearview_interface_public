@@ -53,11 +53,9 @@
 
 
 
-#if CONFIG_ENABLE_SERIAL
-    #include "cv_uart.c"
-#else
-    #warning CV_UART is disabled
-#endif //CONFIG_ENABLE_SERIAL
+
+#include "cv_uart.c"
+
 
 
 
@@ -527,6 +525,7 @@ void app_main(void)
 
     CV_LED_Code_t initial_led_state = led_off;
     init_cv_ledc(initial_led_state);
+    init_uart();
 
 
       
@@ -551,7 +550,7 @@ void app_main(void)
         vTaskDelay(2000 / portTICK_PERIOD_MS);
 
 
-            init_uart();
+            
 
             //run_cvuart_rx_task();
 

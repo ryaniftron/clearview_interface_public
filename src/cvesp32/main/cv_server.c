@@ -102,12 +102,17 @@ static esp_err_t config_test_get_handler(httpd_req_t *req)
     if (buf_len > 1) {
         buf = malloc(buf_len);
         if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
-            ESP_LOGI(TAG_SERVER, "Found config_test URL query => %s", buf);
+            ESP_LOGD(TAG_SERVER, "Found config_test URL query => %s", buf);
             char param[32];
             // /* Get value of expected key from query string */
-            // if (httpd_query_key_value(buf, "ssid", param, sizeof(param)) == ESP_OK) {
-            //     ESP_LOGI(TAG_SERVER, "Found URL query parameter => ssid=%s", param);
-            // }
+            if (httpd_query_key_value(buf, "UM", param, sizeof(param)) == ESP_OK) {
+                ESP_LOGD(TAG_SERVER, "Found URL query parameter => UM=%s", param);
+                size_t needed = snprintf(NULL, 0, "\n09UM%s%%\r",param)+1;
+                char* line = (char*)malloc(needed);
+                snprintf(line, needed,  "\n09UM%s%%\r",param);
+                cvuart_send_command(line);
+                remove_ctrlchars(line);
+            }
             // if (httpd_query_key_value(buf, "password", param, sizeof(param)) == ESP_OK) {
             //     ESP_LOGI(TAG_SERVER, "Found URL query parameter => password=%s", param);
             // }
