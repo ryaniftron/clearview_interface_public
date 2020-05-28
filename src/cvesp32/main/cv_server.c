@@ -112,10 +112,25 @@ static esp_err_t config_test_get_handler(httpd_req_t *req)
                 snprintf(line, needed,  "\n09UM%s%%\r",param);
                 cvuart_send_command(line);
                 remove_ctrlchars(line);
+                httpd_resp_send_chunk(req, line, HTTPD_RESP_USE_STRLEN);
+
             }
-            // if (httpd_query_key_value(buf, "password", param, sizeof(param)) == ESP_OK) {
-            //     ESP_LOGI(TAG_SERVER, "Found URL query parameter => password=%s", param);
-            // }
+            if (httpd_query_key_value(buf, "RL", param, sizeof(param)) == ESP_OK) {
+                ESP_LOGI(TAG_SERVER, "Found URL query parameter => Request Lock Status"); //unused param
+                uint8_t* dataRx = (uint8_t*) malloc(RX_BUF_SIZE+1);
+                int repCount = cvuart_send_report(LOCK_REPORT_FMT, dataRx);
+                if (repCount > 0){
+                    remove_ctrlchars((char*)dataRx);
+                    httpd_resp_send_chunk(req, (char*)dataRx, HTTPD_RESP_USE_STRLEN);
+                } else {
+                    httpd_resp_send_chunk(req, "No uart response", HTTPD_RESP_USE_STRLEN);
+                }
+                    // cvuart_send_report("\n09RPMV%%\r", dataRx);
+                    // cvuart_send_report("\n09RPVF%%\r", dataRx);
+                    //cvuart_send_report("\n09RPID%%\r", dataRx);
+                    //run_cv_uart_test_task();
+                free(dataRx);
+            }
             // if (httpd_query_key_value(buf, "device_name", param, sizeof(param)) == ESP_OK) {
             //     ESP_LOGI(TAG_SERVER, "Found URL query parameter => device_name=%s", param);
             // }
@@ -126,7 +141,6 @@ static esp_err_t config_test_get_handler(httpd_req_t *req)
         free(buf);
     }
 
-    httpd_resp_send_chunk(req, "Test Running...", HTTPD_RESP_USE_STRLEN);    
     httpd_resp_send_chunk(req, NULL, 0);
     return ESP_OK;
 }

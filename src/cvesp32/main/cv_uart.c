@@ -36,14 +36,14 @@
 //general uart settings
 static const int RX_BUF_SIZE = 1024;
 static bool _uart_is_init = false; //this is checked to make sure uart is active before sending
-#define REPORT_REPLY_TIME 3000 //how many ms to wait for a reply after a send. Should be >50ms
+#define REPORT_REPLY_TIME 100 //how many ms to wait for a reply after a send. Should be >50ms
 
 //cv protocol specifics
 #define cv_start_char '\n'
 #define cv_end_char '\r'
 #define cv_csum '&'
 
-#define lock_report_fmt sprintf
+#define LOCK_REPORT_FMT "\n09RPLF\%\r"
 
 
 void init_uart() {
@@ -59,10 +59,13 @@ void init_uart() {
         .stop_bits = UART_STOP_BITS_1,
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
     };
-    // Follow uart_async initialization order:
+    // Follow uart_async initialization order - config before install
     // https://github.com/espressif/esp-idf/blob/release/v4.0/examples/peripherals/uart/uart_async_rxtxtasks/main/uart_async_rxtxtasks_main.c
-    ESP_ERROR_CHECK(uart_driver_install(UART_NUM, RX_BUF_SIZE * 2, 0, 0, NULL, 0));
     ESP_ERROR_CHECK(uart_param_config(UART_NUM , &uart_config));
+    ESP_ERROR_CHECK(uart_driver_install(UART_NUM, RX_BUF_SIZE * 2, 0, 0, NULL, 0));
+    
+    //Set pin can be last. Always seems to be after param_config: 
+    // https://github.com/espressif/esp-idf/issues/4830#issuecomment-590651741
     ESP_ERROR_CHECK(uart_set_pin(UART_NUM, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
     // We won't use a buffer for sending data.
     
@@ -97,7 +100,7 @@ int receiveData(const char* logName, uint8_t* data, TickType_t ticks_to_wait)
     int rxBytes = uart_read_bytes(UART_NUM, data, RX_BUF_SIZE, ticks_to_wait);
     if (rxBytes > 0) {
         data[rxBytes] = 0;
-        ESP_LOGD(logName, "Read %d bytes: '%s'", rxBytes, data);
+        ESP_LOGI(logName, "Read %d bytes: '%s'", rxBytes, data);
         //ESP_LOG_BUFFER_HEXDUMP(RX_TASK_TAG, data, rxBytes, ESP_LOG_INFO);
     } else {
         ESP_LOGI(logName, "No data available in buffer\n");
@@ -123,6 +126,39 @@ void cvuart_send_command(const char* data)
 
 // Write 'data' to the serial port and put a response on dataRx. 
 // Returns the number of bytes read
+// int cvuart_send_report(const char* data, uint8_t* dataRx)
+// {
+//     static const char *logName = "send_report";
+
+//     if (!_uart_is_init)
+//     {
+//         ESP_LOGE(logName, "cv_uart must be initialized.");
+//         return -1;
+//     }
+
+//     size_t * cached_data_len;
+//     ESP_ERROR_CHECK(uart_get_buffered_data_len(UART_NUM, (size_t*)&cached_data_len));
+
+//     //clear rx buffer in anticipation of the data
+//     ESP_ERROR_CHECK(uart_flush_input(UART_NUM));
+
+//     //send the report request
+//     sendData(logName, data);
+//     TickType_t respone_wait_tics = REPORT_REPLY_TIME / portTICK_RATE_MS;
+    
+    
+//     ESP_ERROR_CHECK(uart_get_buffered_data_len(UART_NUM, (size_t*)&cached_data_len));
+//     int rxBytes = uart_read_bytes(UART_NUM, dataRx, RX_BUF_SIZE, respone_wait_tics);
+//     if (rxBytes > 0) {
+//         dataRx[rxBytes] = 0;
+//         ESP_LOGI(logName, "Read %d bytes: '%s'", rxBytes, dataRx);
+//         //ESP_LOG_BUFFER_HEXDUMP(RX_TASK_TAG, data, rxBytes, ESP_LOG_INFO);
+//     } else {
+//         ESP_LOGI(logName, "No data available in buffer\n");
+//     }
+//     //free(dataRx);
+//     return rxBytes;
+// }
 int cvuart_send_report(const char* data, uint8_t* dataRx)
 {
     static const char *logName = "send_report";
@@ -133,19 +169,19 @@ int cvuart_send_report(const char* data, uint8_t* dataRx)
         return -1;
     }
 
-    size_t * cached_data_len;
-    ESP_ERROR_CHECK(uart_get_buffered_data_len(UART_NUM, (size_t*)&cached_data_len));
-
     //clear rx buffer in anticipation of the data
     ESP_ERROR_CHECK(uart_flush_input(UART_NUM));
 
     //send the report request
     sendData(logName, data);
     TickType_t respone_wait_tics = REPORT_REPLY_TIME / portTICK_RATE_MS;
+
+    //use the timeout in the uart to wait for a response
+    //uint8_t* dataRx = (uint8_t*) malloc(RX_BUF_SIZE+1);
     
-    
+    size_t * cached_data_len;
     ESP_ERROR_CHECK(uart_get_buffered_data_len(UART_NUM, (size_t*)&cached_data_len));
-    int rxBytes = uart_read_bytes(UART_NUM, dataRx, RX_BUF_SIZE, respone_wait_tics);
+    const int rxBytes = uart_read_bytes(UART_NUM, dataRx, RX_BUF_SIZE, respone_wait_tics);
     if (rxBytes > 0) {
         dataRx[rxBytes] = 0;
         ESP_LOGI(logName, "Read %d bytes: '%s'", rxBytes, dataRx);
@@ -177,8 +213,8 @@ static void uart_test_task()
     ESP_LOGI(TEST_TASK_TAG, "Running UART Send Task");
 
     init_uart();
-    char* freq_request_cmd = "\n09RPLF\%\r";
-    char* set_channel_fmt = "\n09BC%u\%%\r";
+    char* lock_request_cmd = "\n09RPLF\%\r";
+    char* set_channel_fmt = "\n09UM%u%%\r";
     uint8_t channel_num = 1;
     while (1) {
         char set_channel_cmd[20];
@@ -186,14 +222,14 @@ static void uart_test_task()
         //cycle the selected channel
         sprintf(set_channel_cmd, set_channel_fmt, channel_num%8);
 
-        ESP_LOGI(TEST_TASK_TAG, "Sending channel command:%s",set_channel_cmd);
+        ESP_LOGI(TEST_TASK_TAG, "Sending UMl command:%s",set_channel_cmd);
         cvuart_send_command(set_channel_cmd);
         vTaskDelay(5000 / portTICK_PERIOD_MS);
 
         //now, run a report for the frequency
         uint8_t* dataRx = (uint8_t*) malloc(RX_BUF_SIZE+1);
-        ESP_LOGI(TEST_TASK_TAG, "Asking for frequency with: %s", freq_request_cmd);
-        cvuart_send_report(freq_request_cmd, dataRx);
+        ESP_LOGI(TEST_TASK_TAG, "Asking for lock status: %s", lock_request_cmd);
+        cvuart_send_report(lock_request_cmd, dataRx);
         vTaskDelay(5000/ portTICK_PERIOD_MS);
 
         free(dataRx);
