@@ -101,9 +101,10 @@ void set_ledc_code(int channel, CV_LED_Code_t led_code){
     if (led_code == led_unprogrammed){
         ESP_LOGW(TAG_LEDC, "Can't set LED to unprogrammed because it's reserved");
     } else if (led_code == led_off){
-        ESP_LOGW(TAG_LEDC, "Can't set LED to off because it's reserved");
+        ESP_LOGW(TAG_LEDC, "Setting LED state to reserved off state");
+        _led_state = led_code;
     } else if (led_code == led_on){
-        ESP_LOGW(TAG_LEDC, "Setting LED state to reserved state.");
+        ESP_LOGW(TAG_LEDC, "Setting LED state to reserved on state");
         _led_state = led_code;
     } else {
         _led_state = led_code; //update local variable here
@@ -250,7 +251,6 @@ void demo_ledc_codes(){
 
     vTaskDelay(10000 / portTICK_PERIOD_MS);
     set_ledc_code(0, led_off);
-
 
 }
 

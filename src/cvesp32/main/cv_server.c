@@ -116,7 +116,7 @@ static esp_err_t config_test_get_handler(httpd_req_t *req)
 
             }
             if (httpd_query_key_value(buf, "RL", param, sizeof(param)) == ESP_OK) {
-                ESP_LOGI(TAG_SERVER, "Found URL query parameter => Request Lock Status"); //unused param
+                ESP_LOGD(TAG_SERVER, "Found URL query parameter => Request Lock Status"); //unused param
                 uint8_t* dataRx = (uint8_t*) malloc(RX_BUF_SIZE+1);
                 int repCount = cvuart_send_report(LOCK_REPORT_FMT, dataRx);
                 if (repCount > 0){
@@ -131,12 +131,22 @@ static esp_err_t config_test_get_handler(httpd_req_t *req)
                     //run_cv_uart_test_task();
                 free(dataRx);
             }
-            // if (httpd_query_key_value(buf, "device_name", param, sizeof(param)) == ESP_OK) {
-            //     ESP_LOGI(TAG_SERVER, "Found URL query parameter => device_name=%s", param);
-            // }
-            // if (httpd_query_key_value(buf, "broker_ip", param, sizeof(param)) == ESP_OK) {
-            //     ESP_LOGI(TAG_SERVER, "Found URL query parameter => broker_ip=%s", param);
-            // }           
+            if (httpd_query_key_value(buf, "LED", param, sizeof(param)) == ESP_OK) {
+                ESP_LOGI(TAG_SERVER, "Found URL query parameter => LED=%s", param);
+                #if CONFIG_ENABLE_LED
+                    if ((strncmp(param, "ON", strlen(param))) == 0){
+                        httpd_resp_send_chunk(req, "LED ON", HTTPD_RESP_USE_STRLEN);
+                        set_ledc_code(0, led_on);
+                    } else if ((strncmp(param, "OFF", strlen(param))) == 0){
+                        httpd_resp_send_chunk(req, "LED OFF", HTTPD_RESP_USE_STRLEN);;
+                        set_ledc_code(0, led_off);
+                    } else {
+                        ESP_LOGE(TAG_SERVER, "Unsupported LED value of %s", param);
+                    }
+                #else //not CONFIG_ENABLE_LED
+                    httpd_resp_send_chunk(req, "Error: LED is disabled", HTTPD_RESP_USE_STRLEN);
+                #endif //CONFIG_ENABLE_LED
+            }    
         }
         free(buf);
     }
