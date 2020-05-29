@@ -31,22 +31,22 @@
 
 //Components
 
-#include "cv_utils.c"
+#include "cv_utils.h"
 
 
-#include "main_cv_mqtt.c"
+#include "cv_mqtt.h"
 #if CONFIG_ENABLE_MQTT != 1
     #warning CV MQTT is disabled
 #endif // CONFIG_ENABLE_MQTT != 1
 
 
-#include "cv_ledc.c"
+#include "cv_ledc.h"
 #if CONFIG_ENABLE_LED != 1
     #warning CV LED is disabled
 #endif //CONFIG_ENABLE_LED != 1
 
 #define WEB_SERVER_ON CONFIG_WEB_SERVER_BOTH || CONFIG_WEB_SERVER_SOFTAP_ONLY || CONFIG_WEB_SERVER_STA_ONLY
-#include "cv_server.c"
+#include "cv_server.h"
 #if WEB_SERVER_ON != 1
     #warning CV Web Server is disabled
 #endif //WEB_SERVER_ON != 1
@@ -54,7 +54,7 @@
 
 
 
-#include "cv_uart.c"
+#include "cv_uart.h"
 
 
 

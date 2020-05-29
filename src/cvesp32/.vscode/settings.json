@@ -16,7 +16,15 @@
         "tcpip_adapter.h": "c",
         "stdio.h": "c",
         "protocol_examples_common.h": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "cv_mqtt.h": "c"
     },
-    "C_Cpp.dimInactiveRegions": false
+    "C_Cpp.dimInactiveRegions": false,
+    "files.exclude": {
+        ".vscode/**": true,
+        "**/build/**": true,
+        "sdkconfig*": true
+    },
+    "workbench.tree.indent": 20,
+    "workbench.tree.renderIndentGuides": "always"
 } 

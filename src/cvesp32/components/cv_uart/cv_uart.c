@@ -1,7 +1,4 @@
-#ifndef CV_UART
-#define CV_UART
-
-
+#include "cv_uart.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
@@ -9,6 +6,7 @@
 #include "driver/uart.h"
 #include "string.h"
 #include "driver/gpio.h"
+
 
 
 
@@ -34,7 +32,7 @@
 #define UART_NUM UART_NUM_1
 
 //general uart settings
-static const int RX_BUF_SIZE = 128;
+
 static bool _uart_is_init = false; //this is checked to make sure uart is active before sending
 #define REPORT_REPLY_TIME 100 //how many ms to wait for a reply after a send. Should be >50ms
 
@@ -43,10 +41,10 @@ static bool _uart_is_init = false; //this is checked to make sure uart is active
 #define cv_end_char '\r'
 #define cv_csum '&'
 
-#define LOCK_REPORT_FMT "\n09RPLF\%\r"
 
 
-void init_uart() {
+
+extern void init_uart(void) {
     #if CONFIG_ENABLE_SERIAL
     if (_uart_is_init == true) {
         ESP_LOGW("INIT_UART", "UART is already initialized");
@@ -111,7 +109,7 @@ int receiveData(const char* logName, uint8_t* data, TickType_t ticks_to_wait)
 }
 
 
-bool cvuart_send_command(const char* data)
+extern bool cvuart_send_command(const char* data)
 {
     static const char *logName = "send_command";
     if (_uart_is_init)
@@ -126,42 +124,8 @@ bool cvuart_send_command(const char* data)
     }
 }
 
-// Write 'data' to the serial port and put a response on dataRx. 
-// Returns the number of bytes read
-// int cvuart_send_report(const char* data, uint8_t* dataRx)
-// {
-//     static const char *logName = "send_report";
 
-//     if (!_uart_is_init)
-//     {
-//         ESP_LOGE(logName, "cv_uart must be initialized.");
-//         return -1;
-//     }
-
-//     size_t * cached_data_len;
-//     ESP_ERROR_CHECK(uart_get_buffered_data_len(UART_NUM, (size_t*)&cached_data_len));
-
-//     //clear rx buffer in anticipation of the data
-//     ESP_ERROR_CHECK(uart_flush_input(UART_NUM));
-
-//     //send the report request
-//     sendData(logName, data);
-//     TickType_t respone_wait_tics = REPORT_REPLY_TIME / portTICK_RATE_MS;
-    
-    
-//     ESP_ERROR_CHECK(uart_get_buffered_data_len(UART_NUM, (size_t*)&cached_data_len));
-//     int rxBytes = uart_read_bytes(UART_NUM, dataRx, RX_BUF_SIZE, respone_wait_tics);
-//     if (rxBytes > 0) {
-//         dataRx[rxBytes] = 0;
-//         ESP_LOGI(logName, "Read %d bytes: '%s'", rxBytes, dataRx);
-//         //ESP_LOG_BUFFER_HEXDUMP(RX_TASK_TAG, data, rxBytes, ESP_LOG_INFO);
-//     } else {
-//         ESP_LOGI(logName, "No data available in buffer\n");
-//     }
-//     //free(dataRx);
-//     return rxBytes;
-// }
-int cvuart_send_report(const char* data, uint8_t* dataRx)
+extern int cvuart_send_report(const char* data, uint8_t* dataRx)
 {
     static const char *logName = "send_report";
 
@@ -267,5 +231,3 @@ void run_cv_uart_test_task()
     printf("Running uart test task\n");
     xTaskCreate(uart_test_task, "uart_test_task", 1024*2, NULL, configMAX_PRIORITIES, NULL);
 }
-
-#endif //CV_UART

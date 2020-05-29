@@ -1,12 +1,11 @@
-#ifndef CV_LEDC
-#define CV_LEDC
-
+#include "cv_ledc.h"
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/ledc.h"
 #include "sdkconfig.h"
 #include "esp_log.h"
+
 
 //This file uses two methods for controlling the LED: gpio and ledc.
 //Don't use both at the same time. ledc is more capable anyways
@@ -45,17 +44,6 @@ const char* TAG_LEDC = "CV_LEDC";
     #define LED_OFF_DUTY         LEDC_MIN_DUTY
 #endif
 
-
-// LED Codes:
-typedef enum  {
-    led_unprogrammed, 
-    led_off, // OFF = ESP32 not powered
-    led_on, // ON = ESP32 powered but not doing anything
-    led_breathe_fast, // Breathing Fast = connect to race network
-    led_breathe_slow, // Breathing slow = connected to Wifi, not race network
-    led_blink_fast, // Blinking Fast = Error, in station mode, needs dismissed
-    led_blink_slow 
-} CV_LED_Code_t;
 
 CV_LED_Code_t _led_state = led_on;
 bool _led_update_state = false; //if true, LED state needs changed
@@ -253,5 +241,3 @@ void demo_ledc_codes(){
     set_ledc_code(0, led_off);
 
 }
-
-#endif // **CV_LEDC**

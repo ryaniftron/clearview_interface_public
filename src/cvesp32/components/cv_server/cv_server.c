@@ -5,10 +5,12 @@
 #include <esp_log.h>
 
 #include "lwip/api.h"
-#include "esp_http_server.h"
-#include "cv_utils.c"
-#include "main_cv_mqtt.c"
+
+#include "cv_utils.h"
+#include "cv_mqtt.h"
+#include "cv_uart.h"
 #include "cv_ota.h"
+#include "cv_ledc.h"
 
 #ifndef MIN
 #define MIN(a,b) (((a)<(b))?(a):(b)) //where does this come from? see http_server_simple example
@@ -553,7 +555,7 @@ static const httpd_uri_t config_test_uri = {
 // }
 
 
-static httpd_handle_t start_cv_webserver(void){
+extern httpd_handle_t start_cv_webserver(void){
     if (_server_started) {
         ESP_LOGW(TAG_SERVER, "SERVER is already running");
         return NULL;

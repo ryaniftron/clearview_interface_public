@@ -1,5 +1,4 @@
-#ifndef CV_UTILS_C
-#define CV_UTILS_C
+#include "cv_utils.h"
 #include "esp_system.h"
 #include "string.h"
 #include "esp_event.h"
@@ -31,8 +30,6 @@
 
 const char* TAG_UTILS = "CV_UTILS";
 
-
-#define WIFI_CRED_MAXLEN 32
 char desired_ap_ssid[WIFI_CRED_MAXLEN];
 char desired_ap_pass[WIFI_CRED_MAXLEN];
 char desired_friendly_name[WIFI_CRED_MAXLEN];
@@ -40,9 +37,12 @@ char desired_mqtt_broker_ip[WIFI_CRED_MAXLEN];
 int node_number = 0;
 
 
+
+
 bool nn_update_needed = false;
 
-static void get_chip_id(char* ssid, const int UNIQUE_ID_LENGTH){
+extern void get_chip_id(char* ssid, const int UNIQUE_ID_LENGTH){
+    //TODO it's reverse order. Try this instead https://github.com/espressif/arduino-esp32/issues/932#issuecomment-352307067
     uint64_t chipid = 0LL;
     esp_efuse_mac_get_default((uint8_t*) (&chipid));
     uint16_t chip = (uint16_t)(chipid >> 32);
@@ -52,7 +52,7 @@ static void get_chip_id(char* ssid, const int UNIQUE_ID_LENGTH){
     return;
 }
 
-static void remove_ctrlchars(char *str) 
+extern void remove_ctrlchars(char *str) 
 { 
     // To keep track of non-space character count 
     int count = 0; 
@@ -68,7 +68,7 @@ static void remove_ctrlchars(char *str)
 
 
 // Return true if the crediential was set
-static bool set_credential(char* credentialName, char* val){
+extern bool set_credential(char* credentialName, char* val){
     printf("##Setting Credential %s = %s\n", credentialName, val);
     if (strlen(val) > WIFI_CRED_MAXLEN) {
         ESP_LOGE(TAG_UTILS, "\t Unable to set credential. Too long.");
@@ -103,6 +103,3 @@ static bool set_credential(char* credentialName, char* val){
     //Todo store the value in eeprom
     return true; //successful value set
 }
-
-
-#endif // CV_UTILS_C
