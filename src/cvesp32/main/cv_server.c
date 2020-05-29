@@ -1,3 +1,5 @@
+#ifndef CV_SERVER_C
+#define CV_SERVER_C
 
 #include <esp_event.h>
 #include <esp_log.h>
@@ -6,12 +8,11 @@
 #include "esp_http_server.h"
 #include "cv_utils.c"
 #include "main_cv_mqtt.c"
+#include "cv_ota.h"
 
 #ifndef MIN
 #define MIN(a,b) (((a)<(b))?(a):(b)) //where does this come from? see http_server_simple example
 #endif //MIN
-
-#define WEBSERVER_ENABLE
 
 const char* TAG_SERVER = "CV_SERVER";
 static bool _server_started = false;
@@ -430,11 +431,7 @@ static esp_err_t test_cv_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-static const httpd_uri_t config_test_uri = {
-    .uri       = "/config_test",
-    .method    = HTTP_GET,
-    .handler   = config_test_get_handler
-};
+
 
 static const httpd_uri_t config_settings_uri = {
     .uri       = "/config_settings",
@@ -477,7 +474,7 @@ static const httpd_uri_t hello_uri = {
     .user_ctx  = "Hello World"
 };
 
-
+#ifdef CONFIG_CV_INITIAL_PROGRAM
 static const httpd_uri_t test_uri = {
     .uri       = "/test",
     .method    = HTTP_GET,
@@ -485,6 +482,14 @@ static const httpd_uri_t test_uri = {
     /* Let's pass response string in user
      * context to demonstrate it's usage */
 };
+
+static const httpd_uri_t config_test_uri = {
+    .uri       = "/config_test",
+    .method    = HTTP_GET,
+    .handler   = config_test_get_handler
+};
+#endif // CONFIG_CV_INITIAL_PROGRAM
+
 
 
 // /* An HTTP POST handler */
@@ -553,8 +558,14 @@ static httpd_handle_t start_cv_webserver(void){
         ESP_LOGW(TAG_SERVER, "SERVER is already running");
         return NULL;
     }
+    //start the OTA reboot task
+    xTaskCreate(&otaRebootTask, "rebootTask", 2048, NULL, 5, NULL);
+
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    // Lets bump up the stack size (default was 4096)
+	config.stack_size = 8192;
+    config.max_uri_handlers = 13;
     ESP_LOGI(TAG_SERVER, "Starting server on port: '%d'", config.server_port);
     esp_err_t ret = httpd_start(&server, &config);
     ESP_ERROR_CHECK(ret); // this should bail if the server can't start
@@ -570,6 +581,12 @@ static httpd_handle_t start_cv_webserver(void){
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &config_wifi_instant_uri));
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &config_settings_uri));
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &settings_uri));
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &OTA_index_html));
+		ESP_ERROR_CHECK(httpd_register_uri_handler(server, &OTA_favicon_ico));
+		ESP_ERROR_CHECK(httpd_register_uri_handler(server, &OTA_jquery_3_4_1_min_js));
+		ESP_ERROR_CHECK(httpd_register_uri_handler(server, &OTA_update));
+		ESP_ERROR_CHECK(httpd_register_uri_handler(server, &OTA_status));
+
         #ifdef CONFIG_CV_INITIAL_PROGRAM
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &test_uri));
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &config_test_uri));
@@ -615,3 +632,5 @@ static void cv_connect_handler(void* arg, esp_event_base_t event_base,
         *server = start_cv_webserver();
     }
 }
+
+#endif //CV_SERVER_C

@@ -424,6 +424,7 @@ static bool initialise_sta_wifi(char* PARAM_HOSTNAME)
         wifi_connect_fail = false;
         set_ledc_code(0, led_breathe_fast);
         # if WEB_SERVER_ON
+            
             start_cv_webserver();
         #endif //WEB_SERVER_ON
     } else if (bits & WIFI_FAIL_BIT) {
