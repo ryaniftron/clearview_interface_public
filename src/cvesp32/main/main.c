@@ -16,7 +16,6 @@
 #include "esp_system.h"
 #include "esp_event.h"
 #include "esp_event_loop.h"
-#include "nvs_flash.h"
 #include "driver/gpio.h"
 
 #include "esp_log.h"
@@ -174,7 +173,7 @@ typedef enum {
 // https://github.com/espressif/esp-idf/blob/a2263571b5ffb4071c4d4abbd8115e0f694dd9fe/examples/protocols/http_server/simple/main/main.c
 #define root_text \
     "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
-    <strong>ClearView ESP32 Config </strong><br> \
+    <strong>ClearView Comms Module Config </strong><br> \
     Wifi Status: TODO <br>\
     <form action=\"/config_esp32\" method> \
         <label for=\"ssid\">Network SSID:</label><br> \
@@ -190,7 +189,7 @@ typedef enum {
 "
 
 #define test_page_text \
-    "<strong>ClearView ESP32 Test Page </strong><br> \
+    "<strong>ClearView Comms Module Test </strong><br> \
     <form action=\"/ask_for_lock\" method> \
         <label for=\"req_lock\">Lock?</label><br> \
         <input type=\"submit\" value=\"Test UART\">\
@@ -511,16 +510,6 @@ static void demo_sequential_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_L
 
 void app_main(void)
 {
-	// //Initialize NVS
-    // esp_err_t ret = nvs_flash_init();
-    // if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-    //     // NVS partition was truncated and needs to be erased
-    //     // Retry nvs_flash_init
-    //     ESP_ERROR_CHECK(nvs_flash_erase());
-    //     ret = nvs_flash_init();
-    // }
-    // ESP_ERROR_CHECK(ret);
-
     tcpip_adapter_init();
     const int UNIQUE_ID_LENGTH = 16;
     char chipid[UNIQUE_ID_LENGTH];
@@ -530,9 +519,9 @@ void app_main(void)
     CV_LED_Code_t initial_led_state = led_off;
     init_cv_ledc(initial_led_state);
     init_uart();
+    start_nvs();
+    read_nvs_value();
 
-
-      
     
     #ifdef UART_TEST_LOOP
         run_cv_uart_test_task();

@@ -3,6 +3,8 @@
 #include "string.h"
 #include "esp_event.h"
 #include <esp_log.h>
+#include "nvs.h"
+#include "nvs_flash.h"
 
 #ifndef LOG_FMT_FUNCNAME
 /* Formats a log string to prepend context function name */
@@ -36,10 +38,72 @@ char desired_friendly_name[WIFI_CRED_MAXLEN];
 char desired_mqtt_broker_ip[WIFI_CRED_MAXLEN];
 int node_number = 0;
 
+static bool _nvs_is_init = false;
 
 
+bool nn_update_needed = false; //node number needs to be updated
 
-bool nn_update_needed = false;
+extern bool start_nvs(){
+    if (_nvs_is_init) {
+        ESP_LOGW(TAG_UTILS, "NVS is already initialized");
+        return false;
+    }
+
+    // Initialize NVS
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        // NVS partition was truncated and needs to be erased
+        // Retry nvs_flash_init
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
+    }
+
+    ESP_ERROR_CHECK( err );
+    _nvs_is_init = true;
+    return true;
+}
+
+static void check_nvs_init(void){
+    if (!_nvs_is_init) {
+        ESP_LOGI(TAG_UTILS, "NVS is being autoinitialized");
+        start_nvs();
+    }
+}
+
+extern bool read_nvs_value(void){
+
+    check_nvs_init();
+
+    // Open
+    nvs_handle_t my_handle;
+    esp_err_t err  = nvs_open("storage", NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) {
+        printf("Error (%04x) opening NVS handle!\n", err);
+    } else {
+        printf("Done\n");
+
+        // Read
+        printf("Reading restart counter from NVS ... ");
+        uint8_t restart_counter = 0; // value will default to 0, if not set yet in NVS
+        err = nvs_get_u8(my_handle, "restart_counter", &restart_counter);
+        switch (err) {
+            case ESP_OK:
+                printf("Done\n");
+                printf("Restart counter = %d\n", restart_counter);
+                break;
+            case ESP_ERR_NVS_NOT_FOUND:
+                printf("The value is not initialized yet!\n");
+                break;
+            default :
+                printf("Error (%s) reading!\n", esp_err_to_name(err));
+        }
+    }
+
+
+    return false;
+}
+
+
 
 extern void get_chip_id(char* ssid, const int UNIQUE_ID_LENGTH){
     //TODO it's reverse order. Try this instead https://github.com/espressif/arduino-esp32/issues/932#issuecomment-352307067

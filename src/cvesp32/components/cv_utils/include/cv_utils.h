@@ -11,3 +11,5 @@ extern int node_number;
 extern void get_chip_id(char* ssid, const int UNIQUE_ID_LENGTH);
 extern void remove_ctrlchars(char *str);
 extern bool set_credential(char* credentialName, char* val);
+extern bool start_nvs();
+extern bool read_nvs_value(void);
