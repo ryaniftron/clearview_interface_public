@@ -411,9 +411,9 @@ extern bool update_subscriptions_new_node()
         }
         update_mqtt_sub_node_topics();
         return mqtt_subscribe_to_node_topics(mqtt_client);
-        }
-    else { //just change the stored topic names
+    } else { //just change the stored topic names
         update_mqtt_sub_node_topics();
+        return true;
     }
 }
 
