@@ -36,6 +36,7 @@ static char *actual_data = NULL;
 static size_t expected_size = 0;
 static size_t expected_published = 0;
 static size_t actual_published = 0;
+static bool _client_conn = false;
 static int qos_test = 0;
 #define CVMQTT_PORT 1883 
 #define CVMQTT_KEEPALIVE 10  //10 seconds before it sends a keepalive msg
@@ -412,11 +413,19 @@ extern bool update_subscriptions_new_node()
     //     ESP_LOGE(tag, "MQTT Client is NULL. Can't update subs.");
     //     return false;
     // } 
-    if (!mqtt_unsubscribe_to_node_topics(mqtt_client)) {
-        ESP_LOGW("update_subs", "Unsub failure");
+
+    // If the client is connected to the broker, update subscriptions
+    if (_client_conn) {
+        if (!mqtt_unsubscribe_to_node_topics(mqtt_client)) {
+            ESP_LOGW("update_subs", "Unsub failure");
+        }
+        update_mqtt_sub_node_topics();
+        return mqtt_subscribe_to_node_topics(mqtt_client);
     }
-    update_mqtt_sub_node_topics();
-    return mqtt_subscribe_to_node_topics(mqtt_client);
+    else 
+    {
+        return true; 
+    }
 }
 
 //Publish to topic with QOS0, no retain
@@ -762,8 +771,10 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
             char* conn_msg = "1";
             mqtt_publish_retained(mqtt_client, mtopics.rx_conn,conn_msg);
             // set_ledc_code(0, led_breathe_slow);
+            _client_conn = true;
             break;
         case MQTT_EVENT_DISCONNECTED:
+            _client_conn = false;
             ESP_LOGW(TAG_TEST, "MQTT_EVENT_DISCONNECTED");
             #if CONFIG_ENABLE_LED == 1
                 set_ledc_code(0, led_breathe_fast);
