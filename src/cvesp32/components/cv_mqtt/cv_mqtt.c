@@ -35,6 +35,7 @@ static char *actual_data = NULL;
 static size_t expected_size = 0;
 static size_t expected_published = 0;
 static size_t actual_published = 0;
+static bool _client_conn = false;
 static int qos_test = 0;
 #define CVMQTT_PORT 1883 
 #define CVMQTT_KEEPALIVE 10  //10 seconds before it sends a keepalive msg
@@ -404,18 +405,16 @@ static bool mqtt_subscribe_to_node_topics(esp_mqtt_client_handle_t client){
 
 extern bool update_subscriptions_new_node()
 {
-    // char* tag = "mqtt_update_subscritptions";
-
-    // //Using local mqtt_client handle
-    // if (mqtt_client == NULL){
-    //     ESP_LOGE(tag, "MQTT Client is NULL. Can't update subs.");
-    //     return false;
-    // } 
-    if (!mqtt_unsubscribe_to_node_topics(mqtt_client)) {
-        ESP_LOGW("update_subs", "Unsub failure");
+    if (_client_conn){ //only update subscriptions if connected to broker. 
+        if (!mqtt_unsubscribe_to_node_topics(mqtt_client)) {
+            ESP_LOGW("update_subs", "Unsub failure");
+        }
+        update_mqtt_sub_node_topics();
+        return mqtt_subscribe_to_node_topics(mqtt_client);
+        }
+    else { //just change the stored topic names
+        update_mqtt_sub_node_topics();
     }
-    update_mqtt_sub_node_topics();
-    return mqtt_subscribe_to_node_topics(mqtt_client);
 }
 
 //Publish to topic with QOS0, no retain
@@ -760,6 +759,7 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
             vTaskDelay(1000/ portTICK_PERIOD_MS);
             char* conn_msg = "1";
             mqtt_publish_retained(mqtt_client, mtopics.rx_conn,conn_msg);
+            _client_conn = true;
             // set_ledc_code(0, led_breathe_slow);
             break;
         case MQTT_EVENT_DISCONNECTED:
@@ -767,6 +767,7 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
             #if CONFIG_ENABLE_LED == 1
                 set_ledc_code(0, led_breathe_fast);
             #endif//CONFIG_ENABLE_LED == 1
+            _client_conn = false;
             break;
         case MQTT_EVENT_SUBSCRIBED:
             ESP_LOGI(TAG_TEST, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
