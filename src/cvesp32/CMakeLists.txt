@@ -12,4 +12,4 @@ set(COMPONENT_EMBED_TXTFILES WebsiteFiles/index.html WebsiteFiles/favicon.ico We
 
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(CV-ESP32)
+    project(CVCM)

@@ -1,8 +1,11 @@
-This document serves as a user manual for the ESP32 Wireless Dongle.
+This document serves as a user manual for the CVCM Wireless Dongle.
 
-# Update Instructions
+
+
 ## Check Firmware Version
-## Push Update
+
+* Go to [192.168.4.1/ota](http://192.168.4.1/ota)
+   * The OTA page displays what your current firmware version is and when it was compiled
 
 # LED Codes
 * Slow Blinking = Hotspot Mode, Errors exist and can be viewed
@@ -15,7 +18,7 @@ This document serves as a user manual for the ESP32 Wireless Dongle.
 # Usage Guide
 After updating firmware of CV2.0 and pushing the latest OTA file to the dongle, follow the processes below
 
-## Viewing Settings in Hotspot Mode
+## Home Page 
 
 1. Connect the dongle to the ClearView and power on the ClearView
 1. If this is the first time, the ESP32 will "Slow Blink"
@@ -24,9 +27,27 @@ After updating firmware of CV2.0 and pushing the latest OTA file to the dongle, 
    * The network is unsecured (no password) and allows up to four devices to join
 1. Using any laptop or phone with WiFi, go to the WiFi settings and join the network
 1. Ignore any errors about not being connected to the internet. It's a local network.
-1. Open a web browser and go to this web site [http://192.168.4.1](http://192.168.4.1)
-1. It will give you the home page
-1. **TODO** ---further--usage--here
+1. Open a web browser and go to this web site [192.168.4.1](http://192.168.4.1)
+1. It will give you the home page where you can configure your WiFi, Friendly Name, and MQTT Broker IP
+
+## Settings Page
+
+1. The settings page `/settings` allows adjustment of the seat number
+1. Set the seat number between 1 and 8
+
+## OTA Update Page
+
+
+1. Connect to the internet and download the latest CVCM Release [here](https://github.com/ryaniftron/clearview_interface_public/releases)
+   * It is recommended to use stable builds unless otherwise instructed
+1. Click the right arrow for "assets", and download the binary (.bin) file.
+    * Example: `CVCM_Beta_v0.0.1.bin`
+1. Connect to the CVCM WiFi hotspot
+   * Go to [192.168.4.1/ota](http://192.168.4.1/ota)
+   * The OTA page displays what your current firmware version is and when it was compiled
+   * Browse for your newly downloaded binary
+   * Click to upload. It gives progress and reboots automatically when complete
+
 
 # Troubleshooting
 * Can't connect to WiFi
