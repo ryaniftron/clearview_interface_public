@@ -424,6 +424,7 @@ extern bool update_subscriptions_new_node()
     }
     else 
     {
+        update_mqtt_sub_node_topics();
         return true; 
     }
 }
