@@ -188,18 +188,23 @@ static bool initialize_default_nvs(CV_NVS_KEY k, nvs_handle_t nh){
     switch (k) {
         case nvs_wifi_ssid:
             err = nvs_set_str(nh, kstr, CONFIG_NETWORK_SSID);
+            get_nvs_value(k);
             break;
         case nvs_wifi_pass:
             err = nvs_set_str(nh, kstr, CONFIG_NETWORK_PASSWORD);
+            get_nvs_value(k);
             break;
         case nvs_fname:
             err = nvs_set_str(nh, kstr, CONFIG_FRIENDLY_NAME);
+            get_nvs_value(k);
             break;
         case nvs_broker_ip:
             err = nvs_set_str(nh, kstr, CONFIG_BROKER_IP);
+            get_nvs_value(k);
             break;
         case nvs_node_number:
             err = nvs_set_u8(nh, kstr, CONFIG_NODE_NUMBER);
+            get_nvs_value(k);
             break;
         default:
             ESP_LOGE(TAG_UTILS, "Invalid NVS key");
