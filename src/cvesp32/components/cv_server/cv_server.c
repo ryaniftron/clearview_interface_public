@@ -35,13 +35,13 @@ static bool _server_started = false;
 #define HTML_WIFICONFIG \
     "<form action=\"/config_wifi\" method> \
         <label for=\"ssid\">Network SSID:</label><br> \
-        <input type=\"text\" id=\"ssid\" name=\"ssid\"><br> \
+        <input type=\"text\" id=\"ssid\" name=\"ssid\" value=\"%s\"><br> \
         <label for=\"password\">Network Password:</label><br> \
-        <input type=\"text\" id=\"password\" name=\"password\"><br> \
+        <input type=\"text\" id=\"password\" name=\"password\" value=\"%s\"><br> \
         <label for=\"device_name\">Device Name:</label><br> \
-        <input type=\"text\" id=\"device_name\" name=\"device_name\"><br> \
+        <input type=\"text\" id=\"device_name\" name=\"device_name\" value=\"%s\"><br> \
         <label for=\"broker_ip\">Broker IP Address:</label><br> \
-        <input type=\"text\" id=\"broker_ip\" name=\"broker_ip\"><br> \
+        <input type=\"text\" id=\"broker_ip\" name=\"broker_ip\" value=\"%s\"><br> \
         <input type=\"submit\" value=\"Save and Join Network\">\
     "
 
@@ -320,12 +320,12 @@ void serve_title(httpd_req_t *req) {
 }
 
 void serve_node_and_lock(httpd_req_t *req){
-    extern int node_number;
+    extern uint8_t desired_node_number;
     char* lock_status = "TODO";
 
     // Display the node number 1 higher than stored in the back end. 
     // Back end
-    int ui_node_number = node_number+1;
+    int ui_node_number = desired_node_number+1;
     size_t needed = snprintf(NULL, 0, HTML_ROOT_SUBTITLE, ui_node_number, lock_status)+1;
     char* line = (char*)malloc(needed);
     snprintf(line, needed, HTML_ROOT_SUBTITLE, ui_node_number, lock_status);
@@ -338,7 +338,11 @@ void serve_node_and_lock(httpd_req_t *req){
 }
 
 void serve_wificonfig(httpd_req_t *req){
-    ESP_ERROR_CHECK(httpd_resp_send_chunk(req, HTML_WIFICONFIG, HTTPD_RESP_USE_STRLEN));
+    size_t needed = snprintf(NULL, 0, HTML_WIFICONFIG, desired_ap_ssid, desired_ap_pass, desired_friendly_name, desired_mqtt_broker_ip)+1;
+    char* line = (char*)malloc(needed);
+    snprintf(line, needed, HTML_WIFICONFIG, desired_ap_ssid, desired_ap_pass, desired_friendly_name, desired_mqtt_broker_ip);
+    ESP_ERROR_CHECK(httpd_resp_send_chunk(req, line, HTTPD_RESP_USE_STRLEN));
+    free(line);
 }
 
 void serve_settingsconfig(httpd_req_t *req){

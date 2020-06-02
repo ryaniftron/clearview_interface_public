@@ -426,6 +426,10 @@ static bool initialise_sta_wifi(char* PARAM_HOSTNAME)
             
             start_cv_webserver();
         #endif //WEB_SERVER_ON
+
+        //save ssid and password
+        set_nvs_strval(nvs_wifi_ssid, (char*)wifi_config.sta.ssid);
+        set_nvs_strval(nvs_wifi_pass, (char*)wifi_config.sta.password);
     } else if (bits & WIFI_FAIL_BIT) {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
                  wifi_config.sta.ssid,wifi_config.sta.password);
@@ -520,7 +524,7 @@ void app_main(void)
     init_cv_ledc(initial_led_state);
     init_uart();
     start_nvs();
-    read_nvs_value();
+    get_nvs_value(nvs_wifi_ssid);
 
     
     #ifdef UART_TEST_LOOP
