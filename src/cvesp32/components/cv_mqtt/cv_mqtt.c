@@ -41,14 +41,15 @@ static int qos_test = 0;
 #define CVMQTT_KEEPALIVE 10  //10 seconds before it sends a keepalive msg
 
 
-// CV Defines
+// CV Defines:
 char device_name[20]; 
 #define DEVICE_TYPE "rx"
 #define PROTOCOL_VERSION "cv1"
-extern int node_number;
+extern uint8_t desired_node_number;
 bool active_status = false;
 # define MAX_TOPIC_LEN 75
 # define MAX_TOPIC_HEADER_LEN 10 // should encompass "/rx/cv1/" . room for null chars is not needed
+static char* attempted_hostname;
 
 #define STATIC_STATUS_FMT \
 "{\"dev\":\"rx\",\
@@ -213,28 +214,28 @@ void update_mqtt_sub_node_topics()
             receiver_command_node_topic_fmt,
             DEVICE_TYPE,
             PROTOCOL_VERSION,
-            node_number);
+            desired_node_number);
 
     snprintf(mtopics.rx_req_node_all,
             MAX_TOPIC_LEN,
             receiver_request_node_all_topic_fmt,
             DEVICE_TYPE,
             PROTOCOL_VERSION,
-            node_number);
+            desired_node_number);
 
     snprintf(mtopics.rx_req_node_active,
             MAX_TOPIC_LEN,
             receiver_request_node_active_topic_fmt,
             DEVICE_TYPE,
             PROTOCOL_VERSION,
-            node_number);
+            desired_node_number);
             
     snprintf(mtopics.rx_cmd_esp_node,
             MAX_TOPIC_LEN,
             receiver_command_esp_node_topic_fmt,
             DEVICE_TYPE,
             PROTOCOL_VERSION,
-            node_number);
+            desired_node_number);
 }
 
 void update_mqtt_pub_topics()
@@ -446,9 +447,9 @@ static void mqtt_publish_retained(esp_mqtt_client_handle_t client, char* topic, 
 }
 
 void send_variable_status(esp_mqtt_client_handle_t client){
-    size_t needed = snprintf(NULL, 0, VARIABLE_STATUS_FMT, node_number)+1;
+    size_t needed = snprintf(NULL, 0, VARIABLE_STATUS_FMT, desired_node_number)+1;
     char* message = (char*)malloc(needed);
-    snprintf(message, needed, VARIABLE_STATUS_FMT, node_number);
+    snprintf(message, needed, VARIABLE_STATUS_FMT, desired_node_number);
     mqtt_publish_to_topic(client, mtopics.rx_stat_variable, message);
     free(message);
 }
@@ -550,13 +551,13 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
 
             //match node number
             long int node_num_parsed = strtol(topic,NULL,10);
-            if (node_num_parsed == node_number){
+            if (node_num_parsed == desired_node_number){
                 ESP_LOGI(ptag, "matched cmd_node/<node_number>");
                 cvuart_send_command(data);
                 return true;
             } else {
                 //TODO output an error message on an MQTT_Error Topic
-                ESP_LOGW(ptag, "Nonmatching node number. Got %ld. Expected %d",node_num_parsed,node_number );
+                ESP_LOGW(ptag, "Nonmatching node number. Got %ld. Expected %d",node_num_parsed,desired_node_number );
                 return false; //short circuit the rest of the parser
             }
 
@@ -600,13 +601,13 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
 
                 //match node number
                 long int node_num_parsed = strtol(topic,NULL,10);
-                if (node_num_parsed == node_number){
+                if (node_num_parsed == desired_node_number){
                     ESP_LOGI(ptag, "matched cmd_esp_node/<node_number>");
                     process_command_esp(client,data);
                     return true;
                 } else {
                     //TODO output an error message on an MQTT_Error Topic
-                    ESP_LOGW(ptag, "Nonmatching node number. Got %ld. Expected %d",node_num_parsed,node_number );
+                    ESP_LOGW(ptag, "Nonmatching node number. Got %ld. Expected %d",node_num_parsed,desired_node_number );
                     return false; //short circuit the rest of the parser
                 }
             } //end match_cmd_esp_node/
@@ -661,7 +662,7 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
 
             //match node number
             long int node_num_parsed = strtol(topic,NULL,10);
-            if (node_num_parsed == node_number){
+            if (node_num_parsed == desired_node_number){
                 ESP_LOGI(ptag, "matched req_node_all/<node_number> => '%s'", data);
                 int repCount = cvuart_send_report(data, dataRx);
                 if (repCount > 0){
@@ -674,7 +675,7 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
                 return true;
             } else {
                 //TODO output an error message on an MQTT_Error Topic
-                ESP_LOGW(ptag, "Nonmatching node number. Got %ld. Expected %d",node_num_parsed,node_number );
+                ESP_LOGW(ptag, "Nonmatching node number. Got %ld. Expected %d",node_num_parsed,desired_node_number );
                 free(dataRx);
                 return false; //short circuit the rest of the parser
             }
@@ -687,7 +688,7 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
 
             //match node number
             long int node_num_parsed = strtol(topic,NULL,10);
-            if (node_num_parsed == node_number){
+            if (node_num_parsed == desired_node_number){
                 ESP_LOGI(ptag, "matched req_node_active/<node_number>");
                 int repCount = cvuart_send_report(data, dataRx);
                 if (repCount > 0){
@@ -700,7 +701,7 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
                 return true;
             } else {
                 //TODO output an error message on an MQTT_Error Topic
-                ESP_LOGW(ptag, "Nonmatching node number. Got %ld. Expected %d",node_num_parsed,node_number );
+                ESP_LOGW(ptag, "Nonmatching node number. Got %ld. Expected %d",node_num_parsed,desired_node_number );
                 free(dataRx);
                 return false; //short circuit the rest of the parser
             }
@@ -759,6 +760,7 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
             vTaskDelay(1000/ portTICK_PERIOD_MS);
             char* conn_msg = "1";
             mqtt_publish_retained(mqtt_client, mtopics.rx_conn,conn_msg);
+            set_nvs_strval(nvs_broker_ip, attempted_hostname);
             _client_conn = true;
             // set_ledc_code(0, led_breathe_slow);
             break;
@@ -803,6 +805,7 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 static void mqtt_app_start(const char* mqtt_hostname)
 {
     update_all_mqtt_topics();
+    attempted_hostname = mqtt_hostname;
     //return //-> works
     mqtt_event_group = xEventGroupCreate();
     const esp_mqtt_client_config_t mqtt_cfg = {
