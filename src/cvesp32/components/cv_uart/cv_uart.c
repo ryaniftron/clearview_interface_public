@@ -9,24 +9,40 @@
 
 
 
-
-
 //hardware pins
+#define U0 0
 #define U1 1
 #define U2 2
 
+
+
 //pick one or the other
-#define CV_UART_TO_USE U2 // U1 or U2
+#ifdef CONFIG_HW_VERSION_IFTRON_A
+    #define CV_UART_TO_USE U0 // U0 or U1 or U2
+#else
+    #define CV_UART_TO_USE U2
+#endif
+
+#if CV_UART_TO_USE == U0
+    #define TXD_PIN (GPIO_NUM_1) //U0TXD
+    #define RXD_PIN (GPIO_NUM_3) //U0RXD
+    #ifdef CONFIG_ESP_CONSOLE_UART_DEFAULT
+        #error "Can't use UART0 for both CV comms and ESP Console"
+    #endif
+#endif
 
 #if CV_UART_TO_USE == U2
-#define TXD_PIN (GPIO_NUM_17) //U2TXD
-#define RXD_PIN (GPIO_NUM_16) //U2RXD
+    #define TXD_PIN (GPIO_NUM_17) //U2TXD
+    #define RXD_PIN (GPIO_NUM_16) //U2RXD
 #endif
 
 #if CV_UART_TO_USE == U1
-#define TXD_PIN (GPIO_NUM_10) //U1TXD
-#define RXD_PIN (GPIO_NUM_9) //U1RXD
+    #define TXD_PIN (GPIO_NUM_10) //U1TXD
+    #define RXD_PIN (GPIO_NUM_9) //U1RXD
+    #warning ESP32 usually boot loops because of interference with flash pin usage. Beware
 #endif
+
+
 
 //don't change this. It's just for naming
 #define UART_NUM UART_NUM_1
