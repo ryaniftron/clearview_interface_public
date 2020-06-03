@@ -57,7 +57,12 @@ menu "ClearView ESP32 Configuration"
         config ENABLE_SERIAL
             bool "Enable Serial Communication"
             default y
-
+        
+        config HW_VERSION_IFTRON_A
+            bool "Iftron Hardware RevA"
+            default y
+            depends on ENABLE_SERIAL
+            
         config ENABLE_LED
             bool "Enable LED codes"
             default y
