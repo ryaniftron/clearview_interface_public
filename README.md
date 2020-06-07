@@ -51,6 +51,7 @@ On the update board, I soldered from the +3.3v pad of the LED to an unconnected 
 ## ESP32 Code Flash Instructions using ESP-WROOM-32 DevKitC
 1. Install [ESPIDF](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/). Ensure you can successfully flash the hello world example 
 1. `$ cd clearview_interface_public/src/cvesp32`
+1. If you are doing development and want to view the log output, comment out the sdkconfig defaults that are used in production as seen [here](https://github.com/ryaniftron/clearview_interface_public/commit/d65e27b155bef3621c6a612caa728ba843fac178#r39734249)
 1. `$ idf.py build flash monitor`
     * You may need to specify port like `$ idf.py -p /dev/ttyUSB0 build flash monitor`
     * On Linux, you can find the port by plugging in the ESP32 and then running `$ dmesg | grep tty`
