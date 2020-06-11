@@ -110,9 +110,9 @@ static esp_err_t config_test_get_handler(httpd_req_t *req)
             // /* Get value of expected key from query string */
             if (httpd_query_key_value(buf, "UM", param, sizeof(param)) == ESP_OK) {
                 ESP_LOGD(TAG_SERVER, "Found URL query parameter => UM=%s", param);
-                size_t needed = snprintf(NULL, 0, "\n09UM%s%%\r",param)+1;
+                size_t needed = snprintf(NULL, 0, "\00209UM%s%%\003",param)+1;
                 char* line = (char*)malloc(needed);
-                snprintf(line, needed,  "\n09UM%s%%\r",param);
+                snprintf(line, needed,  "\00209UM%s%%\003",param);
                 if (cvuart_send_command(line)){
                     remove_ctrlchars(line);
                     httpd_resp_send_chunk(req, line, HTTPD_RESP_USE_STRLEN);

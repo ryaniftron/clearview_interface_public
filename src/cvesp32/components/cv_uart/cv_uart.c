@@ -53,9 +53,9 @@ static bool _uart_is_init = false; //this is checked to make sure uart is active
 #define REPORT_REPLY_TIME 100 //how many ms to wait for a reply after a send. Should be >50ms
 
 //cv protocol specifics
-#define cv_start_char '\n'
-#define cv_end_char '\r'
-#define cv_csum '&'
+#define cv_start_char '\02'
+#define cv_end_char '\03'
+#define cv_csum '%'
 
 
 
