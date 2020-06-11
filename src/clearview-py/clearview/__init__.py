@@ -160,7 +160,12 @@ class ClearView:
 
 
     def set_antenna_mode(self, rcvr_target, antenna_mode):
-        """AN => Set antenna mode between legacy, L,R,CV
+        """AN => Set antenna mode 
+        options:
+        * 0 = legacy RSSI Diversity, 'DIVERSITY' in CV
+        * 1 = Left antenna only, 'Left Only' in CV
+        * 2 = Right antenna only 'Right Only' in CV
+        * 3 = CV
 
         Robust Mode: Not supported
         """
@@ -341,7 +346,7 @@ class ClearView:
 
         cmd = self._format_setter_command("reset_lock",
                                 target_dest=rcvr_target)   
-        return self._write_serial(cmd)
+        return self._write_serial('%s%s'%(cmd,cmd))
 
     def set_video_format(self, rcvr_target, video_format):
         """VF => Temporary Set video format.
@@ -365,7 +370,29 @@ class ClearView:
         return self._write_serial(cmd)
 
     def move_cursor(self, rcvr_target, desired_move):
-        """ WP => Move cursor [+-EPMX]"""
+        """ WP => Move cursor [+-EPMX]
+        Can also specify by name:
+            'up'
+            'down'
+            'enter'
+            'page'
+            'menu'
+            'exit'
+        """
+
+        if desired_move.lower() ==  'up':
+            desired_move = '+'
+        elif desired_move.lower() ==  'down':
+            desired_move = '-'
+        elif desired_move.lower() ==  'enter':
+            desired_move = 'E'
+        elif desired_move.lower() ==  'page':
+            desired_move = 'P'
+        elif desired_move.lower() ==  'menu':
+            desired_move = 'M'
+        elif desired_move.lower() ==  'exit':
+            desired_move = 'X'
+
         cmd = self._format_setter_command("move_cursor",
                         target_dest=rcvr_target, 
                         extra_params = (desired_move,)) 
@@ -632,16 +659,7 @@ class ClearView:
         if self._serial is None: # Return the formatted command
             return cmd
 
-        raise NotImplementedError # The code below hasn't been updated with the new formatter
-        # Because the expected reply is known based on the formatter, grab it here
-        # If no reply, bail out
-
-        # Otherwise, match the reply on a regex pattern from the new formatter
-        #   If matched, form it into the nT and return it
-
-        # if no match,try running the reply on all the possible replies
-        #   if match, give warning that somethings' not setup but return nT
-        # Otherwise,  return None with a warning that the reply isn't parsable
+        
         
         self._clear_serial_in_buffer()
         
@@ -651,16 +669,39 @@ class ClearView:
         #python3
 
         #if (report := self._read_until_termchar()) is not None:
-        report == self._read_until_termchar()
+        report = self._read_until_termchar()
         if report is not None:
-            # Try matching based on expected behavior
-            match = re.search(pattern,report)
+            fmt = formatter.pattern_responses[report_name]
+            match = re.search(fmt, report)
             
-            if match:
-                report = reply_named_tuple._make(match.groups())
+            if match is None:
+                logger.error("Parsing of '%s' not possibe " 
+                        "Attempted to match against pattern %s"%
+                        (report, repr(fmt.pattern)))
+                
             else:
-                self.logger.error("When reporting %s from unit id#%s, the report of %s was not parsable.", report_name , rcvr_target, report.strip())
-                report = None
+                nt = formatter.matched_response_tuples[report_name]._make(match.groups())
+                return nt
+            
+
+            # raise NotImplementedError # The code below hasn't been updated with the new formatter
+            # # Because the expected reply is known based on the formatter, grab it here
+            # # If no reply, bail out
+
+            # # Otherwise, match the reply on a regex pattern from the new formatter
+            # #   If matched, form it into the nT and return it
+
+            # # if no match,try running the reply on all the possible replies
+            # #   if match, give warning that somethings' not setup but return nT
+            # # Otherwise,  return None with a warning that the reply isn't parsable
+            # # Try matching based on expected behavior
+            # match = re.search(pattern,report)
+            
+            # if match:
+            #     report = reply_named_tuple._make(match.groups())
+            # else:
+            #     self.logger.error("When reporting %s from unit id#%s, the report of %s was not parsable.", report_name , rcvr_target, report.strip())
+            #     report = None
         else:
             self.logger.error("When reporting %s from unit id#%s, there was no response", report_name , rcvr_target)
         sleep(0.05)
@@ -718,8 +759,15 @@ class ClearView:
             #python3            #print(args,sep=kwargs.get('sep','\t'))  
             print(args)  
     def _write_serial(self,msg):
+        if msg is None:
+            return None
+
         if self._serial is None: # Return the formatted command
             return msg
+
+
+        
+        print("Message:", msg)
 
         self._print("CV_serial_write: ",
                     sys._getframe().f_back.f_back.f_code.co_name ,

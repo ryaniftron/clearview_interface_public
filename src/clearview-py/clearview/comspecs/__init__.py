@@ -1,7 +1,9 @@
 # These are the proprietary communication specs that work with FTDI 57k
 clearview_specs = {
-    'message_start_char': '\n',
-    'message_end_char': '\r',
+    'message_start_char': '\x02',
+    'message_end_char': '\x03',
+    # 'message_start_char': '\r',
+    # 'message_end_char': '\n',
     'message_csum': '%',
     'mess_src': 9,  # 9 for laptop
     'baud': 57600,
@@ -23,6 +25,9 @@ cv_device_limits = {
     'max_frequency': 5999,
     'max_id_length': 12,    # Used for pilot handle. More than this limit breaks the parser
     'max_um_length': 45,     # Rough limit. OSD will truncate
+    'min_osd_position': 0,
+    'max_osd_position': 7,
+    'video_format_list': ['N', 'P', 'A'],
     'video_formats': "[NPA]",  # camera type = NTSC, AUTO, PAL  
     'lock_unlock': "[LU]",
     'force_auto': "[FA]",

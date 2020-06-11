@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="clearview-ryaniftron", # Replace with your own username
-    version="0.0.1",
+    version="0.0.2",
     author="Ryan Friedman",
     author_email="ryaniftron@gmail.com",
     description="Package for controlling and simulating a ClearView video reciever",

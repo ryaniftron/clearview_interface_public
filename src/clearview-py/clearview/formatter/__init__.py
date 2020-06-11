@@ -15,6 +15,7 @@ from clearview.comspecs import clearview_specs, cv_device_limits
 
 logger = logging.getLogger(__name__)
 
+
 # These are all the command types that can get sent to a CV
 command_identifier_dict = {
     # command_name : command_identifier 
@@ -276,6 +277,9 @@ matched_report_tuples = {
 }
 
 matched_response_tuples = {
+    "get_address": namedtuple('address_format_report', ['requestor_id',
+                                                        'rx_address',
+                                                        'address']),
     "get_lock_format" :namedtuple('lock_format_report', ['requestor_id', 
                                                          'rx_address', 
                                                          'chosen_camera_type', 
@@ -343,14 +347,17 @@ def create_command(command_name,
         logger.error("command_name of '%s' not found in create_command"%command_name)
         return None
 
-    # TODO Check the variable argument limits other than that they are iterable
     try:
         iter(extra_params)
     except TypeError:
         logger.error("In create_command, extra_params of %s must be an iterable"%extra_params)
         return None
 
-    return format_command(command_name, target_dest, source_dest, command_identifier, *extra_params)
+    # Generate the command
+    cmd = format_command(command_name, target_dest, source_dest, command_identifier, *extra_params)
+
+    
+    return cmd
 
 
 
@@ -471,9 +478,9 @@ def extract_data(nt, pattern_name):
         return None
 
 def main():
-
+    logging.basicConfig()
     # Form a setter with parameters
-    print(create_setter_command("set_address",extra_params=(5,)).strip())
+    print(create_setter_command("set_address",extra_params=(50,)).strip())
 
     # Form a setter without parameters
     print(create_setter_command("reset_lock").strip())

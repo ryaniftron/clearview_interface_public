@@ -27,10 +27,7 @@ logger.addHandler(ch)
 sim_file_load_name = "cv_saved_settings.txt"
 sim_file_save_name = "cv_saved_settings.txt"
 
-
-if __name__ == "__main__":      # example usage
-    rx_id = 1               # ensure the cv is set to that rx_id
-    bc_id = 0
+def main_formatter(rx_id, bc_id):
     cv = clearview.ClearView(
         port=None,    # port name, COMX on windows
         debug=False,
@@ -263,6 +260,38 @@ if __name__ == "__main__":      # example usage
     #     time.sleep(dt)
     #     cv.set_user_message(rcvr_target=rx_id, osd_str="RH" + str(count%5))
     #     count = count+1
+
+def hw_reset_lock(rx_id, bc_id):
+    cv = clearview.ClearView(
+        port="/dev/ttyUSB0",    # port name, COMX on windows
+        debug=True,
+        # Slows stuff down. TODO not implemented well yet
+        robust=False,            # checks all data sent was actually received
+        timeout=0.1,            # serial read timeout
+        simulate_serial_port=False,
+        return_formatted_commands=False,
+        sim_file_load_name=sim_file_load_name,
+        sim_file_save_name=sim_file_save_name,
+    )
+
+    # cv.reset_lock(bc_id)
+    # cv.reset_lock(bc_id)
+    # cv.get_channel(bc_id)
+    # cv.set_band_channel(bc_id, 3)
+    cv.get_lock_format(0)
+    # cv.reset_lock(0)
+    # cv.get_model_version(0)
+    # cv.get_rssi(0)
+
+
+
+if __name__ == "__main__":      # example usage
+    rx_id = 1               # ensure the cv is set to that rx_id
+    bc_id = 0
+
+    # main_formatter(rx_id, bc_id)
+    hw_reset_lock(rx_id, bc_id)
+    
 
 
 print("\n\n")
