@@ -47,7 +47,7 @@ static bool _server_started = false;
 
 // '/settings' body
 #define HTML_SETTINGS \
-    "<form action=\"/config_settings\" > \
+    "<form method=\"POST\"> \
     <label for=\"nodeN\">Node Number:</label>\
     <select id=\"nodeN\" name = \"node_number\">\
         <option value=\"0\">1</option>\
@@ -166,30 +166,99 @@ static esp_err_t config_test_get_handler(httpd_req_t *req)
 
 static esp_err_t config_settings_get_handler(httpd_req_t *req)
 {
-    char*  buf;
-    size_t buf_len;
+    // char*  buf;
+    // size_t buf_len;
+    //
+    // /* Read URL query string length and allocate memory for length + 1,
+    //  * extra byte for null termination */
+    // buf_len = httpd_req_get_url_query_len(req) + 1;
+    // if (buf_len > 1) {
+    //     buf = malloc(buf_len);
+    //     if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
+    //         ESP_LOGI(TAG_SERVER, "Found URL query => %s", buf);
+    //         char param[32];
+    //         /* Get value of expected key from query string */
+    //         if (httpd_query_key_value(buf, "node_number", param, sizeof(param)) == ESP_OK) {
+    //             ESP_LOGI(TAG_SERVER, "Found URL query parameter => node_number=%s", param);
+    //             if (set_credential("node_number", param)){
+    //                 update_subscriptions_new_node();
+    //             }
+    //         }
+    //     }
+    //     free(buf);
+    //     httpd_resp_send_chunk(req, "Settings Accepted", HTTPD_RESP_USE_STRLEN);    
+    //     httpd_resp_send_chunk(req, NULL, 0);
+    // }
+    // return ESP_OK;
 
-    /* Read URL query string length and allocate memory for length + 1,
-     * extra byte for null termination */
-    buf_len = httpd_req_get_url_query_len(req) + 1;
-    if (buf_len > 1) {
-        buf = malloc(buf_len);
-        if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
-            ESP_LOGI(TAG_SERVER, "Found URL query => %s", buf);
-            char param[32];
-            /* Get value of expected key from query string */
-            if (httpd_query_key_value(buf, "node_number", param, sizeof(param)) == ESP_OK) {
-                ESP_LOGI(TAG_SERVER, "Found URL query parameter => node_number=%s", param);
-                if (set_credential("node_number", param)){
-                    update_subscriptions_new_node();
-                }
+    char buf[100];
+    int ret, remaining = req->content_len;
+
+    //Redirect
+    httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 
+    char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"3; URL=http://192.168.4.1/settings\">";
+    httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);
+    httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);  
+    httpd_resp_send_chunk(req, "Redirecting in 3s. TODO verify data was set in CV <br>", HTTPD_RESP_USE_STRLEN);
+
+    while (remaining > 0) {
+        /* Read the data for the request */
+        if ((ret = httpd_req_recv(req, buf,
+                        MIN(remaining, sizeof(buf)))) <= 0) {
+            if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+                /* Retry receiving if timeout occurred */
+                continue;
             }
+            return ESP_FAIL;
         }
-        free(buf);
-        httpd_resp_send_chunk(req, "Settings Accepted", HTTPD_RESP_USE_STRLEN);    
-        httpd_resp_send_chunk(req, NULL, 0);
+
+        /* Send back the same data */
+        httpd_resp_send_chunk(req, buf, ret);
+        remaining -= ret;
+
+        /* Log data received */
+        ESP_LOGI(TAG_SERVER, "=========== RECEIVED DATA ==========");
+        ESP_LOGI(TAG_SERVER, "%.*s", ret, buf);
+        ESP_LOGI(TAG_SERVER, "====================================");
+    }
+   
+               
+
+    // End response
+    httpd_resp_send_chunk(req, NULL, 0);
+    return ESP_OK;
+}
+
+/* An HTTP POST handler */
+static esp_err_t echo_post_handler(httpd_req_t *req)
+{
+    char buf[100];
+    int ret, remaining = req->content_len;
+
+    while (remaining > 0) {
+        /* Read the data for the request */
+        if ((ret = httpd_req_recv(req, buf,
+                        MIN(remaining, sizeof(buf)))) <= 0) {
+            if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+                /* Retry receiving if timeout occurred */
+                continue;
+            }
+            return ESP_FAIL;
         }
-        return ESP_OK;
+
+        /* Send back the same data */
+        httpd_resp_send_chunk(req, buf, ret);
+        remaining -= ret;
+
+        /* Log data received */
+        ESP_LOGI(TAG_SERVER, "=========== RECEIVED DATA ==========");
+        ESP_LOGI(TAG_SERVER, "%.*s", ret, buf);
+        ESP_LOGI(TAG_SERVER, "====================================");
+    }
+
+    // End response
+    httpd_resp_send_chunk(req, NULL, 0);
+    return ESP_OK;
 }
 
 static esp_err_t config_wifi_get_handler(httpd_req_t *req)
@@ -429,6 +498,8 @@ static esp_err_t hello_cv_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+
+
 static esp_err_t test_cv_get_handler(httpd_req_t *req)
 {
     serve_title(req);
@@ -437,11 +508,17 @@ static esp_err_t test_cv_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+static const httpd_uri_t echo_uri = {
+    .uri = "/post_test",
+    .method = HTTP_POST,
+    .handler= echo_post_handler
+};
+
 
 
 static const httpd_uri_t config_settings_uri = {
-    .uri       = "/config_settings",
-    .method    = HTTP_GET,
+    .uri       = "/settings",
+    .method    = HTTP_POST,
     .handler   = config_settings_get_handler
 };
 
@@ -571,7 +648,7 @@ extern httpd_handle_t start_cv_webserver(void){
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     // Lets bump up the stack size (default was 4096)
 	config.stack_size = 8192;
-    config.max_uri_handlers = 13;
+    config.max_uri_handlers = 14;
     ESP_LOGI(TAG_SERVER, "Starting server on port: '%d'", config.server_port);
     esp_err_t ret = httpd_start(&server, &config);
     ESP_ERROR_CHECK(ret); // this should bail if the server can't start
@@ -592,6 +669,7 @@ extern httpd_handle_t start_cv_webserver(void){
 		ESP_ERROR_CHECK(httpd_register_uri_handler(server, &OTA_jquery_3_4_1_min_js));
 		ESP_ERROR_CHECK(httpd_register_uri_handler(server, &OTA_update));
 		ESP_ERROR_CHECK(httpd_register_uri_handler(server, &OTA_status));
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &echo_uri));
 
         #ifdef CONFIG_CV_INITIAL_PROGRAM
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &test_uri));
