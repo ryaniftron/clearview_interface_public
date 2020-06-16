@@ -11,6 +11,7 @@
 #include "cv_uart.h"
 #include "cv_ota.h"
 #include "cv_ledc.h"
+#include "cv_api.h"
 
 #ifndef MIN
 #define MIN(a,b) (((a)<(b))?(a):(b)) //where does this come from? see http_server_simple example
@@ -25,7 +26,7 @@ static bool _server_started = false;
 #define HTML_ROOT_SUBTITLE \
 "<table style=\"table-layout: fixed; width: 100\%%;\">\
   <tr>\
-    <td style=\"text-align:left; width:50\%%\">Node: %d</td>\
+    <td style=\"text-align:left; width:50\%%\">Seat: %d</td>\
     <td style=\"text-align:left;  width:50\%%\"> Lock: %s</td>\
   </tr>\
 </table>\
@@ -48,7 +49,7 @@ static bool _server_started = false;
 // '/settings' body
 #define HTML_SETTINGS \
     "<form method=\"POST\"> \
-    <label for=\"nodeN\">Node Number:</label>\
+    <label for=\"nodeN\">Seat Number:</label>\
     <select id=\"nodeN\" name = \"node_number\">\
         <option value=\"0\">1</option>\
         <option value=\"1\">2</option>\
@@ -59,7 +60,22 @@ static bool _server_started = false;
         <option value=\"6\">7</option>\
         <option value=\"7\">8</option>\
     </select>\
-    <input type=\"submit\" value=\"Set Node Number\">\
+    <input type=\"submit\" value=\"Set Seat Number\">\
+    </form>\
+    <form method=\"POST\"> \
+    <label for=\"channel\">Channel:</label>\
+    <select id=\"channel\" name = \"channel\">\
+        <option value=\"0\">1</option>\
+        <option value=\"1\">2</option>\
+        <option value=\"2\">3</option>\
+        <option value=\"3\">4</option>\
+        <option value=\"4\">5</option>\
+        <option value=\"5\">6</option>\
+        <option value=\"6\">7</option>\
+        <option value=\"7\">8</option>\
+    </select>\
+    <input type=\"submit\" value=\"Set Channel\">\
+    </form>\
     "
 
 #define HTML_TEST \
@@ -211,6 +227,26 @@ static esp_err_t config_settings_get_handler(httpd_req_t *req)
             }
             return ESP_FAIL;
         }
+        char val[64];
+        if (httpd_query_key_value(buf, "antenna", val, sizeof(val)) == ESP_OK) {
+            ESP_LOGD(TAG_SERVER, "Setting antenna mode to: %s", val);
+            set_antenna(val);
+        } 
+        else if (httpd_query_key_value(buf, "channel", val, sizeof(val)) == ESP_OK) {
+            ESP_LOGD(TAG_SERVER, "Setting channel to: %s", val);
+            set_channel(val);
+        } 
+        else if (httpd_query_key_value(buf, "band", val, sizeof(val)) == ESP_OK) {
+            ESP_LOGD(TAG_SERVER, "Setting band to: %s", val);
+            set_band(val);
+        } 
+        else if (httpd_query_key_value(buf, "osd_position", val, sizeof(val)) == ESP_OK) {
+            ESP_LOGD(TAG_SERVER, "Setting osd position to: %s", val);
+            set_osdpos(val);
+        } else {
+            ESP_LOGW(TAG_SERVER, "Unkown parm in %s", buf);
+        }
+        
 
         /* Send back the same data */
         httpd_resp_send_chunk(req, buf, ret);
@@ -572,40 +608,6 @@ static const httpd_uri_t config_test_uri = {
     .handler   = config_test_get_handler
 };
 #endif // CONFIG_CV_INITIAL_PROGRAM
-
-
-
-// /* An HTTP POST handler */
-// static esp_err_t echo_cv_post_handler(httpd_req_t *req)
-// {
-//     char buf[100];
-//     int ret, remaining = req->content_len;
-
-//     while (remaining > 0) {
-//         /* Read the data for the request */
-//         if ((ret = httpd_req_recv(req, buf,
-//                         MIN(remaining, sizeof(buf)))) <= 0) {
-//             if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
-//                 /* Retry receiving if timeout occurred */
-//                 continue;
-//             }
-//             return ESP_FAIL;
-//         }
-
-//         /* Send back the same data */
-//         httpd_resp_send_chunk(req, buf, ret);
-//         remaining -= ret;
-
-//         /* Log data received */
-//         ESP_LOGI(TAG_SERVER, "=========== RECEIVED DATA ==========");
-//         ESP_LOGI(TAG_SERVER, "%.*s", ret, buf);
-//         ESP_LOGI(TAG_SERVER, "====================================");
-//     }
-
-//     // End response
-//     httpd_resp_send_chunk(req, NULL, 0);
-//     return ESP_OK;
-// }
 
 
 /* This handler allows the custom error handling functionality to be

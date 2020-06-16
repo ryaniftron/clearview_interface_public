@@ -31,6 +31,7 @@
 //Components
 
 #include "cv_utils.h"
+#include "cv_api.h"
 
 
 #include "cv_mqtt.h"
@@ -524,8 +525,6 @@ void app_main(void)
     init_cv_ledc(initial_led_state);
     init_uart();
     start_nvs();
-    get_nvs_value(nvs_wifi_ssid);
-
     
     #ifdef UART_TEST_LOOP
         run_cv_uart_test_task();
@@ -556,6 +555,7 @@ void app_main(void)
             cv_mqtt_init(chipid, UNIQUE_ID_LENGTH, desired_mqtt_broker_ip);
         #endif //CONFIG_ENABLE_MQTT == 1
     #endif // UART_TEST_LOOP
+    
     
     printf("END OF MAIN\n");
 }
