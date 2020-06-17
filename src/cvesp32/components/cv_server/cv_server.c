@@ -20,6 +20,7 @@
 const char* TAG_SERVER = "CV_SERVER";
 static bool _server_started = false;
 
+
 #define HTML_ROOT_TITLE \
 "<h2><center>ClearView Wireless %s  </center></h2>" //supply chip_id
 
@@ -45,6 +46,16 @@ static bool _server_started = false;
         <input type=\"text\" id=\"broker_ip\" name=\"broker_ip\" value=\"%s\"><br> \
         <input type=\"submit\" value=\"Save and Join Network\">\
     "
+extern const uint8_t settings_html_start[] asm("_binary_settings_html_start");
+extern const uint8_t settings_html_end[]   asm("_binary_settings_html_end");
+
+extern const uint8_t sxstart[] asm("_binary_test_txt_start");
+extern const uint8_t sxend[] asm("_binary_test_txt_end");
+
+extern const uint8_t i2start[] asm("_binary_index2_html_start");
+extern const uint8_t i2end[] asm("_binary_index2_html_end");
+
+
 
 // '/settings' body
 #define HTML_SETTINGS \
@@ -75,6 +86,20 @@ static bool _server_started = false;
         <option value=\"7\">8</option>\
     </select>\
     <input type=\"submit\" value=\"Set Channel\">\
+    </form>\
+    <form method=\"POST\"> \
+    <label for=\"band\">Band:</label>\
+    <select id=\"band\" name = \"bandz\">\
+        <option value=\"0\">1</option>\
+        <option value=\"1\">2</option>\
+        <option value=\"2\">3</option>\
+        <option value=\"3\">4</option>\
+        <option value=\"4\">5</option>\
+        <option value=\"5\">6</option>\
+        <option value=\"6\">7</option>\
+        <option value=\"7\">8</option>\
+    </select>\
+    <input type=\"submit\" value=\"Set Band\">\
     </form>\
     "
 
@@ -207,16 +232,10 @@ static esp_err_t config_settings_get_handler(httpd_req_t *req)
     // }
     // return ESP_OK;
 
-    char buf[100];
+    char buf[100]; //Todo check expected behavior for buffer overflow
     int ret, remaining = req->content_len;
 
-    //Redirect
-    httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 
-    char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"3; URL=http://192.168.4.1/settings\">";
-    httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);
-    httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);  
-    httpd_resp_send_chunk(req, "Redirecting in 3s. TODO verify data was set in CV <br>", HTTPD_RESP_USE_STRLEN);
-
+    
     while (remaining > 0) {
         /* Read the data for the request */
         if ((ret = httpd_req_recv(req, buf,
@@ -227,8 +246,13 @@ static esp_err_t config_settings_get_handler(httpd_req_t *req)
             }
             return ESP_FAIL;
         }
+
         char val[64];
-        if (httpd_query_key_value(buf, "antenna", val, sizeof(val)) == ESP_OK) {
+        if (httpd_query_key_value(buf, "address", val, sizeof(val)) == ESP_OK) {
+            ESP_LOGD(TAG_SERVER, "Setting address to: %s", val);
+            set_address(val);
+        } 
+        else if (httpd_query_key_value(buf, "antenna_mode", val, sizeof(val)) == ESP_OK) {
             ESP_LOGD(TAG_SERVER, "Setting antenna mode to: %s", val);
             set_antenna(val);
         } 
@@ -240,12 +264,56 @@ static esp_err_t config_settings_get_handler(httpd_req_t *req)
             ESP_LOGD(TAG_SERVER, "Setting band to: %s", val);
             set_band(val);
         } 
+        else if (httpd_query_key_value(buf, "id", val, sizeof(val)) == ESP_OK) {
+            ESP_LOGD(TAG_SERVER, "Setting user id string to: %s", val);
+            set_id(val);
+        } 
+        else if (httpd_query_key_value(buf, "user_message", val, sizeof(val)) == ESP_OK) {
+            ESP_LOGD(TAG_SERVER, "Setting user message string to: %s", val);
+            set_usermsg(val);
+        } 
+        else if (httpd_query_key_value(buf, "mode", val, sizeof(val)) == ESP_OK) {
+            ESP_LOGD(TAG_SERVER, "Setting mode to: %s", val);
+            set_mode(val);
+        } 
+        else if (httpd_query_key_value(buf, "osd_visibility", val, sizeof(val)) == ESP_OK) {
+            ESP_LOGD(TAG_SERVER, "Setting osd visibility to: %s", val);
+            set_osdvis(val);
+        } 
         else if (httpd_query_key_value(buf, "osd_position", val, sizeof(val)) == ESP_OK) {
             ESP_LOGD(TAG_SERVER, "Setting osd position to: %s", val);
             set_osdpos(val);
-        } else {
-            ESP_LOGW(TAG_SERVER, "Unkown parm in %s", buf);
         }
+        else if (httpd_query_key_value(buf, "reset_lock", val, sizeof(val)) == ESP_OK) {
+            ESP_LOGD(TAG_SERVER, "Resetting Lock; unused val: %s", val);
+            reset_lock();
+        } 
+        else if (httpd_query_key_value(buf, "video_format", val, sizeof(val)) == ESP_OK) {
+            ESP_LOGD(TAG_SERVER, "Setting video format to: %s", val);
+            set_videoformat(val);
+        }
+        else if (httpd_query_key_value(buf, "seat_number", val, sizeof(val)) == ESP_OK) {
+            ESP_LOGD(TAG_SERVER, "Setting seat number to: %s", val);
+            if (set_credential("node_number", val)){
+                update_subscriptions_new_node();
+            }
+        } 
+        else {
+            ESP_LOGW(TAG_SERVER, "Unkown parm in %s", buf);
+            httpd_resp_set_status(req, HTTPD_400);
+            httpd_resp_send_chunk(req, "Error: Invalid API Endpoint<br>", HTTPD_RESP_USE_STRLEN);
+            httpd_resp_send_chunk(req, buf, ret);
+            httpd_resp_send_chunk(req, NULL, 0);
+            return ESP_OK;
+        }
+
+        //Redirect
+        httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 
+        char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"3; URL=http://192.168.4.1/settings\">";
+        httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);
+        httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);  
+        httpd_resp_send_chunk(req, "Redirecting in 3s. TODO verify data was set in CV <br>", HTTPD_RESP_USE_STRLEN);
+
         
 
         /* Send back the same data */
@@ -412,7 +480,6 @@ static esp_err_t config_wifi_get_handler(httpd_req_t *req)
 }
 
 void serve_title(httpd_req_t *req) {
-    printf("%s\n", req->uri);
     const int UNIQUE_ID_LENGTH = 16;
     char chipid[UNIQUE_ID_LENGTH];
     get_chip_id(chipid, UNIQUE_ID_LENGTH);
@@ -451,7 +518,16 @@ void serve_wificonfig(httpd_req_t *req){
 }
 
 void serve_settingsconfig(httpd_req_t *req){
-    ESP_ERROR_CHECK(httpd_resp_send_chunk(req, HTML_SETTINGS, HTTPD_RESP_USE_STRLEN));
+    //     char buf[100];
+    // char buf2[100];
+    // // printf("Length %d\n", sxend-sxstart);
+    // printf("Length i2 %d\n", i2end- i2start);
+    // uint8_t i;
+    // // //snprintf(buf, sxend-sxstart, "%s", sxstart);
+    // snprintf(buf2, i2end-i2start, "%s\n", i2start );
+    // printf("TESTX: %s\n", buf2);
+    // ESP_ERROR_CHECK(httpd_resp_send_chunk(req, HTML_SETTINGS, HTTPD_RESP_USE_STRLEN));
+    ESP_ERROR_CHECK(httpd_resp_send_chunk(req, (const char *)i2start, i2end - i2start));
 }
 
 void serve_test(httpd_req_t *req){
@@ -466,6 +542,7 @@ static esp_err_t root_get_handler(httpd_req_t *req)
     ESP_ERROR_CHECK(httpd_resp_send_chunk(req, NULL, 0));
     return ESP_OK;
 }
+
 
 static esp_err_t settings_get_handler(httpd_req_t *req)
 {
@@ -535,7 +612,6 @@ static esp_err_t hello_cv_get_handler(httpd_req_t *req)
 }
 
 
-
 static esp_err_t test_cv_get_handler(httpd_req_t *req)
 {
     serve_title(req);
@@ -549,8 +625,6 @@ static const httpd_uri_t echo_uri = {
     .method = HTTP_POST,
     .handler= echo_post_handler
 };
-
-
 
 static const httpd_uri_t config_settings_uri = {
     .uri       = "/settings",
@@ -610,39 +684,15 @@ static const httpd_uri_t config_test_uri = {
 #endif // CONFIG_CV_INITIAL_PROGRAM
 
 
-/* This handler allows the custom error handling functionality to be
- * tested from client side. For that, when a PUT request 0 is sent to
- * URI /ctrl, the /hello and /echo URIs are unregistered and following
- * custom error handler http_404_error_handler() is registered.
- * Afterwards, when /hello or /echo is requested, this custom error
- * handler is invoked which, after sending an error message to client,
- * either closes the underlying socket (when requested URI is /echo)
- * or keeps it open (when requested URI is /hello). This allows the
- * client to infer if the custom error handler is functioning as expected
- * by observing the socket state.
- */
-// esp_err_t http_404_error_handler(httpd_req_t *req, httpd_err_code_t err)
-// {
-//     if (strcmp("/hello", req->uri) == 0) {
-//         httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "/hello URI is not available");
-//         /* Return ESP_OK to keep underlying socket open */
-//         return ESP_OK;
-//     } else if (strcmp("/echo", req->uri) == 0) {
-//         httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "/echo URI is not available");
-//         /* Return ESP_FAIL to close underlying socket */
-//         return ESP_FAIL;
-//     }
-//     /* For any other URI send 404 and close socket */
-//     httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Some 404 error message");
-//     return ESP_FAIL;
-// }
-
 
 extern httpd_handle_t start_cv_webserver(void){
     if (_server_started) {
         ESP_LOGW(TAG_SERVER, "SERVER is already running");
         return NULL;
     }
+
+
+    esp_log_level_set(TAG_SERVER, ESP_LOG_DEBUG);
     //start the OTA reboot task
     xTaskCreate(&otaRebootTask, "rebootTask", 2048, NULL, 5, NULL);
 
