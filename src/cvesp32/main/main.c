@@ -515,6 +515,8 @@ static void demo_sequential_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_L
 
 void app_main(void)
 {
+
+    
     tcpip_adapter_init();
     const int UNIQUE_ID_LENGTH = 16;
     char chipid[UNIQUE_ID_LENGTH];
