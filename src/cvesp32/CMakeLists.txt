@@ -10,6 +10,8 @@ set(EXTRA_COMPONENT_DIRS $ENV{IDF_PATH}/examples/common_components/protocol_exam
 # These are used for OTA
 set(COMPONENT_EMBED_TXTFILES WebsiteFiles/index.html WebsiteFiles/favicon.ico WebsiteFiles/jquery-3.4.1.min.js)
 
+add_compile_options(-Werror=return-type)
+
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
     project(CVCM)
