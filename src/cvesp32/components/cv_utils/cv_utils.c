@@ -50,7 +50,7 @@ extern void get_chip_id(char* ssid, const int UNIQUE_ID_LENGTH){
     uint16_t chip = (uint16_t)(chipid >> 32);
     //esp_read_mac(chipid);
     snprintf(ssid, UNIQUE_ID_LENGTH, "CV_%04X%08X", chip, (uint32_t)chipid);
-    printf("SSID created from chip id: %s\n", ssid);
+    ESP_LOGD(TAG_UTILS, "SSID created from chip id: %s\n", ssid);
     return;
 }
 
