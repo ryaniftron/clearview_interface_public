@@ -20,112 +20,30 @@
 const char* TAG_SERVER = "CV_SERVER";
 static bool _server_started = false;
 
+extern const uint8_t title_html_start[] asm("_binary_title_html_start");
+extern const uint8_t title_html_end[]   asm("_binary_title_html_end");
 
-#define HTML_ROOT_TITLE \
-"<h2><center>ClearView Wireless %s  </center></h2>" //supply chip_id
+extern const uint8_t subtitle_html_start[] asm("_binary_subtitle_html_start");
+extern const uint8_t subtitle_html_end[]   asm("_binary_subtitle_html_end");
 
-#define HTML_ROOT_SUBTITLE \
-"<table style=\"table-layout: fixed; width: 100\%%;\">\
-  <tr>\
-    <td style=\"text-align:left; width:50\%%\">Seat: %d</td>\
-    <td style=\"text-align:left;  width:50\%%\"> Lock: %s</td>\
-  </tr>\
-</table>\
-<hr>"
+extern const uint8_t wifiSettings_html_start[] asm("_binary_wifiSettings_html_start");
+extern const uint8_t wifiSettings_html_end[]   asm("_binary_wifiSettings_html_end");
 
-// '/' , the root text configuration
-#define HTML_WIFICONFIG \
-    "<form action=\"/config_wifi\" method> \
-        <label for=\"ssid\">Network SSID:</label><br> \
-        <input type=\"text\" id=\"ssid\" name=\"ssid\" value=\"%s\"><br> \
-        <label for=\"password\">Network Password:</label><br> \
-        <input type=\"text\" id=\"password\" name=\"password\" value=\"%s\"><br> \
-        <label for=\"device_name\">Device Name:</label><br> \
-        <input type=\"text\" id=\"device_name\" name=\"device_name\" value=\"%s\"><br> \
-        <label for=\"broker_ip\">Broker IP Address:</label><br> \
-        <input type=\"text\" id=\"broker_ip\" name=\"broker_ip\" value=\"%s\"><br> \
-        <input type=\"submit\" value=\"Save and Join Network\">\
-    "
 extern const uint8_t settings_html_start[] asm("_binary_settings_html_start");
 extern const uint8_t settings_html_end[]   asm("_binary_settings_html_end");
 
-extern const uint8_t sxstart[] asm("_binary_test_txt_start");
-extern const uint8_t sxend[] asm("_binary_test_txt_end");
+extern const uint8_t settings_html_start[] asm("_binary_settings_html_start");
+extern const uint8_t settings_html_end[]   asm("_binary_settings_html_end");
 
-extern const uint8_t i2start[] asm("_binary_index2_html_start");
-extern const uint8_t i2end[] asm("_binary_index2_html_end");
+extern const uint8_t test_html_start[] asm("_binary_test_html_start");
+extern const uint8_t test_html_end[]   asm("_binary_test_html_end");
 
+extern const uint8_t html_beg_start[] asm("_binary_httpDocBegin_html_start");
+extern const uint8_t html_beg_end[] asm("_binary_httpDocBegin_html_end");
 
+extern const uint8_t html_conc_start[] asm("_binary_httpDocConclude_html_start");
+extern const uint8_t html_conc_end[] asm("_binary_httpDocConclude_html_end");
 
-// '/settings' body
-#define HTML_SETTINGS \
-    "<form method=\"POST\"> \
-    <label for=\"nodeN\">Seat Number:</label>\
-    <select id=\"nodeN\" name = \"node_number\">\
-        <option value=\"0\">1</option>\
-        <option value=\"1\">2</option>\
-        <option value=\"2\">3</option>\
-        <option value=\"3\">4</option>\
-        <option value=\"4\">5</option>\
-        <option value=\"5\">6</option>\
-        <option value=\"6\">7</option>\
-        <option value=\"7\">8</option>\
-    </select>\
-    <input type=\"submit\" value=\"Set Seat Number\">\
-    </form>\
-    <form method=\"POST\"> \
-    <label for=\"channel\">Channel:</label>\
-    <select id=\"channel\" name = \"channel\">\
-        <option value=\"0\">1</option>\
-        <option value=\"1\">2</option>\
-        <option value=\"2\">3</option>\
-        <option value=\"3\">4</option>\
-        <option value=\"4\">5</option>\
-        <option value=\"5\">6</option>\
-        <option value=\"6\">7</option>\
-        <option value=\"7\">8</option>\
-    </select>\
-    <input type=\"submit\" value=\"Set Channel\">\
-    </form>\
-    <form method=\"POST\"> \
-    <label for=\"band\">Band:</label>\
-    <select id=\"band\" name = \"bandz\">\
-        <option value=\"0\">1</option>\
-        <option value=\"1\">2</option>\
-        <option value=\"2\">3</option>\
-        <option value=\"3\">4</option>\
-        <option value=\"4\">5</option>\
-        <option value=\"5\">6</option>\
-        <option value=\"6\">7</option>\
-        <option value=\"7\">8</option>\
-    </select>\
-    <input type=\"submit\" value=\"Set Band\">\
-    </form>\
-    "
-
-#define HTML_TEST \
-"<form action=\"/config_test\">\
-  <label for=\"LED\">Choose a LED State</label>\
-  <select id=\"led\" name=\"LED\" >\
-    <option value=\"ON\">Turn On</option>\
-    <option value=\"OFF\">Turn Off</option>\
-  </select>\
-  <input type=\"submit\" value = \"Set LED State\">\
-</form>\
-\
-<form action=\"/config_test\">\
-  <label for=\"user_message\">Enter User Message</label>\
-  <input type=\"text\" id=\"user_message\" name=\"UM\">\
-  <input type=\"submit\" value = \"Set User Message\">\
-</form>\
-\
-<form action=\"/config_test\">\
-  <input type=\"text\" id=\"req_lock\" name=\"RL\">\
-  <input type=\"submit\" value = \"Request Lock State\">\
-  %s\
-</form>\
-"
- 
 
 // URI Defines
 #define CV_CONFIG_WIFI_URI "/config_wifi"
@@ -137,7 +55,8 @@ bool password_ready = false;
 bool device_name_ready = false;
 bool broker_ip_ready = false;
 
-static esp_err_t config_test_get_handler(httpd_req_t *req)
+#ifdef CONFIG_CV_INITIAL_PROGRAM
+static esp_err_t config_test_get_handler(httpd_req_t *req) // TODO convert this to post
 {
 //Parse the URL QUERY
     char*  buf;
@@ -203,38 +122,13 @@ static esp_err_t config_test_get_handler(httpd_req_t *req)
     httpd_resp_send_chunk(req, NULL, 0);
     return ESP_OK;
 }
+#endif
 
 
 static esp_err_t config_settings_get_handler(httpd_req_t *req)
 {
-    // char*  buf;
-    // size_t buf_len;
-    //
-    // /* Read URL query string length and allocate memory for length + 1,
-    //  * extra byte for null termination */
-    // buf_len = httpd_req_get_url_query_len(req) + 1;
-    // if (buf_len > 1) {
-    //     buf = malloc(buf_len);
-    //     if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
-    //         ESP_LOGI(TAG_SERVER, "Found URL query => %s", buf);
-    //         char param[32];
-    //         /* Get value of expected key from query string */
-    //         if (httpd_query_key_value(buf, "node_number", param, sizeof(param)) == ESP_OK) {
-    //             ESP_LOGI(TAG_SERVER, "Found URL query parameter => node_number=%s", param);
-    //             if (set_credential("node_number", param)){
-    //                 update_subscriptions_new_node();
-    //             }
-    //         }
-    //     }
-    //     free(buf);
-    //     httpd_resp_send_chunk(req, "Settings Accepted", HTTPD_RESP_USE_STRLEN);    
-    //     httpd_resp_send_chunk(req, NULL, 0);
-    // }
-    // return ESP_OK;
-
-    char buf[100]; //Todo check expected behavior for buffer overflow
+    char buf[100]; // TODO check expected behavior for buffer overflow
     int ret, remaining = req->content_len;
-
     
     while (remaining > 0) {
         /* Read the data for the request */
@@ -326,40 +220,6 @@ static esp_err_t config_settings_get_handler(httpd_req_t *req)
         ESP_LOGI(TAG_SERVER, "====================================");
     }
    
-               
-
-    // End response
-    httpd_resp_send_chunk(req, NULL, 0);
-    return ESP_OK;
-}
-
-/* An HTTP POST handler */
-static esp_err_t echo_post_handler(httpd_req_t *req)
-{
-    char buf[100];
-    int ret, remaining = req->content_len;
-
-    while (remaining > 0) {
-        /* Read the data for the request */
-        if ((ret = httpd_req_recv(req, buf,
-                        MIN(remaining, sizeof(buf)))) <= 0) {
-            if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
-                /* Retry receiving if timeout occurred */
-                continue;
-            }
-            return ESP_FAIL;
-        }
-
-        /* Send back the same data */
-        httpd_resp_send_chunk(req, buf, ret);
-        remaining -= ret;
-
-        /* Log data received */
-        ESP_LOGI(TAG_SERVER, "=========== RECEIVED DATA ==========");
-        ESP_LOGI(TAG_SERVER, "%.*s", ret, buf);
-        ESP_LOGI(TAG_SERVER, "====================================");
-    }
-
     // End response
     httpd_resp_send_chunk(req, NULL, 0);
     return ESP_OK;
@@ -404,8 +264,6 @@ static esp_err_t config_wifi_get_handler(httpd_req_t *req)
         free(buf);
 
         if (ssid_ready && password_ready && device_name_ready && broker_ip_ready){
-            
-
             //Match the URI to determine whether to send instantly or not
             printf("%s\n", req->uri);
             bool is_instant = false;
@@ -484,9 +342,16 @@ void serve_title(httpd_req_t *req) {
     char chipid[UNIQUE_ID_LENGTH];
     get_chip_id(chipid, UNIQUE_ID_LENGTH);
 
-    size_t needed = snprintf(NULL, 0, HTML_ROOT_TITLE, chipid)+1;
+    // Allocate memory for the format string
+    size_t n_template = title_html_end - title_html_start;
+    char* line_template = (char*)malloc(n_template);
+    snprintf(line_template, n_template, "%s", title_html_start);
+
+    // Allocate memory for the output string
+    size_t needed = snprintf(NULL, 0, line_template, chipid)+1;
     char* line = (char*)malloc(needed);
-    snprintf(line, needed, HTML_ROOT_TITLE, chipid);
+    snprintf(line, needed, line_template, chipid);
+    free(line_template);
     ESP_ERROR_CHECK(httpd_resp_send_chunk(req, line, HTTPD_RESP_USE_STRLEN));
     free(line);
 }
@@ -495,51 +360,61 @@ void serve_node_and_lock(httpd_req_t *req){
     extern uint8_t desired_node_number;
     char* lock_status = "TODO";
 
+    // Allocate memory for the format string
+    size_t n_template = subtitle_html_end - subtitle_html_start;
+    char* line_template = (char*)malloc(n_template);
+    snprintf(line_template, n_template, "%s", subtitle_html_start);
+
     // Display the node number 1 higher than stored in the back end. 
     // Back end
     int ui_node_number = desired_node_number+1;
-    size_t needed = snprintf(NULL, 0, HTML_ROOT_SUBTITLE, ui_node_number, lock_status)+1;
+    size_t needed = snprintf(NULL, 0, line_template, ui_node_number, lock_status)+1;
     char* line = (char*)malloc(needed);
-    snprintf(line, needed, HTML_ROOT_SUBTITLE, ui_node_number, lock_status);
-    //ESP_LOGI(TAG_SERVER, "Node and Lock Request %d ,%s", node_number, "TODO");
-    // size_t needed = snprintf(NULL, 0, HTML_ROOT_SUBTITLE, node_number, lock_status);
-    
+    snprintf(line, needed, line_template, ui_node_number, lock_status);
+    free(line_template);
     ESP_ERROR_CHECK(httpd_resp_send_chunk(req, line, HTTPD_RESP_USE_STRLEN));
     free(line);
     //ESP_ERROR_CHECK(httpd_resp_send_chunk(req, line, HTTPD_RESP_USE_STRLEN));
 }
 
 void serve_wificonfig(httpd_req_t *req){
-    size_t needed = snprintf(NULL, 0, HTML_WIFICONFIG, desired_ap_ssid, desired_ap_pass, desired_friendly_name, desired_mqtt_broker_ip)+1;
+    // Allocate memory for the format string
+    size_t n_template = wifiSettings_html_end - wifiSettings_html_start;
+    char* line_template = (char*)malloc(n_template);
+    snprintf(line_template, n_template, "%s", wifiSettings_html_start);
+
+    size_t needed = snprintf(NULL, 0, line_template, desired_ap_ssid, desired_ap_pass, desired_friendly_name, desired_mqtt_broker_ip)+1;
     char* line = (char*)malloc(needed);
-    snprintf(line, needed, HTML_WIFICONFIG, desired_ap_ssid, desired_ap_pass, desired_friendly_name, desired_mqtt_broker_ip);
+    snprintf(line, needed, line_template, desired_ap_ssid, desired_ap_pass, desired_friendly_name, desired_mqtt_broker_ip);
     ESP_ERROR_CHECK(httpd_resp_send_chunk(req, line, HTTPD_RESP_USE_STRLEN));
     free(line);
 }
 
 void serve_settingsconfig(httpd_req_t *req){
-    //     char buf[100];
-    // char buf2[100];
-    // // printf("Length %d\n", sxend-sxstart);
-    // printf("Length i2 %d\n", i2end- i2start);
-    // uint8_t i;
-    // // //snprintf(buf, sxend-sxstart, "%s", sxstart);
-    // snprintf(buf2, i2end-i2start, "%s\n", i2start );
-    // printf("TESTX: %s\n", buf2);
-    // ESP_ERROR_CHECK(httpd_resp_send_chunk(req, HTML_SETTINGS, HTTPD_RESP_USE_STRLEN));
-    ESP_ERROR_CHECK(httpd_resp_send_chunk(req, (const char *)i2start, i2end - i2start));
+    ESP_ERROR_CHECK(httpd_resp_send_chunk(req, (const char *)settings_html_start, settings_html_end - settings_html_start));
 }
 
 void serve_test(httpd_req_t *req){
-    ESP_ERROR_CHECK(httpd_resp_send_chunk(req, HTML_TEST, HTTPD_RESP_USE_STRLEN));
+    ESP_ERROR_CHECK(httpd_resp_send_chunk(req, (const char *)test_html_start, test_html_end - test_html_start));
+}
+
+void serve_html_beg(httpd_req_t *req){
+    ESP_ERROR_CHECK(httpd_resp_send_chunk(req, (const char *)html_beg_start, html_beg_end - html_beg_start));
+}
+
+void serve_html_end(httpd_req_t *req){
+    ESP_ERROR_CHECK(httpd_resp_send_chunk(req, (const char *)html_conc_end, html_conc_end - html_conc_start));
+    ESP_ERROR_CHECK(httpd_resp_send_chunk(req, NULL, 0));
 }
 
 static esp_err_t root_get_handler(httpd_req_t *req)
 {
+    serve_html_beg(req);
     serve_title(req);
     serve_node_and_lock(req);
     serve_wificonfig(req);
-    ESP_ERROR_CHECK(httpd_resp_send_chunk(req, NULL, 0));
+    serve_html_end(req);
+    
     return ESP_OK;
 }
 
@@ -553,77 +428,24 @@ static esp_err_t settings_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-static esp_err_t hello_cv_get_handler(httpd_req_t *req)
-{
-    char*  buf;
-    size_t buf_len;
-
-    /* Read URL query string length and allocate memory for length + 1,
-     * extra byte for null termination */
-    buf_len = httpd_req_get_url_query_len(req) + 1;
-    if (buf_len > 1) {
-        buf = malloc(buf_len);
-        if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
-            ESP_LOGI(TAG_SERVER, "Found URL query => %s", buf);
-            char param[32];
-            /* Get value of expected key from query string */
-            if (httpd_query_key_value(buf, "ssid", param, sizeof(param)) == ESP_OK) {
-                ESP_LOGI(TAG_SERVER, "Found URL query parameter => ssid=%s", param);
-            }
-            if (httpd_query_key_value(buf, "password", param, sizeof(param)) == ESP_OK) {
-                ESP_LOGI(TAG_SERVER, "Found URL query parameter => password=%s", param);
-            }
-            if (httpd_query_key_value(buf, "device_name", param, sizeof(param)) == ESP_OK) {
-                ESP_LOGI(TAG_SERVER, "Found URL query parameter => device_name=%s", param);
-            }
-            if (httpd_query_key_value(buf, "broker_ip", param, sizeof(param)) == ESP_OK) {
-                ESP_LOGI(TAG_SERVER, "Found URL query parameter => broker_ip=%s", param);
-            }           
-        }
-        free(buf);
-    }
-
-    /* Send response with custom headers and body set as the
-     * string passed in user context*/
-    const char* resp_str = (const char*) req->user_ctx;
-    //Original method: One response
-    // httpd_resp_send(req, resp_str, strlen(resp_str));
-
-    //New Method: Chunks
-    httpd_resp_send_chunk(req, resp_str, HTTPD_RESP_USE_STRLEN); //HTTPD_RESP_USE_STRLEN
-
-    //Now, send a second string
-    char* lock_info = "Lock Status: %i";
-    int lock_status = 23;
-    size_t needed = snprintf(NULL, 0,lock_info, lock_status);
-    char* next_str = (char*)malloc(needed);
-    snprintf(next_str, needed,lock_info);
-    httpd_resp_send_chunk(req, next_str,HTTPD_RESP_USE_STRLEN);
-    free(next_str);
-    
-    httpd_resp_send_chunk(req, NULL, 0);
-
-    /* After sending the HTTP response the old HTTP request
-     * headers are lost. Check if HTTP request headers can be read now. */
-    if (httpd_req_get_hdr_value_len(req, "Host") == 0) {
-        ESP_LOGI(TAG_SERVER, "Request headers lost");
-    }
-    return ESP_OK;
-}
-
-
 static esp_err_t test_cv_get_handler(httpd_req_t *req)
-{
+{   
     serve_title(req);
     serve_test(req);
     ESP_ERROR_CHECK(httpd_resp_send_chunk(req, NULL, 0));
     return ESP_OK;
 }
 
-static const httpd_uri_t echo_uri = {
-    .uri = "/post_test",
-    .method = HTTP_POST,
-    .handler= echo_post_handler
+static const httpd_uri_t root_uri = {
+    .uri       = "/",
+    .method    = HTTP_GET,
+    .handler   = root_get_handler
+};
+
+static const httpd_uri_t settings_uri = {
+    .uri       = "/settings",
+    .method    = HTTP_GET,
+    .handler   = settings_get_handler
 };
 
 static const httpd_uri_t config_settings_uri = {
@@ -635,36 +457,15 @@ static const httpd_uri_t config_settings_uri = {
 // When a user manually submits wifi config. Issues a confirmation page
 static const httpd_uri_t config_wifi_uri = {
     .uri       = CV_CONFIG_WIFI_URI,
-    .method    = HTTP_GET,
+    .method    = HTTP_POST,
     .handler   = config_wifi_get_handler
 };
 
 // Used to submit wifi credentials without promting or redirecting
 static const httpd_uri_t config_wifi_instant_uri = {
     .uri   = CV_CONFIG_WIFI_INSTANT_URI,
-    .method    = HTTP_GET,
+    .method    = HTTP_POST,
     .handler   = config_wifi_get_handler
-};
-
-static const httpd_uri_t settings_uri = {
-    .uri       = "/settings",
-    .method    = HTTP_GET,
-    .handler   = settings_get_handler
-};
-
-static const httpd_uri_t root_uri = {
-    .uri       = "/",
-    .method    = HTTP_GET,
-    .handler   = root_get_handler
-};
-
-static const httpd_uri_t hello_uri = {
-    .uri       = "/hello",
-    .method    = HTTP_GET,
-    .handler   = hello_cv_get_handler,
-    /* Let's pass response string in user
-     * context to demonstrate it's usage */
-    .user_ctx  = "Hello World"
 };
 
 #ifdef CONFIG_CV_INITIAL_PROGRAM
@@ -677,8 +478,8 @@ static const httpd_uri_t test_uri = {
 };
 
 static const httpd_uri_t config_test_uri = {
-    .uri       = "/config_test",
-    .method    = HTTP_GET,
+    .uri       = "/test",
+    .method    = HTTP_POST,
     .handler   = config_test_get_handler
 };
 #endif // CONFIG_CV_INITIAL_PROGRAM
@@ -710,7 +511,7 @@ extern httpd_handle_t start_cv_webserver(void){
     if (ret == ESP_OK){
         // Set URI handlers
         ESP_LOGI(TAG_SERVER, "Registering URI handlers");
-        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &hello_uri));
+
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &root_uri));
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &config_wifi_uri));
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &config_wifi_instant_uri));
@@ -721,7 +522,6 @@ extern httpd_handle_t start_cv_webserver(void){
 		ESP_ERROR_CHECK(httpd_register_uri_handler(server, &OTA_jquery_3_4_1_min_js));
 		ESP_ERROR_CHECK(httpd_register_uri_handler(server, &OTA_update));
 		ESP_ERROR_CHECK(httpd_register_uri_handler(server, &OTA_status));
-        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &echo_uri));
 
         #ifdef CONFIG_CV_INITIAL_PROGRAM
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &test_uri));

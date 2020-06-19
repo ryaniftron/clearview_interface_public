@@ -1,0 +1,32 @@
+<!-- Seat Number -->
+<form action = "/config_wifi" method="POST">
+    <label for="seatN">Seat Number:</label>
+    <select id="seatN" name="seat_number">
+        <option value="0">1</option>
+        <option value="1">2</option>
+        <option value="2">3</option>
+        <option value="3">4</option>
+        <option value="4">5</option>
+        <option value="5">6</option>
+        <option value="6">7</option>
+        <option value="7">8</option>
+    </select>
+    <input type="submit" value="Set Seat Number">
+</form>
+<hr>
+<form action="/config_wifi" method="POST">
+
+    <label for="ssid">Network SSID:</label><br>
+    <input type="text" id="ssid" name="ssid" value="%s"><br>
+
+    <label for="password">Network Password:</label><br>
+    <input type="text" id="password" name="password" value="%s"><br>
+
+    <label for="device_name">Device Name:</label><br>
+    <input type="text" id="device_name" name="device_name" value="%s"><br>
+
+    <label for="broker_ip">Broker IP Address:</label><br>
+    <input type="text" id="broker_ip" name="broker_ip" value="%s"><br>
+
+    <input type="submit" value="Save and Join Network">
+</form>

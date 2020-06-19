@@ -1,0 +1,20 @@
+<form action="/config_test" method="POST">
+  <label for="LED">Choose a LED State</label>
+  <select id="led" name="LED" >
+    <option value="ON">Turn On</option>
+    <option value="OFF">Turn Off</option>
+  </select>
+  <input type="submit" value = "Set LED State">
+</form>
+
+<form action="/config_test">
+  <label for="user_message">Enter User Message</label>
+  <input type="text" id="user_message" name="UM">
+  <input type="submit" value = "Set User Message">
+</form>
+
+<form action="/config_test">
+  <input type="text" id="req_lock" name="RL">
+  <input type="submit" value = "Request Lock State">
+  %s
+</form
