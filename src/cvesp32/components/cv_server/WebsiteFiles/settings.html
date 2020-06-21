@@ -1,7 +1,7 @@
 
 
 <!-- Channel Number -->
-<form method="POST">
+<form method="POST" enctype="text/plain">
     <label for="channel">Channel:</label>
     <select id="channel" name="channel">
         <option value="0">1</option>
@@ -17,7 +17,7 @@
 </form>
 
 <!-- Band -->
-<form method="POST">
+<form method="POST" enctype="text/plain">
     <label for="band">Band:</label>
     <select id="band" name="band">
         <option value="0">A</option>
@@ -40,7 +40,7 @@
 </form>
 
 <!-- Antenna Mode-->
-<form method="POST">
+<form method="POST" enctype="text/plain">
     <label for="antenna_mode">Antenna Mode:</label>
     <select id="antenna_mode" name="antenna_mode">
         <option value="3">ClearView</option>
@@ -52,25 +52,25 @@
 </form>
 
 <!-- Vide Format -->
-<form method="POST">
+<form method="POST" enctype="text/plain">
     <label for="video_format">Video Format:</label>
     <select id="video_format" name="video_format">
-        <option value="A">Auto</option>
-        <option value="N">NTSC</option>
-        <option value="P">PAL</option>
+        <option value="Auto">Auto</option>
+        <option value="NTSC">NTSC</option>
+        <option value="PAL">PAL</option>
     </select>
     <input type="submit" value="Set Video Mode">
 </form>
 
 <!-- ID String -->
-<form method="POST">
+<form method="POST" enctype="text/plain">
     <label for="id_string">ID String:</label>
     <input type="text" id="id_string", name="id">
     <input type="submit" value="Set Pilot ID">
 </form>
 
 <!-- User Message -->
-<form method="POST">
+<form method="POST" enctype="text/plain">
     <label for="user_msg">User Message:</label>
     <input type="text" id="user_msg", name="user_message">
     <input type="submit" value="Set User Message">

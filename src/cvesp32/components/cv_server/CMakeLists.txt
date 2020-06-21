@@ -4,7 +4,7 @@ idf_component_register(SRCS "cv_server.c"
                        EMBED_TXTFILES 
                            WebsiteFiles/settings.html 
                            WebsiteFiles/httpDocBegin.html
-                           WebsiteFiles/httpDocEnd.html
+                           WebsiteFiles/httpDocConclude.html
                            WebsiteFiles/subtitle.html
                            WebsiteFiles/title.html
                            WebsiteFiles/wifiSettings.html

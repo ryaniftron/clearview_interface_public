@@ -1,6 +1,7 @@
 #include "stdio.h"
 #include "cv_uart.h"
 #include "string.h"
+#include <esp_log.h>
 #define START_CHAR 0x02
 #define END_CHAR 0x03
 #define CSUM "%"
@@ -11,13 +12,13 @@
 // Generates CV command from payload and puts into buffer output_command
 extern int form_command(char* payload, char* output_command, int bufsz) {
     int n = snprintf(output_command, bufsz, "%c%d%d%s%s%c", START_CHAR, RX_TARGET, MESS_SRC,  payload, CSUM, END_CHAR);
-    
     return n;
 }
 
 //Generates CV command from two appended payloads and puts into buffer output_command
 extern int form_command_biparam(char* payload1, char* payload2, char* output_command, int bufsz) {
     int n = snprintf(output_command, bufsz, "%c%d%d%s%s%s%c", START_CHAR, RX_TARGET, MESS_SRC, payload1, payload2, CSUM, END_CHAR);
+    if (bufsz != 0) ESP_LOGI("CV_API", "CMD: '%s'", output_command);
     return n;
 }
 
@@ -176,6 +177,7 @@ extern bool set_videoformat(char* videoformat){
     size_t needed = set_videoformat_cmd(videoformat, NULL, 0) + 1;
     char* cmd = (char*)malloc(needed);
     set_videoformat_cmd(videoformat, cmd, needed);
+    printf("%s\n", cmd);
     bool write_succ = cvuart_send_command(cmd);
     free(cmd);
     return write_succ;

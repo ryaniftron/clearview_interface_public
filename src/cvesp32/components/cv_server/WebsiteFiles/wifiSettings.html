@@ -1,5 +1,5 @@
 <!-- Seat Number -->
-<form action = "/config_wifi" method="POST">
+<form method="POST" enctype="text/plain" action = "/wifi_config">
     <label for="seatN">Seat Number:</label>
     <select id="seatN" name="seat_number">
         <option value="0">1</option>
@@ -11,10 +11,10 @@
         <option value="6">7</option>
         <option value="7">8</option>
     </select>
-    <input type="submit" value="Set Seat Number">
+    <input type="submit" value="Set Seat Number TEST">
 </form>
 <hr>
-<form action="/config_wifi" method="POST">
+<form method="POST" enctype="text/plain" action = "/wifi_config">
 
     <label for="ssid">Network SSID:</label><br>
     <input type="text" id="ssid" name="ssid" value="%s"><br>
