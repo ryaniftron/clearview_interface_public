@@ -44,6 +44,13 @@ extern const uint8_t html_beg_end[] asm("_binary_httpDocBegin_html_end");
 extern const uint8_t html_conc_start[] asm("_binary_httpDocConclude_html_start");
 extern const uint8_t html_conc_end[] asm("_binary_httpDocConclude_html_end");
 
+#ifdef CONFIG_CV_INITIAL_PROGRAM
+extern const uint8_t menu_bar_start[] asm("_binary_menuBarTest_html_start");
+extern const uint8_t menu_bar_end[] asm("_binary_menuBarTest_html_end");
+#else
+extern const uint8_t menu_bar_start[] asm("_binary_menuBar_html_start");
+extern const uint8_t menu_bar_end[] asm("_binary_menuBar_html_end");
+#endif
 
 // URI Defines
 #define CV_CONFIG_WIFI_URI "/wifi"
@@ -213,14 +220,6 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
                 
             memset(&val[0], 0, sizeof(val));
         }
-        else if (httpd_query_key_value(buf, "seat_number", val, sizeof(val)) == ESP_OK) {
-            remove_ctrlchars(val);
-            ESP_LOGD(TAG_SERVER, "Setting seat number to: %s", val);
-            if (set_credential("node_number", val)){
-                update_subscriptions_new_node();
-            }
-            memset(&val[0], 0, sizeof(val));
-        } 
         else {
             ESP_LOGW(TAG_SERVER, "Unkown parm in %s", buf);
             httpd_resp_set_status(req, HTTPD_400);
@@ -246,6 +245,7 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
         ESP_LOGI(TAG_SERVER, "=========== RECEIVED DATA ==========");
         ESP_LOGI(TAG_SERVER, "%.*s", ret, buf);
         ESP_LOGI(TAG_SERVER, "====================================");
+        remaining -= ret;
     
 
     }
@@ -256,6 +256,7 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
 
 static esp_err_t config_wifi_post_handler(httpd_req_t *req)
 {
+
     char buf[100]; // TODO check expected behavior for buffer overflow
     char val[64];
     int ret, remaining = req->content_len;
@@ -270,38 +271,56 @@ static esp_err_t config_wifi_post_handler(httpd_req_t *req)
             }
             return ESP_FAIL;
         }
+        remaining -= ret;
     }
 
-    printf("Wifi BUF %s\n", buf);
+    char* tok;
+    char * search = "\r\n";
+    tok = strtok(buf, search);
 
-    if (httpd_query_key_value(buf, "ssid", val, sizeof(val)) == ESP_OK) {
-        remove_ctrlchars(val);
-        ESP_LOGI(TAG_SERVER, "Found URL query valeter => ssid=%s", val);
-        ssid_ready = true; //TODO state machine set false
-        set_credential("ssid", val);
-        memset(&val[0], 0, sizeof(val));
+    while ( tok != NULL){
+        printf("Tok: '%s'\n", tok);
+        if (httpd_query_key_value(tok, "ssid", val, sizeof(val)) == ESP_OK) {
+            remove_ctrlchars(val);
+            ESP_LOGI(TAG_SERVER, "Found URL query valeter => ssid=%s", val);
+            ssid_ready = true; //TODO state machine set false
+            set_credential("ssid", val);
+            memset(&val[0], 0, sizeof(val));
+        }
+        if (httpd_query_key_value(tok, "password", val, sizeof(val)) == ESP_OK) {
+            remove_ctrlchars(val);
+            ESP_LOGI(TAG_SERVER, "Found URL query parameter => password=%s", val);
+            password_ready = true;
+            set_credential("password", val);
+            memset(&val[0], 0, sizeof(val));
+        }
+        if (httpd_query_key_value(tok, "device_name", val, sizeof(val)) == ESP_OK) {
+            remove_ctrlchars(val);
+            ESP_LOGI(TAG_SERVER, "Found URL query parameter => device_name=%s", val);
+            device_name_ready = true;
+            set_credential("device_name", val);
+            memset(&val[0], 0, sizeof(val));
+        }
+        if (httpd_query_key_value(tok, "broker_ip", val, sizeof(val)) == ESP_OK) {
+            remove_ctrlchars(val);
+            ESP_LOGI(TAG_SERVER, "Found URL query parameter => broker_ip=%s", val);
+            broker_ip_ready = true;
+            set_credential("broker_ip", val);
+            memset(&val[0], 0, sizeof(val));
+        }
+        if (httpd_query_key_value(tok, "seat_number", val, sizeof(val)) == ESP_OK) {
+                remove_ctrlchars(val);
+                ESP_LOGI(TAG_SERVER, "Setting seat number to: %s", val);
+                if (set_credential("node_number", val)){
+                    update_subscriptions_new_node();
+                }
+                memset(&val[0], 0, sizeof(val));
+        } 
+        tok = strtok(NULL, search);
     }
-    if (httpd_query_key_value(buf, "password", val, sizeof(val)) == ESP_OK) {
-        remove_ctrlchars(val);
-        ESP_LOGI(TAG_SERVER, "Found URL query valeter => password=%s", val);
-        password_ready = true;
-        set_credential("password", val);
-        memset(&val[0], 0, sizeof(val));
-    }
-    if (httpd_query_key_value(buf, "device_name", val, sizeof(val)) == ESP_OK) {
-        remove_ctrlchars(val);
-        ESP_LOGI(TAG_SERVER, "Found URL query parameter => device_name=%s", val);
-        device_name_ready = true;
-        set_credential("device_name", val);
-        memset(&val[0], 0, sizeof(val));
-    }
-    if (httpd_query_key_value(buf, "broker_ip", val, sizeof(val)) == ESP_OK) {
-        remove_ctrlchars(val);
-        ESP_LOGI(TAG_SERVER, "Found URL query parameter => broker_ip=%s", val);
-        broker_ip_ready = true;
-        set_credential("broker_ip", val);
-        memset(&val[0], 0, sizeof(val));
-    }
+
+
+    
 
 
     if (ssid_ready && password_ready && device_name_ready && broker_ip_ready){
@@ -454,8 +473,12 @@ void serve_html_beg(httpd_req_t *req){
 }
 
 void serve_html_end(httpd_req_t *req){
-    ESP_ERROR_CHECK(httpd_resp_send_chunk(req, (const char *)html_conc_end, html_conc_end - html_conc_start));
+    ESP_ERROR_CHECK(httpd_resp_send_chunk(req, (const char *)html_conc_start, html_conc_end - html_conc_start));
     ESP_ERROR_CHECK(httpd_resp_send_chunk(req, NULL, 0));
+}
+
+void serve_menu_bar(httpd_req_t *req){
+    ESP_ERROR_CHECK(httpd_resp_send_chunk(req, (const char *)menu_bar_start, menu_bar_end - menu_bar_start));
 }
 
 static esp_err_t wifi_get_handler(httpd_req_t *req)
@@ -463,6 +486,7 @@ static esp_err_t wifi_get_handler(httpd_req_t *req)
     serve_html_beg(req);
     serve_title(req);
     serve_node_and_lock(req);
+    serve_menu_bar(req);
     serve_wificonfig(req);
     serve_html_end(req);
     
@@ -474,6 +498,7 @@ static esp_err_t settings_get_handler(httpd_req_t *req)
 {
     serve_title(req);
     serve_node_and_lock(req);
+    serve_menu_bar(req);
     serve_settingsconfig(req);
     ESP_ERROR_CHECK(httpd_resp_send_chunk(req, NULL, 0));
     return ESP_OK;
@@ -482,6 +507,7 @@ static esp_err_t settings_get_handler(httpd_req_t *req)
 static esp_err_t test_cv_get_handler(httpd_req_t *req)
 {   
     serve_title(req);
+    serve_menu_bar(req);
     serve_test(req);
     ESP_ERROR_CHECK(httpd_resp_send_chunk(req, NULL, 0));
     return ESP_OK;

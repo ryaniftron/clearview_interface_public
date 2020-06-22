@@ -9,5 +9,6 @@ idf_component_register(SRCS "cv_server.c"
                            WebsiteFiles/title.html
                            WebsiteFiles/wifiSettings.html
                            WebsiteFiles/test.html
+                           WebsiteFiles/menuBar.html
                        )
 
