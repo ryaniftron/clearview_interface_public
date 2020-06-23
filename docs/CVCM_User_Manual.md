@@ -1,8 +1,19 @@
 This document serves as a user manual for the CVCM Wireless Dongle.
+# Table of Contents
+
+- [Check Firmware Version](check-firmware-version)
+- [LED Codes](led-codes)
+- [Usage Guide](usage-guide)
+  * [Home Page](home-page)
+  * [Settings Page](settings-page)
+  * [OTA Update Page](ota-update-page)
+- [Troubleshooting](troubleshooting)
+- [Developer Guide](developer-guide)
 
 
+<!-- toc -->
 
-## Check Firmware Version
+# Check Firmware Version
 
 * Go to [192.168.4.1/ota](http://192.168.4.1/ota)
    * The OTA page displays what your current firmware version is and when it was compiled
@@ -42,6 +53,8 @@ After updating firmware of CV2.0 and pushing the latest OTA file to the dongle, 
    * It is recommended to use stable builds unless otherwise instructed
 1. Click the right arrow for "assets", and download the binary (.bin) file.
     * Example: `CVCM_Beta_v0.0.1.bin`
+    ![BeforeAssets](AssetsBefore.png)
+    ![AfterAssets](AssetsAfter.png)
 1. Connect to the CVCM WiFi hotspot
    * Go to [192.168.4.1/ota](http://192.168.4.1/ota)
    * The OTA page displays what your current firmware version is and when it was compiled
@@ -58,7 +71,7 @@ After updating firmware of CV2.0 and pushing the latest OTA file to the dongle, 
 
 # Developer Guide
 
-## Software - Initial Setup
+## Software: Initial Setup
 
 1. Install espidf in the default location it recommends
 1. Clone this repo
@@ -74,7 +87,7 @@ After updating firmware of CV2.0 and pushing the latest OTA file to the dongle, 
 
 1. It should build the code, flash it to the ESP32, and then monitor the serial output of the ESP32
 
-## Software - Configuring the ESP32 using Menuconfig
+## Software: Configuring the ESP32 using Menuconfig
 
 ESPIDF can use idf.py menuconfig to set the options for an ESP32. The default options are setup for what a customer would have set, but for development, there are settings to speed something up. 
 
