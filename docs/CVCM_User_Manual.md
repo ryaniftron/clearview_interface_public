@@ -1,14 +1,14 @@
 This document serves as a user manual for the CVCM Wireless Dongle.
 # Table of Contents
 
-- [Check Firmware Version](check-firmware-version)
-- [LED Codes](led-codes)
-- [Usage Guide](usage-guide)
-  * [Home Page](home-page)
-  * [Settings Page](settings-page)
-  * [OTA Update Page](ota-update-page)
-- [Troubleshooting](troubleshooting)
-- [Developer Guide](developer-guide)
+- [Check Firmware Version](#check-firmware-version)
+- [LED Codes](#led-codes)
+- [Usage Guide](#usage-guide)
+  * [Home Page](#home-page)
+  * [Settings Page](#settings-page)
+  * [OTA Update Page](#ota-update-page)
+- [Troubleshooting](#troubleshooting)
+- [Developer Guide](#developer-guide)
 
 
 <!-- toc -->
