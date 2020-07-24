@@ -5,6 +5,7 @@ If this is your first time using the CVCM, start [here](#initial-connection) to 
 # User Manual Table of Contents
 
 - [Usage Guide](#usage-guide)
+  * [Installation](#installation)
   * [Home Page](#home-page)
   * [Settings Page](#settings-page)
   * [OTA Update Page](#ota-update-page)
@@ -20,6 +21,12 @@ If this is your first time using the CVCM, start [here](#initial-connection) to 
 
 # Usage Guide
 After updating firmware of CV2.0 and pushing the latest OTA file to the dongle, follow the processes below
+
+## Installation
+
+1. To create good threads in the CV2.0 panel, run the 2 supplied #2 - ¼” screws straight into the screw holes provided in the right hand panel of the CV2.0 - and remove them.
+1. Plug the Comm Module PCB all the way onto the connector on the CV2.0 right hand panel.
+1. Place the supplied module cover over the PCB and fasten with the #2 - ¼” screws. Do not overtighten. 
 
 ## Initial Connection
 
