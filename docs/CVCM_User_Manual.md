@@ -20,7 +20,6 @@ If this is your first time using the CVCM, start [here](#initial-connection) to 
 
 
 # Usage Guide
-After updating firmware of CV2.0 and pushing the latest OTA file to the dongle, follow the processes below
 
 ## Installation
 
