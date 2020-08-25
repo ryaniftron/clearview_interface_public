@@ -54,18 +54,24 @@ extern void get_chip_id(char* ssid, const int UNIQUE_ID_LENGTH){
     return;
 }
 
-extern void remove_ctrlchars(char *str) 
-{ 
-    // To keep track of non-space character count 
-    int count = 0; 
-  
-    // Traverse the given string. If current character 
-    // is not space, then place it at index 'count++' 
-    for (int i = 0; str[i]; i++) 
-        if (str[i] >= 30) 
-            str[count++] = str[i]; // here count is 
-                                   // incremented 
-    str[count] = '\0'; 
+extern void remove_ctrlchars(char* s) 
+//https://stackoverflow.com/a/28609778/11032285
+//https://www.programiz.com/c-programming/online-compiler/?ref=63effdb8
+{
+    int writer = 0, reader = 0;
+
+    while (s[reader])
+    {
+        if (s[reader]>=32) 
+        {   
+            s[writer++] = s[reader];
+        }
+
+        reader++;       
+    }
+
+    s[writer]=0;;
+    printf("'%s'\n", s);
 } 
 
 

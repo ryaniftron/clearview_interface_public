@@ -96,6 +96,7 @@ void set_ledc_code(int channel, CV_LED_Code_t led_code){
         _led_state = led_code;
     } else {
         _led_state = led_code; //update local variable here
+        ESP_LOGI(TAG_LEDC, "LED STATE: %d", led_code);
     }
     _led_update_state = true;
 

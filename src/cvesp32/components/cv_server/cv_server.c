@@ -62,77 +62,8 @@ bool password_ready = false;
 bool device_name_ready = false;
 bool broker_ip_ready = false;
 
-#ifdef CONFIG_CV_INITIAL_PROGRAM
-static esp_err_t config_test_get_handler(httpd_req_t *req) // TODO convert this to post
-{
-//Parse the URL QUERY
-    char*  buf;
-    size_t buf_len;
-    buf_len = httpd_req_get_url_query_len(req) + 1;
-    if (buf_len > 1) {
-        buf = malloc(buf_len);
-        if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
-            ESP_LOGD(TAG_SERVER, "Found config_test URL query => %s", buf);
-            char param[32];
-            // /* Get value of expected key from query string */
-            if (httpd_query_key_value(buf, "UM", param, sizeof(param)) == ESP_OK) {
-                ESP_LOGD(TAG_SERVER, "Found URL query parameter => UM=%s", param);
-                size_t needed = snprintf(NULL, 0, "\00209UM%s%%\003",param)+1;
-                char* line = (char*)malloc(needed);
-                snprintf(line, needed,  "\00209UM%s%%\003",param);
-                if (cvuart_send_command(line)){
-                    remove_ctrlchars(line);
-                    httpd_resp_send_chunk(req, line, HTTPD_RESP_USE_STRLEN);
-                } else {
-                    httpd_resp_send_chunk(req, "Error: uart disabled", HTTPD_RESP_USE_STRLEN);
-                }
 
-            }
-            if (httpd_query_key_value(buf, "RL", param, sizeof(param)) == ESP_OK) {
-                ESP_LOGD(TAG_SERVER, "Found URL query parameter => Request Lock Status"); //unused param
-                uint8_t* dataRx = (uint8_t*) malloc(RX_BUF_SIZE+1);
-                int repCount = cvuart_send_report(LOCK_REPORT_FMT, dataRx);
-                if (repCount > 0){
-                    remove_ctrlchars((char*)dataRx);
-                    httpd_resp_send_chunk(req, (char*)dataRx, HTTPD_RESP_USE_STRLEN);
-                } else if (repCount == 0 ) {
-                    httpd_resp_send_chunk(req, "No uart response", HTTPD_RESP_USE_STRLEN);
-                } else if (repCount == -1) {
-                    httpd_resp_send_chunk(req, "Error: uart disabled", HTTPD_RESP_USE_STRLEN);
-                }
-                    // cvuart_send_report("\n09RPMV%%\r", dataRx);
-                    // cvuart_send_report("\n09RPVF%%\r", dataRx);
-                    //cvuart_send_report("\n09RPID%%\r", dataRx);
-                    //run_cv_uart_test_task();
-                free(dataRx);
-            }
-            if (httpd_query_key_value(buf, "LED", param, sizeof(param)) == ESP_OK) {
-                ESP_LOGI(TAG_SERVER, "Found URL query parameter => LED=%s", param);
-                #if CONFIG_ENABLE_LED
-                    if ((strncmp(param, "ON", strlen(param))) == 0){
-                        httpd_resp_send_chunk(req, "LED ON", HTTPD_RESP_USE_STRLEN);
-                        set_ledc_code(0, led_on);
-                    } else if ((strncmp(param, "OFF", strlen(param))) == 0){
-                        httpd_resp_send_chunk(req, "LED OFF", HTTPD_RESP_USE_STRLEN);;
-                        set_ledc_code(0, led_off);
-                    } else {
-                        ESP_LOGE(TAG_SERVER, "Unsupported LED value of %s", param);
-                    }
-                #else //not CONFIG_ENABLE_LED
-                    httpd_resp_send_chunk(req, "Error: LED is disabled", HTTPD_RESP_USE_STRLEN);
-                #endif //CONFIG_ENABLE_LED
-            }    
-        }
-        free(buf);
-    }
-
-    httpd_resp_send_chunk(req, NULL, 0);
-    return ESP_OK;
-}
-#endif
-
-
-static esp_err_t config_settings_post_handler(httpd_req_t *req)
+static esp_err_t config_test_post_handler(httpd_req_t *req)
 {
     char buf[100]; // TODO check expected behavior for buffer overflow
     char val[64];
@@ -151,77 +82,49 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
         
 
 
-        if (httpd_query_key_value(buf, "address", val, sizeof(val)) == ESP_OK) {
-            remove_ctrlchars(val);
-            ESP_LOGD(TAG_SERVER, "Setting address to: %s", val);
-            set_address(val);
-            memset(&val[0], 0, sizeof(val));
-        } 
-        else if (httpd_query_key_value(buf, "antenna_mode", val, sizeof(val)) == ESP_OK) {
-            remove_ctrlchars(val);
-            ESP_LOGD(TAG_SERVER, "Setting antenna mode to: %s", val);
-            set_antenna(val);
-            memset(&val[0], 0, sizeof(val));
-        } 
-        else if (httpd_query_key_value(buf, "channel", val, sizeof(val)) == ESP_OK) {
-            remove_ctrlchars(val);
-            ESP_LOGD(TAG_SERVER, "Setting channel to: %s", val);
-            set_channel(val);
-            memset(&val[0], 0, sizeof(val));
-        } 
-        else if (httpd_query_key_value(buf, "band", val, sizeof(val)) == ESP_OK) {
-            remove_ctrlchars(val);
-            ESP_LOGD(TAG_SERVER, "Setting band to: %s", val);
-            set_band(val);
-            memset(&val[0], 0, sizeof(val));
-        } 
-        else if (httpd_query_key_value(buf, "id", val, sizeof(val)) == ESP_OK) {
-            remove_ctrlchars(val);
-            ESP_LOGD(TAG_SERVER, "Setting user id string to: %s", val);
-            set_id(val);
-            memset(&val[0], 0, sizeof(val));
-        } 
-        else if (httpd_query_key_value(buf, "user_message", val, sizeof(val)) == ESP_OK) {
+        if (httpd_query_key_value(buf, "UM", val, sizeof(val)) == ESP_OK) {
             remove_ctrlchars(val);
             ESP_LOGD(TAG_SERVER, "Setting user message string to: %s", val);
             set_usermsg(val);
             memset(&val[0], 0, sizeof(val));
         } 
-        else if (httpd_query_key_value(buf, "mode", val, sizeof(val)) == ESP_OK) {
-            remove_ctrlchars(val);
-            ESP_LOGD(TAG_SERVER, "Setting mode to: %s", val);
-            set_mode(val);
-            memset(&val[0], 0, sizeof(val));
+        else if (httpd_query_key_value(buf, "RL", val, sizeof(val)) == ESP_OK) {
+            ESP_LOGD(TAG_SERVER, "Found URL query parameter => Request Lock Status"); //unused param
+            uint8_t* dataRx = (uint8_t*) malloc(RX_BUF_SIZE+1);
+            int repCount = cvuart_send_report(LOCK_REPORT_FMT, dataRx);
+            if (repCount > 0){
+                remove_ctrlchars((char*)dataRx);
+                httpd_resp_send_chunk(req, (char*)dataRx, HTTPD_RESP_USE_STRLEN);
+            } else if (repCount == 0 ) {
+                httpd_resp_send_chunk(req, "No uart response", HTTPD_RESP_USE_STRLEN);
+            } else if (repCount == -1) {
+                httpd_resp_send_chunk(req, "Error: uart disabled", HTTPD_RESP_USE_STRLEN);
+            }
+                // cvuart_send_report("\n09RPMV%%\r", dataRx);
+                // cvuart_send_report("\n09RPVF%%\r", dataRx);
+                //cvuart_send_report("\n09RPID%%\r", dataRx);
+                //run_cv_uart_test_task();
+            free(dataRx);
         } 
-        else if (httpd_query_key_value(buf, "osd_visibility", val, sizeof(val)) == ESP_OK) {
-            remove_ctrlchars(val);
-            ESP_LOGD(TAG_SERVER, "Setting osd visibility to: %s", val);
-            set_osdvis(val);
-            memset(&val[0], 0, sizeof(val));
-        } 
-        else if (httpd_query_key_value(buf, "osd_position", val, sizeof(val)) == ESP_OK) {
-            remove_ctrlchars(val);
-            ESP_LOGD(TAG_SERVER, "Setting osd position to: %s", val);
-            set_osdpos(val);
-            memset(&val[0], 0, sizeof(val));
-        }
-        else if (httpd_query_key_value(buf, "reset_lock", val, sizeof(val)) == ESP_OK) {
-            remove_ctrlchars(val);
-            ESP_LOGD(TAG_SERVER, "Resetting Lock; unused val: %s", val);
-            reset_lock();
-            memset(&val[0], 0, sizeof(val));
-        } 
-        else if (httpd_query_key_value(buf, "video_format", val, sizeof(val)) == ESP_OK) {
-            remove_ctrlchars(val);
-            ESP_LOGI(TAG_SERVER, "Setting video format to: %s, %d", val, strlen(val));
-            if (strcmp(val, "Auto") == 0)set_videoformat("A");
-            else if (strcmp(val, "NTSC") == 0)set_videoformat("N");
-            else if (strcmp(val, "PAL") == 0)set_videoformat("P");
-                
-            memset(&val[0], 0, sizeof(val));
+        else if (httpd_query_key_value(buf, "LED", val, sizeof(val)) == ESP_OK) {
+    
+            #if CONFIG_ENABLE_LED
+                if ((strncmp(val, "ON", 2)) == 0){
+                    httpd_resp_send_chunk(req, "LED ON", HTTPD_RESP_USE_STRLEN);
+                    set_ledc_code(0, led_on);
+                } else if ((strncmp(val, "OFF", 3)) == 0){
+                    httpd_resp_send_chunk(req, "LED OFF", HTTPD_RESP_USE_STRLEN);
+                    set_ledc_code(0, led_off);
+                } else {
+                    ESP_LOGE(TAG_SERVER, "Unsupported LED value of %s", val);
+                    httpd_resp_send_chunk(req, "Error: unknown led state", HTTPD_RESP_USE_STRLEN);
+                }
+            #else //not CONFIG_ENABLE_LED
+                httpd_resp_send_chunk(req, "Error: LED is disabled", HTTPD_RESP_USE_STRLEN);
+            #endif //CONFIG_ENABLE_LED
         }
         else {
-            ESP_LOGW(TAG_SERVER, "Unkown parm in %s", buf);
+            ESP_LOGW(TAG_SERVER, "Unknown param in %s", buf);
             httpd_resp_set_status(req, HTTPD_400);
             httpd_resp_send_chunk(req, "Error: Invalid API Endpoint<br>", HTTPD_RESP_USE_STRLEN);
             httpd_resp_send_chunk(req, buf, ret);
@@ -231,10 +134,10 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
 
         //Redirect
         httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 
-        char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"3; URL=http://192.168.4.1/settings\">";
+        char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"3; URL=http://192.168.4.1/test\">";
         httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);
         httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);  
-        httpd_resp_send_chunk(req, "Redirecting in 3s. TODO verify data was set in CV <br>", HTTPD_RESP_USE_STRLEN);
+        httpd_resp_send_chunk(req, "Redirecting in 3s. <br>", HTTPD_RESP_USE_STRLEN);
 
         
 
@@ -249,6 +152,145 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
     
 
     }
+    // End response
+    httpd_resp_send_chunk(req, NULL, 0);
+    return ESP_OK;
+}
+
+
+static esp_err_t config_settings_post_handler(httpd_req_t *req)
+{
+        /* Destination buffer for content of HTTP POST request.
+     * httpd_req_recv() accepts char* only, but content could
+     * as well be any binary data (needs type casting).
+     * In case of string data, null termination will be absent, and
+     * content length would give length of string */
+    char buf[100];
+    char val[64];
+
+    /* Truncate if content length larger than the buffer */
+    size_t recv_size = MIN(req->content_len, sizeof(buf));
+
+    int ret = httpd_req_recv(req, buf, recv_size);
+    printf("\nContent:'%s', ret '%d'\n", buf, ret);
+    if (ret <= 0) {  /* 0 return value indicates connection closed */
+        /* Check if timeout occurred */
+        if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+            /* In case of timeout one can choose to retry calling
+             * httpd_req_recv(), but to keep it simple, here we
+             * respond with an HTTP 408 (Request Timeout) error */
+            httpd_resp_send_408(req);
+        }
+        /* In case of error, returning ESP_FAIL will
+         * ensure that the underlying socket is closed */
+        return ESP_FAIL;
+    }
+    buf[ret] = '\0';
+
+    
+    if (httpd_query_key_value(buf, "address", val, sizeof(val)) == ESP_OK) {
+        remove_ctrlchars(val);
+        ESP_LOGD(TAG_SERVER, "Setting address to: %s", val);
+        set_address(val);
+        memset(&val[0], 0, sizeof(val));
+    } 
+    else if (httpd_query_key_value(buf, "antenna_mode", val, sizeof(val)) == ESP_OK) {
+        remove_ctrlchars(val);
+        ESP_LOGD(TAG_SERVER, "Setting antenna mode to: %s", val);
+        set_antenna(val);
+        memset(&val[0], 0, sizeof(val));
+    } 
+    else if (httpd_query_key_value(buf, "channel", val, sizeof(val)) == ESP_OK) {
+        remove_ctrlchars(val);
+        ESP_LOGD(TAG_SERVER, "Setting channel to: %s", val);
+        set_channel(val);
+        memset(&val[0], 0, sizeof(val));
+    } 
+    else if (httpd_query_key_value(buf, "band", val, sizeof(val)) == ESP_OK) {
+        remove_ctrlchars(val);
+        ESP_LOGD(TAG_SERVER, "Setting band to: %s", val);
+        set_band(val);
+        memset(&val[0], 0, sizeof(val));
+    } 
+    else if (httpd_query_key_value(buf, "id", val, sizeof(val)) == ESP_OK) {
+        remove_ctrlchars(val);
+        ESP_LOGD(TAG_SERVER, "Setting user id string to: %s", val);
+        set_id(val);
+        memset(&val[0], 0, sizeof(val));
+    } 
+    else if (httpd_query_key_value(buf, "user_message", val, sizeof(val)) == ESP_OK) {
+        ESP_LOGI(TAG_SERVER, "BUF: '%s'", buf);
+        ESP_LOGI(TAG_SERVER, "Before CTL: '%s'", val);
+        remove_ctrlchars(val);
+        ESP_LOGI(TAG_SERVER, "Setting user message string to: '%s'", val);
+        set_usermsg(val);
+        printf("\nAPI LENGTH %d\n", strlen(val));
+        memset(&val[0], 0, sizeof(val));
+    } 
+    else if (httpd_query_key_value(buf, "mode", val, sizeof(val)) == ESP_OK) {
+        remove_ctrlchars(val);
+        ESP_LOGD(TAG_SERVER, "Setting mode to: %s", val);
+        set_mode(val);
+        memset(&val[0], 0, sizeof(val));
+    } 
+    else if (httpd_query_key_value(buf, "osd_visibility", val, sizeof(val)) == ESP_OK) {
+        remove_ctrlchars(val);
+        ESP_LOGD(TAG_SERVER, "Setting osd visibility to: %s", val);
+        set_osdvis(val);
+        memset(&val[0], 0, sizeof(val));
+    } 
+    else if (httpd_query_key_value(buf, "osd_position", val, sizeof(val)) == ESP_OK) {
+        remove_ctrlchars(val);
+        ESP_LOGD(TAG_SERVER, "Setting osd position to: %s", val);
+        set_osdpos(val);
+        memset(&val[0], 0, sizeof(val));
+    }
+    else if (httpd_query_key_value(buf, "reset_lock", val, sizeof(val)) == ESP_OK) {
+        remove_ctrlchars(val);
+        ESP_LOGD(TAG_SERVER, "Resetting Lock; unused val: %s", val);
+        reset_lock();
+        memset(&val[0], 0, sizeof(val));
+    } 
+    else if (httpd_query_key_value(buf, "video_format", val, sizeof(val)) == ESP_OK) {
+        remove_ctrlchars(val);
+        ESP_LOGI(TAG_SERVER, "Setting video format to: %s, %d", val, strlen(val));
+        if (strcmp(val, "Auto") == 0)set_videoformat("A");
+        else if (strcmp(val, "NTSC") == 0)set_videoformat("N");
+        else if (strcmp(val, "PAL") == 0)set_videoformat("P");
+            
+        memset(&val[0], 0, sizeof(val));
+    }
+    else {
+        ESP_LOGW(TAG_SERVER, "Unknown param in %s", buf);
+        httpd_resp_set_status(req, HTTPD_400);
+        httpd_resp_send_chunk(req, "Error: Invalid API Endpoint<br>", HTTPD_RESP_USE_STRLEN);
+        httpd_resp_send_chunk(req, buf, ret);
+        httpd_resp_send_chunk(req, NULL, 0);
+        return ESP_OK;
+    }
+
+    //Redirect
+    httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 
+    char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"0; URL=http://192.168.4.1/settings\">";
+    httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);
+    httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);  
+    httpd_resp_send_chunk(req, "Redirecting in 3s. TODO verify data was set in CV <br>", HTTPD_RESP_USE_STRLEN);
+
+    
+
+    /* Send back the same data */
+    httpd_resp_send_chunk(req, buf, ret);
+
+    /* Log data received */
+    ESP_LOGI(TAG_SERVER, "=========== RECEIVED DATA ==========");
+    ESP_LOGI(TAG_SERVER, "%.*s", ret, buf);
+
+    // while(*buf)
+    //     printf("%02x", (unsigned int) *buf++);
+    // printf("\n");
+
+    ESP_LOGI(TAG_SERVER, "====================================");
+
     // End response
     httpd_resp_send_chunk(req, NULL, 0);
     return ESP_OK;
@@ -551,7 +593,7 @@ static const httpd_uri_t config_wifi_instant_uri = {
     .handler   = config_wifi_post_handler
 };
 
-#ifdef CONFIG_CV_INITIAL_PROGRAM
+
 static const httpd_uri_t test_uri = {
     .uri       = "/test",
     .method    = HTTP_GET,
@@ -563,9 +605,9 @@ static const httpd_uri_t test_uri = {
 static const httpd_uri_t config_test_uri = {
     .uri       = "/test",
     .method    = HTTP_POST,
-    .handler   = config_test_get_handler
+    .handler   = config_test_post_handler
 };
-#endif // CONFIG_CV_INITIAL_PROGRAM
+
 
 
 
@@ -607,10 +649,9 @@ extern httpd_handle_t start_cv_webserver(void){
 		ESP_ERROR_CHECK(httpd_register_uri_handler(server, &OTA_update));
 		ESP_ERROR_CHECK(httpd_register_uri_handler(server, &OTA_status));
 
-        #ifdef CONFIG_CV_INITIAL_PROGRAM
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &test_uri));
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &config_test_uri));
-        #endif
+
 
         ESP_LOGI(TAG_SERVER, "Webserver started. Login and go to http://192.168.4.1/ \n");
         _server_started = true;
