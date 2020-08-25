@@ -1,8 +1,71 @@
-This document serves as a user manual for the CVCM Wireless Dongle.
+This document serves as a user manual for the CVCM Wireless Dongle. 
+
+If this is your first time using the CVCM, start [here](#initial-connection) to connect your phone or laptop to the CVCM.
+
+# User Manual Table of Contents
+
+- [Usage Guide](#usage-guide)
+  * [Installation](#installation)
+  * [Home Page](#home-page)
+  * [Settings Page](#settings-page)
+  * [OTA Update Page](#ota-update-page)
+- [Check Firmware Version](#check-firmware-version)
+- [LED Codes](#led-codes)
+- [Troubleshooting](#troubleshooting)
+- [Developer Guide](#developer-guide)
+
+
+<!-- toc -->
 
 
 
-## Check Firmware Version
+# Usage Guide
+
+## Installation
+
+1. To create good threads in the CV2.0 panel, run the 2 supplied #2 - ¼” screws straight into the screw holes provided in the right hand panel of the CV2.0 - and remove them.
+1. Plug the Comm Module PCB all the way onto the connector on the CV2.0 right hand panel.
+1. Place the supplied module cover over the PCB and fasten with the #2 - ¼” screws. Do not overtighten. 
+
+## Initial Connection
+
+1. Connect the dongle to the ClearView and power on the ClearView
+1. The CVCM will generate a WiFi Network Hotspot and its own web site 
+   * The CVCM SSID begins with "CV_" 
+   * The network is unsecured (no password) and allows up to four devices to join
+1. Using any laptop or phone with WiFi, go to the WiFi settings and join the network
+1. Ignore any errors about not being connected to the internet. It's a local network.
+1. Open a web browser and go to this web site [192.168.4.1](http://192.168.4.1) which is the home page of the CVCM
+
+## Home Page 
+
+1. If this is the first time connecting, the CVCM will "Slow Blink" to show it is in "Hotspot" mode
+1. Go to the [home page](http://192.168.4.1), you can configure many common settings of the ClearView 2.0
+
+
+## WiFi Page
+
+1. In the WiFi configure your WiFi ssid, password, Friendly Name, MQTT Broker IP, and seat number
+1. This is used for connecting to a lap timer like the RotorHazard lap timer
+
+## OTA Update Page
+
+For video instructions, watch this [video](https://youtu.be/DIWGuAUPeJM). Otherwise, follow the instructions below
+
+1. Connect your phone or computer to the internet and download the latest CVCM Release [here](https://github.com/ryaniftron/clearview_interface_public/releases)
+   * It is recommended to use stable builds unless otherwise instructed
+1. Click the right arrow for "assets", and download the binary (.bin) file. Remember where you downloaded the file
+    * Example: `CVCM_Beta_v0.0.1.bin`
+    ![BeforeAssets](AssetsBefore.png)
+    ![AfterAssets](AssetsAfter.png)
+1. Connect your phone or computer to the CVCM Wifi Network in your Wifi settings
+1. Go to [192.168.4.1/ota](http://192.168.4.1/ota)
+   * The OTA page displays what your current firmware version is and when it was compiled
+1. Click "Browse" and locate your newly downloaded update binary
+1. Click "Update Firmware" to start the automatic update
+   * The CVCM gives progress bar and then reboots automatically when the update is complete
+
+# Check Firmware Version
 
 * Go to [192.168.4.1/ota](http://192.168.4.1/ota)
    * The OTA page displays what your current firmware version is and when it was compiled
@@ -15,40 +78,6 @@ This document serves as a user manual for the CVCM Wireless Dongle.
 * Slow Breathing = Connected to WiFi Network, Waiting for MQTT
 * Twinkling with 3 flashes = Connected to WiFi Network and MQTT is Active
 
-# Usage Guide
-After updating firmware of CV2.0 and pushing the latest OTA file to the dongle, follow the processes below
-
-## Home Page 
-
-1. Connect the dongle to the ClearView and power on the ClearView
-1. If this is the first time, the ESP32 will "Slow Blink"
-1. In Hotspot Mode, the ESP32 generates a WiFi Hotspot. 
-   * The SSID begins with "CV_". For example "CV_342932C40A32"
-   * The network is unsecured (no password) and allows up to four devices to join
-1. Using any laptop or phone with WiFi, go to the WiFi settings and join the network
-1. Ignore any errors about not being connected to the internet. It's a local network.
-1. Open a web browser and go to this web site [192.168.4.1](http://192.168.4.1)
-1. It will give you the home page where you can configure your WiFi, Friendly Name, and MQTT Broker IP
-
-## Settings Page
-
-1. The settings page `/settings` allows adjustment of the seat number
-1. Set the seat number between 1 and 8
-
-## OTA Update Page
-
-
-1. Connect to the internet and download the latest CVCM Release [here](https://github.com/ryaniftron/clearview_interface_public/releases)
-   * It is recommended to use stable builds unless otherwise instructed
-1. Click the right arrow for "assets", and download the binary (.bin) file.
-    * Example: `CVCM_Beta_v0.0.1.bin`
-1. Connect to the CVCM WiFi hotspot
-   * Go to [192.168.4.1/ota](http://192.168.4.1/ota)
-   * The OTA page displays what your current firmware version is and when it was compiled
-   * Browse for your newly downloaded binary
-   * Click to upload. It gives progress and reboots automatically when complete
-
-
 # Troubleshooting
 * Can't connect to WiFi
   * ESP32 only connects to 2.4GHz networks
@@ -58,7 +87,7 @@ After updating firmware of CV2.0 and pushing the latest OTA file to the dongle, 
 
 # Developer Guide
 
-## Software - Initial Setup
+## Software: Initial Setup
 
 1. Install espidf in the default location it recommends
 1. Clone this repo
@@ -74,7 +103,7 @@ After updating firmware of CV2.0 and pushing the latest OTA file to the dongle, 
 
 1. It should build the code, flash it to the ESP32, and then monitor the serial output of the ESP32
 
-## Software - Configuring the ESP32 using Menuconfig
+## Software: Configuring the ESP32 using Menuconfig
 
 ESPIDF can use idf.py menuconfig to set the options for an ESP32. The default options are setup for what a customer would have set, but for development, there are settings to speed something up. 
 
