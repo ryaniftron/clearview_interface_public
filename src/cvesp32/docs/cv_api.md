@@ -74,5 +74,7 @@ If you tried to set the band to an invalid band `v` with `{"band":"v"}`, the fol
 * `{"band":"error-value"}`
 
 
+## Combined Requests
 
+There is a desire to have combined reports that when requesting a combined report, multiple values are returned back. Information would be added here.
 
