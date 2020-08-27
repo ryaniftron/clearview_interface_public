@@ -3,6 +3,8 @@
 
 #include <esp_event.h>
 #include <esp_log.h>
+// #include "cjson/cJSON.h"
+
 
 #include "lwip/api.h"
 
@@ -62,6 +64,17 @@ bool password_ready = false;
 bool device_name_ready = false;
 bool broker_ip_ready = false;
 
+//Return 0 if content type is json
+static int is_content_json(httpd_req_t *req){
+    //Check content type
+    const char CSZ = 50;
+    char content_type[CSZ];
+    httpd_req_get_hdr_value_str(req, "Content-Type", content_type, CSZ);
+    ESP_LOGI(TAG_SERVER, "Settings POST Content type %s", content_type);
+
+    return strncmp(HTTPD_TYPE_JSON, content_type, strlen(content_type));
+}
+
 
 static esp_err_t config_test_post_handler(httpd_req_t *req)
 {
@@ -80,7 +93,11 @@ static esp_err_t config_test_post_handler(httpd_req_t *req)
             return ESP_FAIL;
         }
         
-
+        if (is_content_json(req) == 0) {
+            ESP_LOGI(TAG_SERVER, "Content is json");
+        } else {
+            ESP_LOGI(TAG_SERVER, "Content not json");
+        }
 
         if (httpd_query_key_value(buf, "UM", val, sizeof(val)) == ESP_OK) {
             remove_ctrlchars(val);
@@ -170,9 +187,8 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
 
     /* Truncate if content length larger than the buffer */
     size_t recv_size = MIN(req->content_len, sizeof(buf));
-
     int ret = httpd_req_recv(req, buf, recv_size);
-    printf("\nContent:'%s', ret '%d'\n", buf, ret);
+    // printf("\nContent:'%s', ret '%d'\n", buf, ret);
     if (ret <= 0) {  /* 0 return value indicates connection closed */
         /* Check if timeout occurred */
         if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
@@ -187,87 +203,98 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
     }
     buf[ret] = '\0';
 
+    if (is_content_json(req) == 0) { //Content is json
+        ESP_LOGD(TAG_SERVER, "Content is json");
+        // TODO parse JSON here
+        for (int i = 0 ; i < ret; i++) {
+            printf("'%c'\n", buf[i]);
+        }
+    } else {
+        ESP_LOGD(TAG_SERVER, "Content not json");
+        if (httpd_query_key_value(buf, "address", val, sizeof(val)) == ESP_OK) {
+            remove_ctrlchars(val);
+            ESP_LOGD(TAG_SERVER, "Setting address to: %s", val);
+            set_address(val);
+            memset(&val[0], 0, sizeof(val));
+        } 
+        else if (httpd_query_key_value(buf, "antenna_mode", val, sizeof(val)) == ESP_OK) {
+            remove_ctrlchars(val);
+            ESP_LOGD(TAG_SERVER, "Setting antenna mode to: %s", val);
+            set_antenna(val);
+            memset(&val[0], 0, sizeof(val));
+        } 
+        else if (httpd_query_key_value(buf, "channel", val, sizeof(val)) == ESP_OK) {
+            remove_ctrlchars(val);
+            ESP_LOGD(TAG_SERVER, "Setting channel to: %s", val);
+            set_channel(val);
+            memset(&val[0], 0, sizeof(val));
+        } 
+        else if (httpd_query_key_value(buf, "band", val, sizeof(val)) == ESP_OK) {
+            remove_ctrlchars(val);
+            ESP_LOGD(TAG_SERVER, "Setting band to: %s", val);
+            set_band(val);
+            memset(&val[0], 0, sizeof(val));
+        } 
+        else if (httpd_query_key_value(buf, "id", val, sizeof(val)) == ESP_OK) {
+            remove_ctrlchars(val);
+            ESP_LOGD(TAG_SERVER, "Setting user id string to: %s", val);
+            set_id(val);
+            memset(&val[0], 0, sizeof(val));
+        } 
+        else if (httpd_query_key_value(buf, "user_message", val, sizeof(val)) == ESP_OK) {
+            ESP_LOGI(TAG_SERVER, "BUF: '%s'", buf);
+            ESP_LOGI(TAG_SERVER, "Before CTL: '%s'", val);
+            remove_ctrlchars(val);
+            ESP_LOGI(TAG_SERVER, "Setting user message string to: '%s'", val);
+            set_usermsg(val);
+            printf("\nAPI LENGTH %d\n", strlen(val));
+            memset(&val[0], 0, sizeof(val));
+        } 
+        else if (httpd_query_key_value(buf, "mode", val, sizeof(val)) == ESP_OK) {
+            remove_ctrlchars(val);
+            ESP_LOGD(TAG_SERVER, "Setting mode to: %s", val);
+            set_mode(val);
+            memset(&val[0], 0, sizeof(val));
+        } 
+        else if (httpd_query_key_value(buf, "osd_visibility", val, sizeof(val)) == ESP_OK) {
+            remove_ctrlchars(val);
+            ESP_LOGD(TAG_SERVER, "Setting osd visibility to: %s", val);
+            set_osdvis(val);
+            memset(&val[0], 0, sizeof(val));
+        } 
+        else if (httpd_query_key_value(buf, "osd_position", val, sizeof(val)) == ESP_OK) {
+            remove_ctrlchars(val);
+            ESP_LOGD(TAG_SERVER, "Setting osd position to: %s", val);
+            set_osdpos(val);
+            memset(&val[0], 0, sizeof(val));
+        }
+        else if (httpd_query_key_value(buf, "reset_lock", val, sizeof(val)) == ESP_OK) {
+            remove_ctrlchars(val);
+            ESP_LOGD(TAG_SERVER, "Resetting Lock; unused val: %s", val);
+            reset_lock();
+            memset(&val[0], 0, sizeof(val));
+        } 
+        else if (httpd_query_key_value(buf, "video_format", val, sizeof(val)) == ESP_OK) {
+            remove_ctrlchars(val);
+            ESP_LOGI(TAG_SERVER, "Setting video format to: %s, %d", val, strlen(val));
+            if (strcmp(val, "Auto") == 0)set_videoformat("A");
+            else if (strcmp(val, "NTSC") == 0)set_videoformat("N");
+            else if (strcmp(val, "PAL") == 0)set_videoformat("P");
+                
+            memset(&val[0], 0, sizeof(val));
+        }
+        else {
+            ESP_LOGW(TAG_SERVER, "Unknown param in %s", buf);
+            httpd_resp_set_status(req, HTTPD_400);
+            httpd_resp_send_chunk(req, "Error: Invalid API Endpoint<br>", HTTPD_RESP_USE_STRLEN);
+            httpd_resp_send_chunk(req, buf, ret);
+            httpd_resp_send_chunk(req, NULL, 0);
+            return ESP_OK;
+        }
+    }
+
+
     
-    if (httpd_query_key_value(buf, "address", val, sizeof(val)) == ESP_OK) {
-        remove_ctrlchars(val);
-        ESP_LOGD(TAG_SERVER, "Setting address to: %s", val);
-        set_address(val);
-        memset(&val[0], 0, sizeof(val));
-    } 
-    else if (httpd_query_key_value(buf, "antenna_mode", val, sizeof(val)) == ESP_OK) {
-        remove_ctrlchars(val);
-        ESP_LOGD(TAG_SERVER, "Setting antenna mode to: %s", val);
-        set_antenna(val);
-        memset(&val[0], 0, sizeof(val));
-    } 
-    else if (httpd_query_key_value(buf, "channel", val, sizeof(val)) == ESP_OK) {
-        remove_ctrlchars(val);
-        ESP_LOGD(TAG_SERVER, "Setting channel to: %s", val);
-        set_channel(val);
-        memset(&val[0], 0, sizeof(val));
-    } 
-    else if (httpd_query_key_value(buf, "band", val, sizeof(val)) == ESP_OK) {
-        remove_ctrlchars(val);
-        ESP_LOGD(TAG_SERVER, "Setting band to: %s", val);
-        set_band(val);
-        memset(&val[0], 0, sizeof(val));
-    } 
-    else if (httpd_query_key_value(buf, "id", val, sizeof(val)) == ESP_OK) {
-        remove_ctrlchars(val);
-        ESP_LOGD(TAG_SERVER, "Setting user id string to: %s", val);
-        set_id(val);
-        memset(&val[0], 0, sizeof(val));
-    } 
-    else if (httpd_query_key_value(buf, "user_message", val, sizeof(val)) == ESP_OK) {
-        ESP_LOGI(TAG_SERVER, "BUF: '%s'", buf);
-        ESP_LOGI(TAG_SERVER, "Before CTL: '%s'", val);
-        remove_ctrlchars(val);
-        ESP_LOGI(TAG_SERVER, "Setting user message string to: '%s'", val);
-        set_usermsg(val);
-        printf("\nAPI LENGTH %d\n", strlen(val));
-        memset(&val[0], 0, sizeof(val));
-    } 
-    else if (httpd_query_key_value(buf, "mode", val, sizeof(val)) == ESP_OK) {
-        remove_ctrlchars(val);
-        ESP_LOGD(TAG_SERVER, "Setting mode to: %s", val);
-        set_mode(val);
-        memset(&val[0], 0, sizeof(val));
-    } 
-    else if (httpd_query_key_value(buf, "osd_visibility", val, sizeof(val)) == ESP_OK) {
-        remove_ctrlchars(val);
-        ESP_LOGD(TAG_SERVER, "Setting osd visibility to: %s", val);
-        set_osdvis(val);
-        memset(&val[0], 0, sizeof(val));
-    } 
-    else if (httpd_query_key_value(buf, "osd_position", val, sizeof(val)) == ESP_OK) {
-        remove_ctrlchars(val);
-        ESP_LOGD(TAG_SERVER, "Setting osd position to: %s", val);
-        set_osdpos(val);
-        memset(&val[0], 0, sizeof(val));
-    }
-    else if (httpd_query_key_value(buf, "reset_lock", val, sizeof(val)) == ESP_OK) {
-        remove_ctrlchars(val);
-        ESP_LOGD(TAG_SERVER, "Resetting Lock; unused val: %s", val);
-        reset_lock();
-        memset(&val[0], 0, sizeof(val));
-    } 
-    else if (httpd_query_key_value(buf, "video_format", val, sizeof(val)) == ESP_OK) {
-        remove_ctrlchars(val);
-        ESP_LOGI(TAG_SERVER, "Setting video format to: %s, %d", val, strlen(val));
-        if (strcmp(val, "Auto") == 0)set_videoformat("A");
-        else if (strcmp(val, "NTSC") == 0)set_videoformat("N");
-        else if (strcmp(val, "PAL") == 0)set_videoformat("P");
-            
-        memset(&val[0], 0, sizeof(val));
-    }
-    else {
-        ESP_LOGW(TAG_SERVER, "Unknown param in %s", buf);
-        httpd_resp_set_status(req, HTTPD_400);
-        httpd_resp_send_chunk(req, "Error: Invalid API Endpoint<br>", HTTPD_RESP_USE_STRLEN);
-        httpd_resp_send_chunk(req, buf, ret);
-        httpd_resp_send_chunk(req, NULL, 0);
-        return ESP_OK;
-    }
 
     //Redirect
     httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 

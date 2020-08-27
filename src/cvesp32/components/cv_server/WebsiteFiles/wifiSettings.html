@@ -1,5 +1,27 @@
 <script>
     document.title = "CVCM WiFi";
+    document.getElementById("seat").innerHTML = "Seat: " + getSeatNumber();
+
+    function getSeatNumber(){
+        var xhr = new XMLHttpRequest();
+        var requestURL = "/settings";
+        xhr.open('POST', requestURL, true);
+
+        const json = {
+            "seat": "?"
+        };
+
+        //Send the proper header information along with the request
+        xhr.setRequestHeader("Content-Type", "application/json");
+
+        xhr.onreadystatechange = function() { // Call a function when the state changes.
+            if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
+                var response = JSON.parse(xhr.responseText);
+            }
+        }
+
+        xhr.send(JSON.stringify(json))
+    }
 </script>
 
 <!-- Seat Number -->
