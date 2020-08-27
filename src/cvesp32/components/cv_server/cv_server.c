@@ -3,7 +3,7 @@
 
 #include <esp_event.h>
 #include <esp_log.h>
-// #include "cjson/cJSON.h"
+#include <cJSON.h>
 
 
 #include "lwip/api.h"
@@ -184,6 +184,7 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
      * content length would give length of string */
     char buf[100];
     char val[64];
+    bool success = true;
 
     /* Truncate if content length larger than the buffer */
     size_t recv_size = MIN(req->content_len, sizeof(buf));
@@ -206,9 +207,25 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
     if (is_content_json(req) == 0) { //Content is json
         ESP_LOGD(TAG_SERVER, "Content is json");
         // TODO parse JSON here
-        for (int i = 0 ; i < ret; i++) {
-            printf("'%c'\n", buf[i]);
+                // TODO parse JSON here
+        cJSON *json_post = cJSON_Parse(buf);
+        if (json_post == NULL) {
+            ESP_LOGE(TAG_SERVER, "JSON Parse Failure %s", buf);
+            const char *error_ptr = cJSON_GetErrorPtr();
+            if (error_ptr != NULL)
+            {
+                ESP_LOGI(TAG_SERVER, "JSON Parse Error starting at: %s\n", error_ptr);
+            }
+            success = false;
+        } else {
+            printf("JSON: %s",cJSON_Print(json_post));
+            cJSON *um = cJSON_GetObjectItemCaseSensitive(json_post, "um");
+            if (um == NULL) ESP_LOGI(TAG_SERVER, "CJSON no um key");
+            else ESP_LOGI(TAG_SERVER," CJSON um: %s", cJSON_Print(um));
         }
+        
+
+        cJSON_Delete(json_post);
     } else {
         ESP_LOGD(TAG_SERVER, "Content not json");
         if (httpd_query_key_value(buf, "address", val, sizeof(val)) == ESP_OK) {
@@ -284,7 +301,7 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
             memset(&val[0], 0, sizeof(val));
         }
         else {
-            ESP_LOGW(TAG_SERVER, "Unknown param in %s", buf);
+            ESP_LOGW(TAG_SERVER, "Unknown API endpoint in %s", buf);
             httpd_resp_set_status(req, HTTPD_400);
             httpd_resp_send_chunk(req, "Error: Invalid API Endpoint<br>", HTTPD_RESP_USE_STRLEN);
             httpd_resp_send_chunk(req, buf, ret);
@@ -294,29 +311,27 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
     }
 
 
+    if (success){
+        //Redirect
+        httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 
+        char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"0; URL=http://192.168.4.1/settings\">";
+        httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);
+        httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);  
+        httpd_resp_send_chunk(req, "Redirecting in 3s. TODO verify data was set in CV <br>", HTTPD_RESP_USE_STRLEN);    
+        ESP_LOGD(TAG_SERVER, "Parse Success: '%s'", buf);
+    } else {
+        /* Send back the same data */
+        httpd_resp_send_chunk(req, buf, ret);
+
+        /* Log data received */
+        ESP_LOGI(TAG_SERVER, "=========== RECEIVED DATA ==========");
+        ESP_LOGI(TAG_SERVER, "%.*s", ret, buf);
+        ESP_LOGI(TAG_SERVER, "====================================");
+        }
+
     
 
-    //Redirect
-    httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 
-    char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"0; URL=http://192.168.4.1/settings\">";
-    httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);
-    httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);  
-    httpd_resp_send_chunk(req, "Redirecting in 3s. TODO verify data was set in CV <br>", HTTPD_RESP_USE_STRLEN);
 
-    
-
-    /* Send back the same data */
-    httpd_resp_send_chunk(req, buf, ret);
-
-    /* Log data received */
-    ESP_LOGI(TAG_SERVER, "=========== RECEIVED DATA ==========");
-    ESP_LOGI(TAG_SERVER, "%.*s", ret, buf);
-
-    // while(*buf)
-    //     printf("%02x", (unsigned int) *buf++);
-    // printf("\n");
-
-    ESP_LOGI(TAG_SERVER, "====================================");
 
     // End response
     httpd_resp_send_chunk(req, NULL, 0);
@@ -469,7 +484,6 @@ static esp_err_t config_wifi_post_handler(httpd_req_t *req)
         extern bool switch_to_sta;
         switch_to_sta = true;
     } else {
-        httpd_resp_send_chunk(req, "HI", HTTPD_RESP_USE_STRLEN);
         httpd_resp_send(req, NULL, 0);
     }
 
