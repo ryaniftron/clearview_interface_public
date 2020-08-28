@@ -45,3 +45,4 @@ extern struct cv_api_write set_osdvis(char* osdvis_str);
 extern struct cv_api_write set_osdpos(char* osdpos);
 extern struct cv_api_write reset_lock();
 extern struct cv_api_write set_videoformat(char* videoformat);
+extern struct cv_api_write set_custom(char* cmd);

@@ -150,6 +150,8 @@ static cJSON* run_kv_api(char* k, char* v){
             caw = set_usermsg(v);
         } else if (strncmp(k, "video_format", strlen(k)) == 0){
             caw = set_videoformat(v);
+        } else if (strncmp(k, "send_cmd", strlen(k)) == 0) {
+            caw = set_custom(v);
         } else {
             CV_LOGE(TAG,"Unknown write key of '%s'",k );
             caw.success = false;
@@ -420,13 +422,20 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
         } 
         else if (httpd_query_key_value(buf, "video_format", val, sizeof(val)) == ESP_OK) {
             remove_ctrlchars(val);
-            ESP_LOGI(TAG_SERVER, "Setting video format to: %s, %d", val, strlen(val));
+            ESP_LOGI(TAG_SERVER, "Setting video format to: %s", val);
             if (strcmp(val, "Auto") == 0)set_videoformat("A");
             else if (strcmp(val, "NTSC") == 0)set_videoformat("N");
             else if (strcmp(val, "PAL") == 0)set_videoformat("P");
                 
             memset(&val[0], 0, sizeof(val));
         }
+        else if (httpd_query_key_value(buf, "send_cmd", val, sizeof(val)) == ESP_OK) {
+            remove_ctrlchars(val);
+            ESP_LOGI(TAG_SERVER, "Sending custom cmd: %s", val);
+            set_custom(val);
+                
+            memset(&val[0], 0, sizeof(val));
+         }    
         else {
             ESP_LOGW(TAG_SERVER, "Unknown API endpoint in %s", buf);
             httpd_resp_set_status(req, HTTPD_400);

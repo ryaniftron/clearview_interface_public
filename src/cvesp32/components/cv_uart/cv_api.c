@@ -31,9 +31,6 @@ extern int set_address_cmd(char* address, char* buf, int bufsz){
     return form_command_biparam("ADS",address, buf, bufsz);
 }
 
-
-
-
 extern struct cv_api_write set_address(char* address){
     struct cv_api_write ret;
     char* end;
@@ -296,3 +293,22 @@ extern struct cv_api_write set_videoformat(char* videoformat){
     return ret;
 }
 
+extern int set_custom_cmd(char* cmd, char* buf, int bufsz) {
+    return form_command(cmd, buf, bufsz);
+}
+
+
+extern struct cv_api_write set_custom(char* cmd_des){
+    struct cv_api_write ret;
+    size_t needed = set_custom_cmd(cmd_des, NULL, 0) + 1;
+    char* cmd_tot = (char*)malloc(needed);
+    set_custom_cmd(cmd_des, cmd_tot, needed);
+    bool write_succ = cvuart_send_command(cmd_tot);
+    free(cmd_tot);
+    ret.success = write_succ;
+    if (write_succ)
+        ret.api_code = CV_OK;
+    else 
+        ret.api_code = CV_ERROR_NO_COMMS;
+    return ret;
+}

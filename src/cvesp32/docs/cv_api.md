@@ -28,6 +28,8 @@ Some settings support reading the parameter. To read a parameter, simply pass in
 | cvcm_version     | CVCM Version                                                           | R          | v1.21.a3                          | Get the short firmware version of the CVCM |
 | cvcm_version_all | CVCM Version with build date                                           | R          | v1.21.a3 - Aug 26 2020 - 23:44:28 | Get the long firmware version of the CVCM  |
 | led | Set LED State ( active until next state change)                                     | R?W          | on | on,off,blink_slow,blink_fast,breathe_slow,breathe_fast  | 
+| send_cmd | Send arbitrary UART command | W | --- |
+| req_report | Send arbitrary UART report | W | --- | 
 
 ## MQTT Topics
 
