@@ -1,8 +1,9 @@
 <script>
     document.title = "CVCM WiFi";
-    document.getElementById("seat").innerHTML = "Seat: " + getSeatNumber();
+    // document.getElementById("seat").innerHTML = "Seat: " + getSeatNumber();
+    getAllJSON();
 
-    function getSeatNumber(){
+    function getAllJSON(){
         var xhr = new XMLHttpRequest();
         var requestURL = "/settings";
         xhr.open('POST', requestURL, true);
@@ -18,12 +19,14 @@
             if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
                 console.log(xhr.responseText);
                 var response = JSON.parse(xhr.responseText);
-            } else {
-                console.log("ready State", this.readyState)
+                for (var k of Object.keys(response)) {
+                    // https://www.w3schools.com/js/js_json_http.asp
+                    document.getElementById(k).innerHTML = response[k];
+                }
             }
         }
 
-        xhr.send(JSON.stringify(json))
+        xhr.send(JSON.stringify(json));
     }
 </script>
 
