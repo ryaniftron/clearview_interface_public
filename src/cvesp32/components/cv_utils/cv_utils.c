@@ -6,20 +6,6 @@
 #include "nvs.h"
 #include "nvs_flash.h"
 
-#ifndef LOG_FMT_FUNCNAME
-/* Formats a log string to prepend context function name */
-// https://github.com/espressif/esp-idf/blob/47253a827a80cb78f22db8e4736c668804c16750/components/esp_http_server/src/esp_httpd_priv.h
-#define LOG_FMT_FUNCNAME(x)      "%s: " x, __func__
-#endif
-
-// Use variadic Macros in C++14
-// https://gcc.gnu.org/onlinedocs/cpp/Variadic-Macros.html
-//macros to log with function name
-#define CV_LOGE(tag,fmt, ...)  ESP_LOGE (tag, LOG_FMT_FUNCNAME(fmt) __VA_OPT__(,) __VA_ARGS__) // error (lowest)
-#define CV_LOGW(tag,fmt, ...)  ESP_LOGW (tag, LOG_FMT_FUNCNAME(fmt) __VA_OPT__(,) __VA_ARGS__) // warning
-#define CV_LOGI(tag,fmt, ...)  ESP_LOGI (tag, LOG_FMT_FUNCNAME(fmt) __VA_OPT__(,) __VA_ARGS__) // info
-#define CV_LOGD(tag,fmt, ...)  ESP_LOGD (tag, LOG_FMT_FUNCNAME(fmt) __VA_OPT__(,) __VA_ARGS__) // debug
-#define CV_LOGV(tag,fmt, ...)  ESP_LOGV (tag, LOG_FMT_FUNCNAME(fmt) __VA_OPT__(,) __VA_ARGS__) // verbose (highest)
 
 //macros to log with function name and line number
 #define LOG_FMT_FUNCLNAME(x )     "%s: " x, __func__, __line__
@@ -92,7 +78,7 @@ extern bool set_credential(char* credentialName, char* val){
     } else if (strcmp(credentialName, "broker_ip") == 0) {
         strcpy(desired_mqtt_broker_ip, val);
     } else if (strcmp(credentialName, "node_number") == 0) {
-        if (0 <= atoi(val) && atoi(val) <= 7){
+        if (0 <= atoi(val) && atoi(val) <= 7){ //TODO don't use ATOI
             int new_node_number = atoi(val);
             if (desired_node_number == new_node_number){
                 ESP_LOGW(TAG_UTILS, "No change in node_number");

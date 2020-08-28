@@ -6,14 +6,15 @@ The CVCM supports JSON over http and also over MQTT. The underlying API is the s
 ## API Endpoints
 
 Some settings support reading the parameter. To read a parameter, simply pass in the '?' character. 
-| API Endpoint     | Description                                                            | Read/Write | Example Reply                     | Possible Values                            |
+| API Endpoint Key | Description                                                            | Read/Write | Example Reply Value               | Possible Values                            |
 |------------------|------------------------------------------------------------------------|------------|-----------------------------------|--------------------------------------------|
+| address          | Address the CVCM UART is at (unused)                                   | R/W        | 1                                 | 0 <= address <= 7 |
 | ssid             | SSID the CVCM will connect to                                          | R/W        | mywifinetwork                     | <=32 character string                      |
 | password         | Password the CVCM will connect to                                      | R/W        | mypassword                        | <=32 character string                      |
 | device_name      | Device name visible by others                                          | R/W        | ryan's_cv                         | <=32 character string                      |
 | broker_ip        | MQTT Broker IP Address                                                 | R/W        | 192.168.0.25                      | <=32 character string                      |
-| seat_number      | Seat Number that it follows for frequencies                            | R/W        | 3                                 | 0 <= seat_number <= 7                      |
-| antenna_mode     | Antenna Mode                                                           | W          | ---                               |                                            |
+| seat             | Seat Number that CVCM follows for frequencies                          | R/W        | 3                                 | 0 <= seat <= 7                      |
+| antenna     | Antenna Mode                                                           | W          | ---                               |                                            |
 | channel          | Video Channel                                                          | R/W        | 3                                 |                                            |
 | band             | Video Band                                                             | R/W        | a                                 |                                            |
 | id               | Set osd "ID" string, traditionally used for pilot handle               | R/W        | pilot1                            |                                            |
@@ -26,6 +27,7 @@ Some settings support reading the parameter. To read a parameter, simply pass in
 | cv_version       | Firmware Version                                                       | R          | 1.21a                             | Get the firmware version of the CV         |
 | cvcm_version     | CVCM Version                                                           | R          | v1.21.a3                          | Get the short firmware version of the CVCM |
 | cvcm_version_all | CVCM Version with build date                                           | R          | v1.21.a3 - Aug 26 2020 - 23:44:28 | Get the long firmware version of the CVCM  |
+| led | Set LED State ( active until next state change)                                     | R?W          | on | on,off,blink_slow,blink_fast,breathe_slow,breathe_fast  | 
 
 ## MQTT Topics
 
@@ -46,6 +48,7 @@ TODO
 ## Examples
 
 ### HTTP
+
 To get the cvcm_version using JSON, send a POST to `192.168.4.1/settings` with the content-type header of JSON
     * content: `{"cvcm_version", "?"}
     * reply: `{"cvcm_version", "v1.21.a2"}
@@ -55,6 +58,9 @@ The request could also have been done with content-type header of text/html
     Note how the reply is always JSON
 
 When values are set, the JSON is returned. If there is an error, the key "error" is returned with some debug info. 
+
+Note: It would be fantastic to only use JSON, but HTML forms don't normally submit as JSON. 
+There is code [here](https://github.com/keithhackbarth/submitAsJSON) that may be a good replacement.
 
 ## Return Codes:
 
@@ -66,6 +72,8 @@ Perhaps there is a firmware version mismatch or cabling issue
 * `error-write` - this parameter is intended to be read-only
 * `error-read` - this parameter is intended to be write-only
 * `error-value` - the value specified to change is out of range
+* `error-nvs_read` - the value could not be read from flash
+* `error-nvs_write` - the value could not be written flash
 
 For example, if a post to read the a non-existant parameter called `n_bugs` was called, the return would be this:
 * `{"n_bugs":"error-invalid_endpoint"}`

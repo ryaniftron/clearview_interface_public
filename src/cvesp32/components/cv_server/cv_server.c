@@ -4,6 +4,7 @@
 #include <esp_event.h>
 #include <esp_log.h>
 #include <cJSON.h>
+#include <cJSON_Utils.h>
 
 
 #include "lwip/api.h"
@@ -14,6 +15,7 @@
 #include "cv_ota.h"
 #include "cv_ledc.h"
 #include "cv_api.h"
+#include "cv_utils.h"
 
 #ifndef MIN
 #define MIN(a,b) (((a)<(b))?(a):(b)) //where does this come from? see http_server_simple example
@@ -70,11 +72,130 @@ static int is_content_json(httpd_req_t *req){
     const char CSZ = 50;
     char content_type[CSZ];
     httpd_req_get_hdr_value_str(req, "Content-Type", content_type, CSZ);
-    ESP_LOGI(TAG_SERVER, "Settings POST Content type %s", content_type);
-
     return strncmp(HTTPD_TYPE_JSON, content_type, strlen(content_type));
 }
 
+static int is_content_html_plain(httpd_req_t *req){
+    //Check content type
+    const char CSZ = 50;
+    char content_type[CSZ];
+    httpd_req_get_hdr_value_str(req, "Content-Type", content_type, CSZ);
+    return strncmp(HTTPD_TYPE_TEXT, content_type, strlen(content_type));
+}
+
+
+static cJSON* run_kv_api(char* k, char* v){
+    char* TAG = "cv_server->run_kv_api";
+    cJSON* ret = cJSON_CreateObject();
+    // if it's a request, run request and return
+    if (strncmp(v, "?",strlen(v)) == 0){
+        struct cv_api_read car;
+        CV_LOGI(TAG, "Getting value for '%s'",k);
+        
+        if (strncmp(k, "channel", strlen(k)) == 0){
+            car = get_channel(v);
+        }else if (strncmp(k, "seat", strlen(k)) == 0){
+            if (get_nvs_value(nvs_node_number)){
+                car.success = true;
+                // sprintf(car.val, "%d", desired_node_number);
+                //car.val = strdup(desired_node_number);
+                car.val = "TODO seatNum nvs";
+                car.api_code = CV_OK;
+            } else {
+                car.success = false;
+                car.api_code = CV_ERROR_NVS_READ;
+            }
+        // } else if (strncmp(k, "antenna", strlen(k)) == 0){
+        //     caw = set_antenna(v);
+        // } else if (strncmp(k, "channel", strlen(k)) == 0){
+        //     caw = set_channel(v);
+        // } else if (strncmp(k, "band", strlen(k)) == 0){
+        //     caw = set_id(v);
+        // } else if (strncmp(k, "user_message", strlen(k)) == 0){
+        //     caw = set_usermsg(v);
+        // } else if (strncmp(k, "video_format", strlen(k)) == 0){
+        //     caw = set_videoformat(v);
+        } else {
+            CV_LOGE(TAG,"Unknown request key of '%s'",k );
+            car.success = false;
+            car.api_code = CV_ERROR_INVALID_ENDPOINT;
+            
+        }
+        if (car.success) {
+            cJSON_AddStringToObject(ret, k, car.val);
+        }
+        else {
+            if (car.api_code == CV_ERROR_NO_COMMS) {cJSON_AddStringToObject(ret, k, "error-no_comms");}
+            else if (car.api_code == CV_ERROR_WRITE) {cJSON_AddStringToObject(ret, k, "error-write");} 
+            else if (car.api_code == CV_ERROR_READ) {cJSON_AddStringToObject(ret, k, "error-read");} 
+            else if (car.api_code == CV_ERROR_VALUE) {cJSON_AddStringToObject(ret, k, "error-value");} 
+            else if (car.api_code == CV_ERROR_INVALID_ENDPOINT) {cJSON_AddStringToObject(ret, k, "error-invalid_endpoint");}
+            else if (car.api_code == CV_ERROR_NVS_WRITE) {cJSON_AddStringToObject(ret, k, "error-nvs_write");}
+            else if (car.api_code == CV_ERROR_NVS_READ) {cJSON_AddStringToObject(ret, k, "error-nvs_read");}
+            else {CV_LOGE(TAG, "Unknown car.api_code");}
+        }
+        
+        
+    } else { // It's a command, write value
+        struct cv_api_write caw;    
+        if (strncmp(k, "address", strlen(k)) == 0){
+            caw = set_address(v);
+        } else if (strncmp(k, "antenna", strlen(k)) == 0){
+            caw = set_antenna(v);
+        } else if (strncmp(k, "channel", strlen(k)) == 0){
+            caw = set_channel(v);
+        } else if (strncmp(k, "band", strlen(k)) == 0){
+            caw = set_id(v);
+        } else if (strncmp(k, "user_message", strlen(k)) == 0){
+            caw = set_usermsg(v);
+        } else if (strncmp(k, "video_format", strlen(k)) == 0){
+            caw = set_videoformat(v);
+        } else {
+            CV_LOGE(TAG,"Unknown write key of '%s'",k );
+            caw.success = false;
+            caw.api_code = CV_ERROR_INVALID_ENDPOINT;
+            
+        }
+        if (caw.success) {
+            cJSON_AddStringToObject(ret, k, v);
+        }
+        else {
+            if (caw.api_code == CV_ERROR_NO_COMMS) {cJSON_AddStringToObject(ret, k, "error-no_comms");}
+            else if (caw.api_code == CV_ERROR_WRITE) {cJSON_AddStringToObject(ret, k, "error-write");} 
+            else if (caw.api_code == CV_ERROR_READ) {cJSON_AddStringToObject(ret, k, "error-read");} 
+            else if (caw.api_code == CV_ERROR_VALUE) {cJSON_AddStringToObject(ret, k, "error-value");} 
+            else if (caw.api_code == CV_ERROR_INVALID_ENDPOINT) {cJSON_AddStringToObject(ret, k, "error-invalid_endpoint");}
+            else {CV_LOGE(TAG, "Unknown car.api_code");}
+        }
+    }
+
+    return ret;
+}
+
+// Take JSON formatted cmd and return a JSON response
+// Supports multiple cJSON elements and will return JSON for each
+static cJSON* run_json_api(cJSON* obj)
+{
+    cJSON* retJSON = NULL; //the return val
+    cJSON *element = NULL;
+    char *k = NULL;
+    char *v = NULL;
+    cJSON_ArrayForEach(element, obj)
+    {
+        k = element->string;
+        v = element->valuestring;
+
+        if (k != NULL && v != NULL)
+        {
+            ESP_LOGI("run_api", "key=%s,val=%s", k, v);
+            // cJSON_AddItemToObject()
+            cJSON* kj = run_kv_api(k, v);
+            retJSON = cJSONUtils_MergePatchCaseSensitive(retJSON,kj);
+        }
+    }
+
+    return retJSON;
+}
 
 static esp_err_t config_test_post_handler(httpd_req_t *req)
 {
@@ -218,10 +339,16 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
             }
             success = false;
         } else {
-            printf("JSON: %s",cJSON_Print(json_post));
-            cJSON *um = cJSON_GetObjectItemCaseSensitive(json_post, "um");
-            if (um == NULL) ESP_LOGI(TAG_SERVER, "CJSON no um key");
-            else ESP_LOGI(TAG_SERVER," CJSON um: %s", cJSON_Print(um));
+            char* cjson_arrived = cJSON_Print(json_post);
+            
+            printf("JSON In: %s\n", cjson_arrived);
+            cJSON *json_returned = run_json_api(json_post); //TODO memory leak?
+            char* cjson_returned = cJSON_Print(json_returned);
+            printf("JSON Back: %s\n", cjson_returned);
+            ESP_ERROR_CHECK(httpd_resp_set_hdr(req,"Content-Type",HTTPD_TYPE_JSON));
+            httpd_resp_send_chunk(req, cjson_returned, HTTPD_RESP_USE_STRLEN);
+            free(cjson_arrived);
+            free(cjson_returned);
         }
         
 
@@ -313,11 +440,11 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
 
     if (success){
         //Redirect
-        httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 
-        char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"0; URL=http://192.168.4.1/settings\">";
-        httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);
-        httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);  
-        httpd_resp_send_chunk(req, "Redirecting in 3s. TODO verify data was set in CV <br>", HTTPD_RESP_USE_STRLEN);    
+        // httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 
+        // char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"0; URL=http://192.168.4.1/settings\">";
+        // httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);
+        // httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);  
+        // httpd_resp_send_chunk(req, "Redirecting in 3s. TODO verify data was set in CV <br>", HTTPD_RESP_USE_STRLEN);    
         ESP_LOGD(TAG_SERVER, "Parse Success: '%s'", buf);
     } else {
         /* Send back the same data */
@@ -572,27 +699,28 @@ static esp_err_t wifi_get_handler(httpd_req_t *req)
     serve_menu_bar(req);
     serve_wificonfig(req);
     serve_html_end(req);
-    
     return ESP_OK;
 }
 
 
 static esp_err_t settings_get_handler(httpd_req_t *req)
 {
+    serve_html_beg(req);
     serve_title(req);
     serve_node_and_lock(req);
     serve_menu_bar(req);
     serve_settingsconfig(req);
-    ESP_ERROR_CHECK(httpd_resp_send_chunk(req, NULL, 0));
+    serve_html_end(req);
     return ESP_OK;
 }
 
 static esp_err_t test_cv_get_handler(httpd_req_t *req)
 {   
+    serve_html_beg(req);
     serve_title(req);
     serve_menu_bar(req);
     serve_test(req);
-    ESP_ERROR_CHECK(httpd_resp_send_chunk(req, NULL, 0));
+    serve_html_end(req);
     return ESP_OK;
 }
 
