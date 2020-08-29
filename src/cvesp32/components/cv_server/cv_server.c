@@ -177,6 +177,7 @@ void kv_api_parse_car(struct cv_api_read* car, char* k, char* v) {
         car->api_code = CV_ERROR_INVALID_ENDPOINT;
     }
 }
+
 void caw_nvs_write(struct cv_api_write* caw, char* nvs_key, char* nvs_val){
     caw->success = set_credential(nvs_key, nvs_val);
         if (caw->success){
@@ -374,6 +375,12 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
     bool success = true;
 
     /* Truncate if content length larger than the buffer */
+    if (req->content_len >= sizeof(buf)){
+        ESP_LOGE(TAG_SERVER, "Content too large. size '%d' > '%d'", req->content_len, sizeof(buf));
+        httpd_resp_set_status(req, "413 Payload Too Large");
+        httpd_resp_send(req, "Content size exceeded", HTTPD_RESP_USE_STRLEN);
+        return ESP_FAIL;
+    }
     size_t recv_size = MIN(req->content_len, sizeof(buf));
     //TODO warn if content too large
 
@@ -429,6 +436,7 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
     } else {
         ESP_LOGW(TAG_SERVER, "Content not json - ignore parsing");
         ESP_LOGI(TAG_SERVER, "buf:'%s'",buf);
+        success = false;
         //char val[64];
         //Loop through the key and values. 
 
