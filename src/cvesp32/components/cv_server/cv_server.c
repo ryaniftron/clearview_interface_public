@@ -246,18 +246,22 @@ static cJSON* run_json_api(cJSON* obj)
     cJSON *element = NULL;
     char *k = NULL;
     char *v = NULL;
-    cJSON_ArrayForEach(element, obj)
-    {
-        k = element->string;
-        v = element->valuestring;
-
-        if (k != NULL && v != NULL)
+    if (cJSON_GetArraySize(obj)){
+        cJSON_ArrayForEach(element, obj)
         {
-            ESP_LOGI("run_api", "key=%s,val=%s", k, v);
-            // cJSON_AddItemToObject()
-            cJSON* kj = run_kv_api(k, v);
-            retJSON = cJSONUtils_MergePatchCaseSensitive(retJSON,kj);
+            k = element->string;
+            v = element->valuestring;
+
+            if (k != NULL && v != NULL)
+            {
+                ESP_LOGI("run_api", "key=%s,val=%s", k, v);
+                // cJSON_AddItemToObject()
+                cJSON* kj = run_kv_api(k, v);
+                retJSON = cJSONUtils_MergePatchCaseSensitive(retJSON,kj);
+            }
         }
+    } else {
+        ESP_LOGW(TAG_SERVER, "JSON EMPTY");
     }
 
     return retJSON;
@@ -364,7 +368,7 @@ static cJSON* run_json_api(cJSON* obj)
 
 static esp_err_t config_settings_post_handler(httpd_req_t *req)
 {
-    ESP_LOGI(TAG_SERVER, "Got config_settings request");
+    ESP_LOGD(TAG_SERVER, "Got config_settings request");
         /* Destination buffer for content of HTTP POST request.
      * httpd_req_recv() accepts char* only, but content could
      * as well be any binary data (needs type casting).
@@ -411,24 +415,29 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
                 // TODO parse JSON here
         cJSON *json_post = cJSON_Parse(buf);
         if (json_post == NULL) {
-            ESP_LOGE(TAG_SERVER, "JSON Parse Failure %s", buf);
+            ESP_LOGE(TAG_SERVER, "JSON Parse Failure");
             const char *error_ptr = cJSON_GetErrorPtr();
             if (error_ptr != NULL)
             {
                 ESP_LOGI(TAG_SERVER, "JSON Parse Error starting at: %s\n", error_ptr);
+                ESP_LOGI(TAG_SERVER, "Full JSON: %s", buf);
             }
+            httpd_resp_send_chunk(req, "{\"error\":\"error-json-parse\"}",HTTPD_RESP_USE_STRLEN);
             success = false;
         } else {
             char* cjson_arrived = cJSON_Print(json_post);
             
             printf("JSON In: %s\n", cjson_arrived);
             cJSON *json_returned = run_json_api(json_post); //TODO memory leak?
-            char* cjson_returned = cJSON_Print(json_returned);
-            printf("JSON Back: %s\n", cjson_returned);
-            ESP_ERROR_CHECK(httpd_resp_set_hdr(req,"Content-Type",HTTPD_TYPE_JSON));
-            httpd_resp_send_chunk(req, cjson_returned, HTTPD_RESP_USE_STRLEN);
+            if (json_returned){
+                char* cjson_returned = cJSON_Print(json_returned);
+                printf("JSON Back: %s\n", cjson_returned);
+                ESP_ERROR_CHECK(httpd_resp_set_hdr(req,"Content-Type",HTTPD_TYPE_JSON));
+                httpd_resp_send_chunk(req, cjson_returned, HTTPD_RESP_USE_STRLEN);  
+                free(cjson_returned);
+            }
             free(cjson_arrived);
-            free(cjson_returned);
+            
         }
         
 
@@ -436,6 +445,15 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
     } else {
         ESP_LOGW(TAG_SERVER, "Content not json - ignore parsing");
         ESP_LOGI(TAG_SERVER, "buf:'%s'",buf);
+        httpd_resp_set_status(req, "406 Not Acceptable");
+        const char CSZ = 50;
+        char content_type[CSZ];
+        httpd_req_get_hdr_value_str(req, "Content-Type", content_type, CSZ);
+        char content_msg[110]; //50+60
+        sprintf(content_msg,"Error: header content-type must be 'application/json, not '%s'", content_type );
+
+        httpd_resp_send(req, content_msg, HTTPD_RESP_USE_STRLEN);
+        return ESP_FAIL;
         success = false;
         //char val[64];
         //Loop through the key and values. 
@@ -545,15 +563,7 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
         // httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);  
         // httpd_resp_send_chunk(req, "Redirecting in 3s. TODO verify data was set in CV <br>", HTTPD_RESP_USE_STRLEN);    
         ESP_LOGD(TAG_SERVER, "Parse Success: '%s'", buf);
-    } else {
-        /* Send back the same data */
-        httpd_resp_send_chunk(req, buf, ret);
-
-        /* Log data received */
-        ESP_LOGI(TAG_SERVER, "=========== RECEIVED DATA ==========");
-        ESP_LOGI(TAG_SERVER, "%.*s", ret, buf);
-        ESP_LOGI(TAG_SERVER, "====================================");
-        }
+    } 
 
     
 
