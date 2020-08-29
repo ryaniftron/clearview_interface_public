@@ -1,6 +1,92 @@
+
+
+<!-- Seat Number -->
+<form id="formid" method="POST" enctype="text/plain" action = "/settings">
+    <label for="seatN">Seat Number:</label>
+    <select id="seatN" name="seat_number">
+        <option value="0">1</option>
+        <option value="1">2</option>
+        <option value="2">3</option>
+        <option value="3">4</option>
+        <option value="4">5</option>
+        <option value="5">6</option>
+        <option value="6">7</option>
+        <option value="7">8</option>
+    </select>
+    <input type="submit" value="Set Seat Number TEST">
+</form>
+<hr>
+<form id="formid2" method="POST" enctype="text/plain" action = "/settings">
+
+    <label for="ssid">Network SSID:</label><br>
+    <input type="text" id="ssid" name="ssid" value="%s"><br>
+
+    <label for="password">Network Password:</label><br>
+    <input type="text" id="password" name="password" value="%s"><br>
+
+    <label for="device_name">Device Name:</label><br>
+    <input type="text" id="device_name" name="device_name" value="%s"><br>
+
+    <label for="broker_ip">Broker IP Address:</label><br>
+    <input type="text" id="broker_ip" name="broker_ip" value="%s"><br>
+
+    <input type="submit" value="Save and Join Network">
+</form>
+
 <script>
     document.title = "CVCM WiFi";
-    // document.getElementById("seat").innerHTML = "Seat: " + getSeatNumber();
+    
+    //TODO detect which form is submitted
+
+    $(document).delegate('form', 'submit', function(event) {
+        var $form = $(this);
+        var id = $form.attr('id');
+        var data = $form.serialize();
+        alert("id:" + id)
+    // ...
+    });
+
+
+    $('#formid2 input[type="submit"]').click(function (event){
+
+        // var formjq = $("#formid");
+        // var formjs = formjq.eq[0];
+        // var formdata = new FormData(formjs)
+
+        var object = {};
+
+        //TODO loop over non-generically 
+        //Attach handler based on class or form element
+        //Find form from
+        $(':input', '#formid2').each(function() {
+            if (this.name != ""){
+                object[this.name] = this.value;
+            }
+        });
+
+        object = JSON.stringify(object)
+
+        var request = $.ajax({
+            type: "POST",
+            url: '/settings',
+            dataType: 'json',
+            data: object,
+            contentType: "application/json",
+            processData: false
+                
+
+        })
+        .done(function(data){
+            console.log("Done")
+        })
+        .fail(function(){
+            console.log("Fail")
+        });
+        return false;
+    });
+
+      
+    
     getAllJSON();
 
     function getAllJSON(){
@@ -29,36 +115,3 @@
         xhr.send(JSON.stringify(json));
     }
 </script>
-
-<!-- Seat Number -->
-<form method="POST" enctype="text/plain" action = "/wifi_config">
-    <label for="seatN">Seat Number:</label>
-    <select id="seatN" name="seat_number">
-        <option value="0">1</option>
-        <option value="1">2</option>
-        <option value="2">3</option>
-        <option value="3">4</option>
-        <option value="4">5</option>
-        <option value="5">6</option>
-        <option value="6">7</option>
-        <option value="7">8</option>
-    </select>
-    <input type="submit" value="Set Seat Number TEST">
-</form>
-<hr>
-<form method="POST" enctype="text/plain" action = "/wifi_config">
-
-    <label for="ssid">Network SSID:</label><br>
-    <input type="text" id="ssid" name="ssid" value="%s"><br>
-
-    <label for="password">Network Password:</label><br>
-    <input type="text" id="password" name="password" value="%s"><br>
-
-    <label for="device_name">Device Name:</label><br>
-    <input type="text" id="device_name" name="device_name" value="%s"><br>
-
-    <label for="broker_ip">Broker IP Address:</label><br>
-    <input type="text" id="broker_ip" name="broker_ip" value="%s"><br>
-
-    <input type="submit" value="Save and Join Network">
-</form>
