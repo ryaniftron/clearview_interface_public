@@ -530,7 +530,7 @@ void app_main(void)
 
     
     tcpip_adapter_init();
-    const int UNIQUE_ID_LENGTH = 16;
+    
     char chipid[UNIQUE_ID_LENGTH];
     get_chip_id(chipid, UNIQUE_ID_LENGTH);
 

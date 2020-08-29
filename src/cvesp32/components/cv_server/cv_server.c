@@ -85,6 +85,7 @@ extern const uint8_t menu_bar_end[] asm("_binary_menuBar_html_end");
 #define CV_API_LED "led"
 #define CV_API_SEND_CMD "send_cmd"
 #define CV_API_REQ_REPORT "req_report"
+#define CV_API_MAC_ADDR "mac_addr"
 
 //TODO make these a struct
 bool ssid_ready = false;
@@ -148,6 +149,8 @@ void kv_api_parse_car(struct cv_api_read* car, char* k, char* v) {
         
     if (strncmp(k, CV_API_CHANNEL, strlen(k)) == 0){
         get_channel(car);
+    }else if (strncmp(k, CV_API_BAND, strlen(k)) == 0){
+        get_band(car);
     }else if (strncmp(k, CV_API_REQ_REPORT, strlen(k)) == 0){
         get_custom_report(v, car);
     }else if (strncmp(k, CV_API_SEAT, strlen(k)) == 0){
@@ -161,16 +164,12 @@ void kv_api_parse_car(struct cv_api_read* car, char* k, char* v) {
             car->success = false;
             car->api_code = CV_ERROR_NVS_READ;
         }
-    // } else if (strncmp(k, "antenna", strlen(k)) == 0){
-    //     caw = set_antenna(v);
-    // } else if (strncmp(k, "channel", strlen(k)) == 0){
-    //     caw = set_channel(v);
-    // } else if (strncmp(k, "band", strlen(k)) == 0){
-    //     caw = set_id(v);
-    // } else if (strncmp(k, "user_message", strlen(k)) == 0){
-    //     caw = set_usermsg(v);
-    // } else if (strncmp(k, "video_format", strlen(k)) == 0){
-    //     caw = set_videoformat(v);
+    } else if (strncmp(k, CV_API_CVCM_VERSION, strlen(k)) == 0){
+        get_cvcm_version(car);
+    } else if (strncmp(k, CV_API_CVCM_VERSION_ALL, strlen(k)) == 0){
+        get_cvcm_version_all(car);
+    }else if (strncmp(k, CV_API_MAC_ADDR, strlen(k)) == 0){
+        get_mac_addr(car);
     } else {
         CV_LOGE(TAG,"Unknown request key of '%s'",k );
         car->success = false;
@@ -450,7 +449,7 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
         char content_type[CSZ];
         httpd_req_get_hdr_value_str(req, "Content-Type", content_type, CSZ);
         char content_msg[110]; //50+60
-        sprintf(content_msg,"Error: header content-type must be 'application/json, not '%s'", content_type );
+        sprintf(content_msg,"Error: header content-type must be 'application/json', not '%s'", content_type );
 
         httpd_resp_send(req, content_msg, HTTPD_RESP_USE_STRLEN);
         return ESP_FAIL;
@@ -727,7 +726,6 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
 // }
 
 void serve_title(httpd_req_t *req) {
-    const int UNIQUE_ID_LENGTH = 16;
     char chipid[UNIQUE_ID_LENGTH];
     get_chip_id(chipid, UNIQUE_ID_LENGTH);
 

@@ -3,7 +3,10 @@
 #include "cv_uart.h"
 #include "string.h"
 
+#include "esp_ota_ops.h"
 #include <esp_log.h>
+#include "cv_utils.h"
+
 #define START_CHAR 0x02
 #define END_CHAR 0x03
 #define CSUM "%"
@@ -50,13 +53,33 @@ extern void set_address(char* address, struct cv_api_write* ret){
 }
 
 extern int get_channel_cmd(char* buf, int bufsz){
-    return form_command("BC", buf, bufsz);
+    return form_command("RPBC", buf, bufsz);
 }
 
 extern void get_channel(struct cv_api_read* ret){
     char* cmd = (char*)malloc(MAX_CMD_LEN);
     uint8_t* rxbuf = (uint8_t*) malloc(RX_BUF_SIZE+1);
     get_channel_cmd(cmd, MAX_CMD_LEN);
+    int report_len = cvuart_send_report(cmd, rxbuf);
+    if (report_len == -1 || report_len == 0){
+        ret->api_code = CV_ERROR_NO_COMMS;
+        ret->success = false;
+    } else {
+        ret->api_code = CV_OK;
+        ret->success = true;
+        ret->val = (char*)rxbuf;
+    }
+    free(cmd);
+}
+
+extern int get_band_cmd(char* buf, int bufsz){
+    return form_command("RPBG", buf, bufsz);
+}
+
+extern void get_band(struct cv_api_read* ret){
+    char* cmd = (char*)malloc(MAX_CMD_LEN);
+    uint8_t* rxbuf = (uint8_t*) malloc(RX_BUF_SIZE+1);
+    get_band_cmd(cmd, MAX_CMD_LEN);
     int report_len = cvuart_send_report(cmd, rxbuf);
     if (report_len == -1 || report_len == 0){
         ret->api_code = CV_ERROR_NO_COMMS;
@@ -296,4 +319,22 @@ extern void get_custom_report(char* report, struct cv_api_read* ret){
         ret->val = (char*)rxbuf;
     }
     free(cmd_tot);
+}
+
+extern void get_cvcm_version(struct cv_api_read* ret){
+    strcpy(ret->val,(char*) esp_ota_get_app_description()->version);
+    ret->api_code=CV_OK;
+    ret->success=true;
+}
+
+extern void get_cvcm_version_all(struct cv_api_read* ret){
+    char fullversion[100];
+    sprintf(fullversion, "%s - %s - %s",(char*) esp_ota_get_app_description()->version,__DATE__, __TIME__);
+    strcpy(ret->val, fullversion);
+    ret->api_code=CV_OK;
+    ret->success=true;
+}
+
+extern void get_mac_addr(struct cv_api_read* ret){
+    get_chip_id(ret->val, UNIQUE_ID_LENGTH);
 }

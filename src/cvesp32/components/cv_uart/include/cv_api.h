@@ -29,8 +29,12 @@ extern int form_command(char* payload, char* output_command, int bufsz);
 //https://stackoverflow.com/q/10162152/14180509
 
 // CV Getters
+extern void get_band(struct cv_api_read* ret);
 extern void get_channel(struct cv_api_read* ret);
 extern void get_custom_report(char* report, struct cv_api_read* ret);
+extern void get_cvcm_version(struct cv_api_read* ret);
+extern void get_cvcm_version_all(struct cv_api_read* ret);
+extern void get_mac_addr(struct cv_api_read* ret);
 
 
 

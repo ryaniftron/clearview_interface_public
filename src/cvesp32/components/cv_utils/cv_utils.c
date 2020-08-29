@@ -30,13 +30,13 @@ static bool _nvs_is_init = false;
 
 bool nn_update_needed = false; //node number needs to be updated
 
-extern void get_chip_id(char* ssid, const int UNIQUE_ID_LENGTH){
+extern void get_chip_id(char* ssid, const int LEN){
     //TODO it's reverse order. Try this instead https://github.com/espressif/arduino-esp32/issues/932#issuecomment-352307067
     uint64_t chipid = 0LL;
     esp_efuse_mac_get_default((uint8_t*) (&chipid));
     uint16_t chip = (uint16_t)(chipid >> 32);
     //esp_read_mac(chipid);
-    snprintf(ssid, UNIQUE_ID_LENGTH, "CV_%04X%08X", chip, (uint32_t)chipid);
+    snprintf(ssid, LEN, "CV_%04X%08X", chip, (uint32_t)chipid);
     ESP_LOGD(TAG_UTILS, "SSID created from chip id: %s\n", ssid);
     return;
 }

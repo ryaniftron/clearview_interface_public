@@ -29,7 +29,10 @@ Some settings support reading the parameter. To read a parameter, simply pass in
 | cvcm_version_all | CVCM Version with build date                                           | R          | v1.21.a3 - Aug 26 2020 - 23:44:28 | Get the long firmware version of the CVCM  |
 | led | Set LED State ( active until next state change)                                     | R?W          | on | on,off,blink_slow,blink_fast,breathe_slow,breathe_fast  | 
 | send_cmd | Send arbitrary UART command | W | --- |
-| req_report | Send arbitrary UART report | W | --- | 
+| req_report | Send arbitrary UART report | W | --- |
+| mac_addr | Get mac address of wifi | R | CV_342832C40A24 | 
+| ip_addr | Get ip address of wifi | R | 192.168.4.1 |
+| wifi | Wifi state | R/W | ['ap','sta'] | ['ap','sta']
 
 ## MQTT Topics
 
@@ -82,6 +85,10 @@ For example, if a post to read the a non-existant parameter called `n_bugs` was 
 
 If you tried to set the band to an invalid band `v` with `{"band":"v"}`, the following would return
 * `{"band":"error-value"}`
+
+If the JSON request is malformatted, a general json error will return 
+* `{"error":"error-json-parse"}`
+If the POST is not the right content type, 
 
 
 ## Combined Requests

@@ -25,7 +25,8 @@ extern char desired_friendly_name[WIFI_CRED_MAXLEN];
 extern char desired_mqtt_broker_ip[WIFI_CRED_MAXLEN];
 extern uint8_t desired_node_number;
 
-extern void get_chip_id(char* ssid, const int UNIQUE_ID_LENGTH);
+#define UNIQUE_ID_LENGTH 16
+extern void get_chip_id(char* ssid, const int len);
 extern void remove_ctrlchars(char *str);
 extern bool set_credential(char* credentialName, char* val);
 extern bool start_nvs();
