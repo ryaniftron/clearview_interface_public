@@ -2,7 +2,7 @@
     document.title = "CVCM Test";
 </script>
 
-<form method="POST" enctype="text/plain">
+<form action="/settings" method="POST" enctype="text/plain">
   <label for="LED">Choose a LED State</label>
   <select id="led" name="LED" >
     <option value="ON">Turn On</option>
@@ -11,25 +11,25 @@
   <input type="submit" value = "Set LED State">
 </form>
 
-<form method="POST" enctype="text/plain">
+<form action="/settings" method="POST" enctype="text/plain">
   <label for="user_message">Enter User Message</label>
   <input type="text" id="user_message" name="UM">
   <input type="submit" value = "Set User Message">
 </form>
 
-<form method="POST" enctype="text/plain">
+<form action="/settings" method="POST" enctype="text/plain">
   <input type="text" id="req_lock" name="RL">
   <input type="submit" value = "Request Lock State">
 </form>
 
 <form action="/settings" method="POST" enctype="text/plain">
-  <label for="send_cmd">My TXT</label>
+  <label for="send_cmd">Custom Command</label>
   <input type="text" id="send_cmd" name="send_cmd">
   <input type="submit" value = "Send Command">
 </form>
-<!-- 
+
 <form action="/settings" method="POST" enctype="text/plain">
-  <label for="req_report">My REPORT</label>
+  <label for="req_report">Custom Report</label>
   <input type="text" id="send_rep" name="send_rep">
   <input type="submit" value = "Send Report">
-</form> -->
+</form>

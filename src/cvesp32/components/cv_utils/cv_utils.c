@@ -6,6 +6,7 @@
 #include "nvs.h"
 #include "nvs_flash.h"
 
+static bool load_all_nvs(void);
 
 //macros to log with function name and line number
 #define LOG_FMT_FUNCLNAME(x )     "%s: " x, __func__, __line__
@@ -66,6 +67,7 @@ extern bool set_credential(char* credentialName, char* val){
     printf("##Setting Credential %s = %s\n", credentialName, val);
     if (strlen(val) > WIFI_CRED_MAXLEN) {
         ESP_LOGE(TAG_UTILS, "\t Unable to set credential. Too long.");
+        return false;
     }
 
     if (strcmp(credentialName, "ssid") == 0) {

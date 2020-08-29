@@ -29,20 +29,21 @@ extern int form_command(char* payload, char* output_command, int bufsz);
 //https://stackoverflow.com/q/10162152/14180509
 
 // CV Getters
-extern struct cv_api_read get_channel();
+extern void get_channel(struct cv_api_read* ret);
+extern void get_custom_report(char* report, struct cv_api_read* ret);
 
 
 
 // CV Setters
-extern struct cv_api_write set_address(char* address);
-extern struct cv_api_write set_antenna(char* antenna);
-extern struct cv_api_write set_channel(char* channel);
-extern struct cv_api_write set_band(char* band);
-extern struct cv_api_write set_id(char* id_str);
-extern struct cv_api_write set_usermsg(char* usermsg_str);
-extern struct cv_api_write set_mode(char* mode_str);
-extern struct cv_api_write set_osdvis(char* osdvis_str);
-extern struct cv_api_write set_osdpos(char* osdpos);
-extern struct cv_api_write reset_lock();
-extern struct cv_api_write set_videoformat(char* videoformat);
-extern struct cv_api_write set_custom(char* cmd);
+extern void set_address(char* address, struct cv_api_write* ret );
+extern void set_antenna(char* antenna, struct cv_api_write* ret );
+extern void set_channel(char* channel, struct cv_api_write* ret );
+extern void set_band(char* band, struct cv_api_write* ret );
+extern void set_id(char* id_str, struct cv_api_write* ret );
+extern void set_usermsg(char* usermsg_str, struct cv_api_write* ret );
+extern void set_mode(char* mode_str, struct cv_api_write* ret );
+extern void set_osdvis(char* osdvis_str, struct cv_api_write* ret );
+extern void set_osdpos(char* osdpos, struct cv_api_write* ret );
+extern void reset_lock(struct cv_api_write* ret );
+extern void set_videoformat(char* videoformat, struct cv_api_write* ret );
+extern void set_custom_w(char* cmd, struct cv_api_write* ret );
