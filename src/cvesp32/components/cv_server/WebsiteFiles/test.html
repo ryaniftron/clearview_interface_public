@@ -1,19 +1,135 @@
-<form method="POST" enctype="text/plain">>
+<form id = "ledform" action="/settings" method="POST" enctype="text/plain">
   <label for="LED">Choose a LED State</label>
-  <select id="led" name="LED" >
+  <select id="led" name="led" >
     <option value="ON">Turn On</option>
     <option value="OFF">Turn Off</option>
   </select>
   <input type="submit" value = "Set LED State">
 </form>
 
-<form method="POST" enctype="text/plain">
+<!-- <form action="/settings" method="POST" enctype="text/plain">
   <label for="user_message">Enter User Message</label>
-  <input type="text" id="user_message" name="UM">
+  <input type="text" id="user_message" name="user_message">
   <input type="submit" value = "Set User Message">
+</form> -->
+
+<!-- <form id = "lockform" action="/settings" method="POST" enctype="text/plain">
+  <input type="hidden" id="lock" name="lock" value="?">
+  <input type="submit" value = "Request Lock State">
+</form> -->
+
+<form id="cmdform" action="/settings" method="POST" enctype="text/plain">
+  <label for="send_cmd">Custom Command</label>
+  <input type="text" id="send_cmd" name="send_cmd">
+  <input type="submit" value = "Send Command">
 </form>
 
-<form method="POST" enctype="text/plain">>
-  <input type="text" id="req_lock" name="RL">
-  <input type="submit" value = "Request Lock State">
+<form id="reportform" action="/settings" method="POST" enctype="text/plain">
+  <label for="req_report">Custom Report</label>
+  <input type="text" id="send_report" name="req_report">
+  <input type="submit" value = "Send Report">
+  <label id="req_report"></label>
 </form>
+
+<script>
+    document.title = "CVCM Test";
+
+    function send_form(jsondata){
+      var request = $.ajax({
+            type: "POST",
+            url: '/settings',
+            dataType: 'json',
+            data: jsondata,
+            contentType: "application/json",
+            processData: false,
+            success: function(msg) {
+              for (var k in msg) {
+                console.log(k + "-> " + msg[k])
+                if (k == "req_report") {
+                  document.getElementById(k).innerHTML="Response:" + "'" + msg[k]+ "'"
+                }
+              }
+            }
+        })
+        .done(function(data){
+            console.log("Done")
+        })
+        .fail(function(){
+            console.log("Fail")
+        });
+    }
+    
+
+    $('#ledform input[type="submit"]').click(function (event){
+        var object = {};
+        $(':input', '#ledform').each(function() {
+            if (this.name != ""){
+                object[this.name] = this.value;
+            }
+        });
+        object = JSON.stringify(object);
+        send_form(object);
+        return false;
+    });
+
+    $('#cmdform input[type="submit"]').click(function (event){
+        var object = {};
+        $(':input', '#cmdform').each(function() {
+            if (this.name != ""){
+                object[this.name] = this.value;
+            }
+        });
+        object = JSON.stringify(object);
+        send_form(object);
+        return false;
+    });
+
+    $('#reportform input[type="submit"]').click(function (event){
+        var object = {};
+        $(':input', '#reportform').each(function() {
+            if (this.name != ""){
+                object[this.name] = this.value;
+            }
+        });
+        object = JSON.stringify(object);
+        send_form(object);
+        return false;
+    });
+
+
+    $("form").submit(function(data){
+        alert("Submitted" + data);
+        console.log(this.url)
+        return false;
+    });
+
+      
+    
+    getAllJSON();
+
+    function getAllJSON(){
+        var xhr = new XMLHttpRequest();
+        var requestURL = "/settings";
+        xhr.open('POST', requestURL, true);
+
+        const json = {
+        //    "seat": "?"
+        };
+
+        //Send the proper header information along with the request
+        xhr.setRequestHeader("Content-Type", "application/json");
+
+        xhr.onreadystatechange = function() { // Call a function when the state changes.
+            if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
+                console.log(xhr.responseText);
+                var response = JSON.parse(xhr.responseText);
+                for (var k of Object.keys(response)) {
+                    // https://www.w3schools.com/js/js_json_http.asp
+                    document.getElementById(k).innerHTML = response[k];
+                }
+            }
+        }
+
+        xhr.send(JSON.stringify(json));
+    }
+</script>

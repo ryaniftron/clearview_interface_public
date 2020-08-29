@@ -130,8 +130,8 @@ extern bool cvuart_send_command(const char* data)
     static const char *logName = "send_command";
     if (_uart_is_init)
     {
-        sendData(logName, data);
-        return true;
+        int txbytes = sendData(logName, data);
+        return (bool)txbytes;
     }
     else
     {
