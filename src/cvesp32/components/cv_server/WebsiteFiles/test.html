@@ -34,6 +34,9 @@
 <script>
     document.title = "CVCM Test";
 
+    getAllJSON();
+  
+
     function send_form(jsondata){
       var request = $.ajax({
             type: "POST",
@@ -95,17 +98,9 @@
         send_form(object);
         return false;
     });
-
-
-    $("form").submit(function(data){
-        alert("Submitted" + data);
-        console.log(this.url)
-        return false;
-    });
-
-      
     
-    getAllJSON();
+    
+    
 
     function getAllJSON(){
         var xhr = new XMLHttpRequest();

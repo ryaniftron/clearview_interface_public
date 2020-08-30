@@ -262,7 +262,6 @@ static cJSON* run_json_api(cJSON* obj)
     } else {
         ESP_LOGW(TAG_SERVER, "JSON EMPTY");
     }
-
     return retJSON;
 }
 

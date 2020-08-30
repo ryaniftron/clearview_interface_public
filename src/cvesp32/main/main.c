@@ -527,7 +527,25 @@ static void demo_sequential_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_L
 
 void app_main(void)
 {
+    char* full_cmd = "A09FR5740!B";\
+    printf("full_cmd: '%s'\n", full_cmd);
+    char* payload = malloc(strlen(full_cmd));
+    bool r = parse_command_payload(full_cmd, payload);
+    if(r) 
+     ESP_LOGI("TEST1", "%s", payload);
+    else
+     ESP_LOGI("TEST1", "fail");
 
+    full_cmd = "X09FR5740!B";\
+    r = parse_command_payload(full_cmd, payload);
+    if(r) 
+     ESP_LOGI("TEST2", "%s", payload);
+    else
+     ESP_LOGI("TEST2!", "fail");
+
+
+    //do stuff
+    free(payload);
     
     tcpip_adapter_init();
     

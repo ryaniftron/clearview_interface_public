@@ -7,9 +7,17 @@
 #include <esp_log.h>
 #include "cv_utils.h"
 
-#define START_CHAR 0x02
-#define END_CHAR 0x03
-#define CSUM "%"
+
+
+#define TAG_API "CV_API"
+
+// #define START_CHAR 0x02
+// #define END_CHAR 0x03
+//#define CSUM "%"
+#define START_CHAR 0x41
+#define END_CHAR 0x42
+#define CSUM "!"
+
 #define RX_TARGET 0
 #define MESS_SRC 9
 #define MAX_CMD_LEN 64 //64 characters total
@@ -17,17 +25,108 @@
 // Generates CV command from payload and puts into buffer output_command
 extern int form_command(char* payload, char* output_command, int bufsz) {
     int n = snprintf(output_command, bufsz, "%c%d%d%s%s%c", START_CHAR, RX_TARGET, MESS_SRC,  payload, CSUM, END_CHAR);
-    if (bufsz != 0) ESP_LOGI("CV_API", "CMD: '%s'", output_command);
+    if (bufsz != 0) ESP_LOGI(TAG_API, "CMD: '%s'", output_command);
     return n;
 }
 
 //Generates CV command from two appended payloads and puts into buffer output_command
 extern int form_command_biparam(char* payload1, char* payload2, char* output_command, int bufsz) {
     int n = snprintf(output_command, bufsz, "%c%d%d%s%s%s%c", START_CHAR, RX_TARGET, MESS_SRC, payload1, payload2, CSUM, END_CHAR);
-    if (bufsz != 0) ESP_LOGI("CV_API", "CMD: '%s'", output_command);
+    if (bufsz != 0) ESP_LOGI(TAG_API, "CMD: '%s'", output_command);
     return n;
 }
 
+/* Take a command read from CV UART in full_cmd and return the whole payload
+   This drops the source and destination
+   Returns success if the command seems to be a valid format
+
+    usage:
+        char* full_cmd = "A09FR5740!B";
+        char* payload = malloc(strlen(full_cmd));
+        parse_command_payload(full_cmd, payload);
+        //do stuff
+        free(payload);
+    */
+extern bool parse_command_payload(char* full_cmd, char* payload){
+    if (full_cmd == NULL || payload == NULL) {
+        ESP_LOGE(TAG_API, "parse_command_payload; Empty cmd or payload");
+        return false;
+    }
+    ESP_LOGI(TAG_API,"full_cmd_infunc: '%s'\n", full_cmd);
+    // The fmt A%*c%*c.. doens't match only A
+    char* fmt_base = "%c%s%%[^%s]%s%c";
+    int n = snprintf(NULL, 0, fmt_base, START_CHAR,"%*c%*c", CSUM,CSUM, END_CHAR);
+    char* fmt = malloc(++n);
+    snprintf(fmt, n, fmt_base, START_CHAR,"%*c%*c", CSUM,CSUM, END_CHAR);
+    ESP_LOGI(TAG_API, "fmt:%s\n",fmt);
+    sscanf(full_cmd, fmt, payload);
+    ESP_LOGI(TAG_API, "payload1 %s\n", payload);
+    free(fmt);
+    ESP_LOGI(TAG_API, "n=%i\n",n);
+    ESP_LOGI(TAG_API, "L=%u\n", strlen(payload));
+
+    return strlen(payload) != 0;
+}
+
+
+/*
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include<stdbool.h>
+
+#define START_CHAR 0x41
+#define END_CHAR 0x42
+#define CSUM "%"
+#define RX_TARGET 0
+#define MESS_SRC 9
+
+void create_fmt_singlechar(char* accept, char* )
+
+extern int parse_command_payload(char* full_cmd, char* payload){
+    if (full_cmd == NULL) {
+        //ESP_LOGE(TAG_API, "parse_command_payload; Empty cmd or payload");
+        return false;
+    }
+    char* fmt_base = "%*[%c]%s%[^%s]%s%*[%c]";
+    int n = snprintf(NULL, 0, fmt_base, START_CHAR,"%*c%*c", CSUM,CSUM, END_CHAR);
+    char* fmt = malloc(++n);
+    snprintf(fmt, n, fmt_base, START_CHAR,"%*c%*c", CSUM,CSUM, END_CHAR);
+    printf("fmt:%s\n",fmt);
+    sscanf(full_cmd, fmt, payload);
+    printf("payload1 %s\n", payload);
+    free(fmt);
+    printf("n=%i\n",n);
+    printf("L=%lu\n", strlen(payload));
+
+    return strlen(payload) != 0;
+}
+
+int main () {
+    char* fmtbase = "%*[%s]";
+    char* b = malloc(30);
+    sprintf(b,fmtbase,START_CHAR);
+    printf("%s\n",b);
+    
+    // char* full_cmd = "A09FR5740%B";
+    // char* payload = malloc(strlen(full_cmd));
+    // bool r = parse_command_payload(full_cmd, payload);
+    // if (r)
+    //     printf("Payload2:%s\n ", payload);
+    // else
+    //     printf("NoPayload2\n");
+        
+    // printf("\n\n\n");
+    
+    
+    // char* fc = "A09FR5740!B";
+    // char* p = malloc(strlen(fc));
+    // sscanf(fc, "%*[A]%*c%*c%[^!]!B", p);
+    // printf("p:'%s'\n", p);
+
+   return(0);
+}
+*/
 extern int set_address_cmd(char* address, char* buf, int bufsz){
     return form_command_biparam("ADS",address, buf, bufsz);
 }
