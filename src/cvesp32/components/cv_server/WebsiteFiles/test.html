@@ -34,10 +34,11 @@
 <script>
     document.title = "CVCM Test";
 
-    getAllJSON();
+    // getAllJSON();
   
 
     function send_form(jsondata){
+      console.log("Sending JSON form to server:" + jsondata)  
       var request = $.ajax({
             type: "POST",
             url: '/settings',
@@ -49,7 +50,11 @@
               for (var k in msg) {
                 console.log(k + "-> " + msg[k])
                 if (k == "req_report") {
-                  document.getElementById(k).innerHTML="Response:" + "'" + msg[k]+ "'"
+                    document.getElementById(k).innerHTML="Response:" + "'" + msg[k]+ "'"
+                } else {
+                    var el = document.getElementById(k);
+                    console.log("TODO: Process id " + k)
+                    // el.innerHTML=k[msg]
                 }
               }
             }
@@ -58,46 +63,61 @@
             console.log("Done")
         })
         .fail(function(){
-            console.log("Fail")
+            console.log("Fail Submit")
         });
     }
+
+    $(document).on('submit', 'form', function (event){
+        event.preventDefault();
+        var object = {};
+        $(this.elements).each(function() {
+            $(this).each(function() {
+                if (this.name != "") {
+                    object[this.name] = this.value
+                }
+            });
+        });
+        object = JSON.stringify(object);
+        send_form(object);
+    });  
     
 
-    $('#ledform input[type="submit"]').click(function (event){
-        var object = {};
-        $(':input', '#ledform').each(function() {
-            if (this.name != ""){
-                object[this.name] = this.value;
-            }
-        });
-        object = JSON.stringify(object);
-        send_form(object);
-        return false;
-    });
+    // $('#ledform input[type="submit"]').click(function (event){
+    //     var object = {};
+    //     $(':input', '#ledform').each(function() {
+    //         if (this.name != ""){
+    //             object[this.name] = this.value;
+    //         }
+    //     });
+    //     object = JSON.stringify(object);
+    //     send_form(object);
+    //     return false;
+    // });
 
-    $('#cmdform input[type="submit"]').click(function (event){
-        var object = {};
-        $(':input', '#cmdform').each(function() {
-            if (this.name != ""){
-                object[this.name] = this.value;
-            }
-        });
-        object = JSON.stringify(object);
-        send_form(object);
-        return false;
-    });
+    // $('#cmdform input[type="submit"]').click(function (event){
+    //     var object = {};
+    //     $(':input', '#cmdform').each(function() {
+    //         if (this.name != ""){
+    //             object[this.name] = this.value;
+    //         }
+    //     });
+    //     object = JSON.stringify(object);
+    //     send_form(object);
+    //     return false;
+    // });
 
-    $('#reportform input[type="submit"]').click(function (event){
-        var object = {};
-        $(':input', '#reportform').each(function() {
-            if (this.name != ""){
-                object[this.name] = this.value;
-            }
-        });
-        object = JSON.stringify(object);
-        send_form(object);
-        return false;
-    });
+    // $('#reportform input[type="submit"]').click(function (event){
+    //     var object = {};
+    //     $(':input', '#reportform').each(function() {
+    //         if (this.name != ""){
+    //             object[this.name] = this.value;
+    //         }
+    //     });
+    //     object = JSON.stringify(object);
+    //     send_form(object);
+    //     return false;
+    // });
+
     
     
     

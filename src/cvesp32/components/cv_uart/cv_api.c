@@ -11,16 +11,19 @@
 
 #define TAG_API "CV_API"
 
-// #define START_CHAR 0x02
-// #define END_CHAR 0x03
-//#define CSUM "%"
-#define START_CHAR 0x41
-#define END_CHAR 0x42
-#define CSUM "!"
+#define START_CHAR 0x02
+#define END_CHAR 0x03
+#define CSUM "%"
+// #define START_CHAR 0x41
+// #define END_CHAR 0x42
+// #define CSUM "!"
 
 #define RX_TARGET 0
 #define MESS_SRC 9
 #define MAX_CMD_LEN 64 //64 characters total
+
+#define CMD_BAND "BG"
+#define REP_BAND "RPBG"
 
 // Generates CV command from payload and puts into buffer output_command
 extern int form_command(char* payload, char* output_command, int bufsz) {
@@ -103,30 +106,29 @@ extern int parse_command_payload(char* full_cmd, char* payload){
 }
 
 int main () {
-    char* fmtbase = "%*[%s]";
-    char* b = malloc(30);
-    sprintf(b,fmtbase,START_CHAR);
-    printf("%s\n",b);
-    
-    // char* full_cmd = "A09FR5740%B";
-    // char* payload = malloc(strlen(full_cmd));
-    // bool r = parse_command_payload(full_cmd, payload);
-    // if (r)
-    //     printf("Payload2:%s\n ", payload);
-    // else
-    //     printf("NoPayload2\n");
-        
-    // printf("\n\n\n");
-    
-    
-    // char* fc = "A09FR5740!B";
-    // char* p = malloc(strlen(fc));
-    // sscanf(fc, "%*[A]%*c%*c%[^!]!B", p);
-    // printf("p:'%s'\n", p);
+    char* full_cmd = "A09FR5740!B";\
+    printf("full_cmd: '%s'\n", full_cmd);
+    char* payload = malloc(strlen(full_cmd));
+    bool r = parse_command_payload(full_cmd, payload);
+    if(r) 
+     ESP_LOGI("TEST1", "%s", payload);
+    else
+     ESP_LOGI("TEST1", "fail");
 
-   return(0);
+    full_cmd = "X09FR5740!B";\
+    r = parse_command_payload(full_cmd, payload);
+    if(r) 
+     ESP_LOGI("TEST2", "%s", payload);
+    else
+     ESP_LOGI("TEST2!", "fail");
+
+
+    //do stuff
+    free(payload);;
 }
 */
+
+
 extern int set_address_cmd(char* address, char* buf, int bufsz){
     return form_command_biparam("ADS",address, buf, bufsz);
 }
@@ -172,7 +174,7 @@ extern void get_channel(struct cv_api_read* ret){
 }
 
 extern int get_band_cmd(char* buf, int bufsz){
-    return form_command("RPBG", buf, bufsz);
+    return form_command(REP_BAND, buf, bufsz);
 }
 
 extern void get_band(struct cv_api_read* ret){
@@ -180,13 +182,18 @@ extern void get_band(struct cv_api_read* ret){
     uint8_t* rxbuf = (uint8_t*) malloc(RX_BUF_SIZE+1);
     get_band_cmd(cmd, MAX_CMD_LEN);
     int report_len = cvuart_send_report(cmd, rxbuf);
+    char* minipayload = malloc(strlen((char*)rxbuf)+1);
+    bool parse_tot_succ = parse_command_payload((char*)rxbuf,minipayload);
     if (report_len == -1 || report_len == 0){
         ret->api_code = CV_ERROR_NO_COMMS;
+        ret->success = false;
+    } else if(!parse_tot_succ){
+        ret->api_code = CV_ERROR_PARSE;
         ret->success = false;
     } else {
         ret->api_code = CV_OK;
         ret->success = true;
-        ret->val = (char*)rxbuf;
+        ret->val = (char*)minipayload + strlen(CMD_BAND);
     }
     free(cmd);
 }

@@ -9,7 +9,8 @@ enum  cv_api_code{
     CV_ERROR_READ,
     CV_ERROR_VALUE,
     CV_ERROR_NVS_READ,
-    CV_ERROR_NVS_WRITE
+    CV_ERROR_NVS_WRITE,
+    CV_ERROR_PARSE
 };
 
 

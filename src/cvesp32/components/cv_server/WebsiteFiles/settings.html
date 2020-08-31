@@ -1,6 +1,4 @@
-<script>
-    document.title = "CVCM Settings";
-</script>
+
 
 <!-- Channel Number -->
 <form method="POST" enctype="text/plain">
@@ -82,3 +80,82 @@
 <!-- <form method="POST"> -->
     <!-- <input type="submit" value="Show Live Video"> -->
 <!-- </form>  -->
+
+<script>
+    document.title = "CVCM Settings";
+
+    function send_form(jsondata){
+      console.log("Sending JSON form to server:" + jsondata)  
+      var request = $.ajax({
+            type: "POST",
+            url: '/settings',
+            dataType: 'json',
+            data: jsondata,
+            contentType: "application/json",
+            processData: false,
+            success: function(msg) {
+              for (var k in msg) {
+                console.log(k + "-> " + msg[k])
+                if (k == "req_report") {
+                    document.getElementById(k).innerHTML="Response:" + "'" + msg[k]+ "'"
+                } else {
+                    var el = document.getElementById(k);
+                    console.log("TODO: Process id " + k)
+                    // el.innerHTML=k[msg]
+                }
+              }
+            }
+        })
+        .done(function(data){
+            console.log("Done")
+        })
+        .fail(function(){
+            console.log("Fail Submit")
+        });
+    }
+
+    $(document).on('submit', 'form', function (event){
+        event.preventDefault();
+        var object = {};
+        $(this.elements).each(function() {
+            $(this).each(function() {
+                if (this.name != "") {
+                    object[this.name] = this.value
+                }
+            });
+        });
+        object = JSON.stringify(object);
+        console.log("Sending JSON to server:" + object)
+        send_form(object);
+    }); 
+    
+
+
+    function getAllJSON(){
+        var xhr = new XMLHttpRequest();
+        var requestURL = "/settings";
+        xhr.open('POST', requestURL, true);
+
+        const json = {
+            "channel": "?",
+            "band": "?",
+            "video_format": "?",
+        };
+
+        //Send the proper header information along with the request
+        xhr.setRequestHeader("Content-Type", "application/json");
+
+        xhr.onreadystatechange = function() { // Call a function when the state changes.
+            if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
+                console.log(xhr.responseText);
+                var response = JSON.parse(xhr.responseText);
+                for (var k of Object.keys(response)) {
+                    // https://www.w3schools.com/js/js_json_http.asp
+                    document.getElementById(k).innerHTML = response[k];
+                }
+            }
+        }
+
+        xhr.send(JSON.stringify(json));
+    }
+</script>
