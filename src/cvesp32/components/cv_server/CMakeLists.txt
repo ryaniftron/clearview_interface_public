@@ -11,5 +11,6 @@ idf_component_register(SRCS "cv_server.c"
                            WebsiteFiles/test.html
                            WebsiteFiles/menuBar.html
                            WebsiteFiles/menuBarTest.html
+                           WebsiteFiles/cv_js.js
                        )
 

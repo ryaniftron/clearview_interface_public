@@ -18,7 +18,7 @@ Some settings support reading the parameter. To read a parameter, simply pass in
 | channel          | Video Channel                                                          | R/W        | 3                                 |                                            |
 | band             | Video Band                                                             | R/W        | a                                 |                                            |
 | id               | Set osd "ID" string, traditionally used for pilot handle               | R/W        | pilot1                            |                                            |
-| user_message     | Set longer user message                                                | R/W        | Lap:4 +0.56                       |                                            |
+| user_msg     | Set longer user message                                                | R/W        | Lap:4 +0.56                       |                                            |
 | mode             | Change what is displayed between menu, spectrum analyzer or live video | R/W          | ---                               |                                            |
 | osd_visibility   | Show or Hide OSD                                                       | R/W          | ---                               |                                            |
 | osd_position     | Change OSD Position                                                    | W          | ---                               |                                            |

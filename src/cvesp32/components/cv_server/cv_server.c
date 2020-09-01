@@ -53,6 +53,9 @@ extern const uint8_t html_beg_end[] asm("_binary_httpDocBegin_html_end");
 extern const uint8_t html_conc_start[] asm("_binary_httpDocConclude_html_start");
 extern const uint8_t html_conc_end[] asm("_binary_httpDocConclude_html_end");
 
+extern const uint8_t cv_js_start[] asm("_binary_cv_js_js_start");
+extern const uint8_t cv_js_end[] asm("_binary_cv_js_js_end");
+
 #ifdef CONFIG_CV_INITIAL_PROGRAM
 extern const uint8_t menu_bar_start[] asm("_binary_menuBarTest_html_start");
 extern const uint8_t menu_bar_end[] asm("_binary_menuBarTest_html_end");
@@ -60,6 +63,8 @@ extern const uint8_t menu_bar_end[] asm("_binary_menuBarTest_html_end");
 extern const uint8_t menu_bar_start[] asm("_binary_menuBar_html_start");
 extern const uint8_t menu_bar_end[] asm("_binary_menuBar_html_end");
 #endif
+
+
 
 // URI Defines
 #define CV_CONFIG_WIFI_URI "/wifi"
@@ -76,7 +81,7 @@ extern const uint8_t menu_bar_end[] asm("_binary_menuBar_html_end");
 #define CV_API_CHANNEL "channel"
 #define CV_API_BAND "band"
 #define CV_API_ID "id"
-#define CV_API_USER_MESSAGE "user_message"
+#define CV_API_USER_MESSAGE "user_msg"
 #define CV_API_MODE "mode"
 #define CV_API_OSD_VISIBILITY "osd_visibility"
 #define CV_API_OSD_POSITION "osd_position"
@@ -121,8 +126,8 @@ void add_response_to_json_car(cJSON* ret, char* k, struct cv_api_read* car){
     }
     else {
         if (car->api_code == CV_ERROR_NO_COMMS) {cJSON_AddStringToObject(ret, k, "error-no_comms");}
-        else if (car->api_code == CV_ERROR_WRITE) {cJSON_AddStringToObject(ret, k, "error-write");} 
-        else if (car->api_code == CV_ERROR_READ) {cJSON_AddStringToObject(ret, k, "error-read");} 
+        else if (car->api_code == CV_ERROR_WRITE) {cJSON_AddStringToObject(ret, k, "error-write_on_read_only_param");} 
+        else if (car->api_code == CV_ERROR_READ) {cJSON_AddStringToObject(ret, k, "error-read_on_write_only_param");} 
         else if (car->api_code == CV_ERROR_VALUE) {cJSON_AddStringToObject(ret, k, "error-value");} 
         else if (car->api_code == CV_ERROR_INVALID_ENDPOINT) {cJSON_AddStringToObject(ret, k, "error-invalid_endpoint");}
         else if (car->api_code == CV_ERROR_NVS_WRITE) {cJSON_AddStringToObject(ret, k, "error-nvs_write");}
@@ -179,6 +184,9 @@ void kv_api_parse_car(struct cv_api_read* car, char* k, char* v) {
         get_mac_addr(car);
     }else if (strncmp(k, CV_API_VIDEO_FORMAT, strlen(k)) == 0){
         get_videoformat(car);
+    } else if (strncmp(k, CV_API_USER_MESSAGE, strlen(k)) == 0){
+        car->success = false;
+        car->api_code = CV_ERROR_READ;
     } else {
         CV_LOGE(TAG,"Unknown request key of '%s'",k );
         car->success = false;
@@ -249,7 +257,7 @@ static cJSON* run_kv_api(char* k, char* v){
             if (cawptr->success){
                 struct cv_api_read car;
                 struct cv_api_read*carptr = &car;
-                vTaskDelay(2000 / portTICK_PERIOD_MS); //Delay 100ms between write and read
+                vTaskDelay(1000 / portTICK_PERIOD_MS); //Delay 100ms between write and read
                 kv_api_parse_car(carptr, k, CV_READ_Q);
                 add_response_to_json_car(ret, k, carptr); // TODO is the response added or modified?
             }
@@ -851,6 +859,18 @@ static esp_err_t test_cv_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+/* jquery GET handler */
+static esp_err_t cv_js_handler(httpd_req_t *req)
+{
+	ESP_LOGI(TAG_SERVER, "cv_server requested");
+
+	httpd_resp_set_type(req, "application/javascript");
+
+	httpd_resp_send(req, (const char *)cv_js_start, (cv_js_end - cv_js_start)-1);
+
+	return ESP_OK;
+}
+
 static const httpd_uri_t root_uri = {
     .uri       = "/",
     .method    = HTTP_GET,
@@ -905,7 +925,14 @@ static const httpd_uri_t test_uri = {
 // };
 
 
-
+static const httpd_uri_t cv_js_uri = {
+	.uri = "/cv_js.js",
+	.method = HTTP_GET,
+	.handler = cv_js_handler,
+	/* Let's pass response string in user
+	 * context to demonstrate it's usage */
+	.user_ctx = NULL
+};
 
 extern httpd_handle_t start_cv_webserver(void){
     if (_server_started) {
@@ -944,7 +971,7 @@ extern httpd_handle_t start_cv_webserver(void){
 		ESP_ERROR_CHECK(httpd_register_uri_handler(server, &OTA_jquery_3_4_1_min_js));
 		ESP_ERROR_CHECK(httpd_register_uri_handler(server, &OTA_update));
 		ESP_ERROR_CHECK(httpd_register_uri_handler(server, &OTA_status));
-
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &cv_js_uri));
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &test_uri));
         //ESP_ERROR_CHECK(httpd_register_uri_handler(server, &config_test_uri));
 
