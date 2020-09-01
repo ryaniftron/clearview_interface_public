@@ -9,7 +9,8 @@ enum  cv_api_code{
     CV_ERROR_READ,
     CV_ERROR_VALUE,
     CV_ERROR_NVS_READ,
-    CV_ERROR_NVS_WRITE
+    CV_ERROR_NVS_WRITE,
+    CV_ERROR_PARSE
 };
 
 
@@ -28,14 +29,17 @@ extern int form_command(char* payload, char* output_command, int bufsz);
 
 //https://stackoverflow.com/q/10162152/14180509
 
+extern bool parse_command_payload(char* full_cmd, char* payload);
+
 // CV Getters
 extern void get_band(struct cv_api_read* ret);
 extern void get_channel(struct cv_api_read* ret);
+extern void get_id(struct cv_api_read* ret);
 extern void get_custom_report(char* report, struct cv_api_read* ret);
 extern void get_cvcm_version(struct cv_api_read* ret);
 extern void get_cvcm_version_all(struct cv_api_read* ret);
 extern void get_mac_addr(struct cv_api_read* ret);
-
+extern void get_videoformat(struct cv_api_read* ret);
 
 
 // CV Setters

@@ -19,11 +19,11 @@ Some settings support reading the parameter. To read a parameter, simply pass in
 | band             | Video Band                                                             | R/W        | a                                 |                                            |
 | id               | Set osd "ID" string, traditionally used for pilot handle               | R/W        | pilot1                            |                                            |
 | user_message     | Set longer user message                                                | R/W        | Lap:4 +0.56                       |                                            |
-| mode             | Change what is displayed between menu, spectrum analyzer or live video | W          | ---                               |                                            |
-| osd_visibility   | Show or Hide OSD                                                       | W          | ---                               |                                            |
+| mode             | Change what is displayed between menu, spectrum analyzer or live video | R/W          | ---                               |                                            |
+| osd_visibility   | Show or Hide OSD                                                       | R/W          | ---                               |                                            |
 | osd_position     | Change OSD Position                                                    | W          | ---                               |                                            |
 | lock             | Resets the CV Lock or queries lock status                              | R/W        | ---                               | Reset lock with '1', or get value with '?' |
-| video_format     | Camera type                                                            | W          | ---                               |                                            |
+| video_format     | Camera type                                                            | R/W          | ---                               |                                            |
 | cv_version       | Firmware Version                                                       | R          | 1.21a                             | Get the firmware version of the CV         |
 | cvcm_version     | CVCM Version                                                           | R          | v1.21.a3                          | Get the short firmware version of the CVCM |
 | cvcm_version_all | CVCM Version with build date                                           | R          | v1.21.a3 - Aug 26 2020 - 23:44:28 | Get the long firmware version of the CVCM  |
