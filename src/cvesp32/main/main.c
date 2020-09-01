@@ -549,7 +549,7 @@ void app_main(void)
             strcpy(desired_ap_pass, AP_TARGET_PASS);
             strcpy(desired_mqtt_broker_ip, CONFIG_BROKER_IP);
             strcpy(desired_friendly_name, CONFIG_FRIENDLY_NAME);
-            //strcpy(node_number, CONFIG_NODE_NUMBER);
+            //strcpy(seat_number, CONFIG_SEAT_NUMBER);
             initialise_sta_wifi(chipid);
         #elif CONFIG_STARTUP_WIFI_SOFTAP 
             demo_sequential_wifi(chipid, UNIQUE_ID_LENGTH); //this returns on successful connection

@@ -166,11 +166,13 @@ void kv_api_parse_car(struct cv_api_read* car, char* k, char* v) {
     }else if (strncmp(k, CV_API_REQ_REPORT, strlen(k)) == 0){
         get_custom_report(v, car);
     }else if (strncmp(k, CV_API_SEAT, strlen(k)) == 0){
-        if (get_nvs_value(nvs_node_number)){
+        if (get_nvs_value(nvs_seat_number)){
             car->success = true;
-            // sprintf(car->val, "%d", desired_node_number);
-            //car->val = strdup(desired_node_number);
-            car->val = "TODO seatNum nvs";
+            // sprintf(car->val, "%d", desired_seat_number);
+            //car->val = strdup(desired_seat_number);
+            char sn[2];
+            itoa(desired_seat_number, sn, 10);
+            car->val = strdup(sn);
             car->api_code = CV_OK;
         } else {
             car->success = false;
@@ -215,6 +217,8 @@ void kv_api_parse_caw(struct cv_api_write* caw, char* k, char* v) {
     } else if (strncmp(k, CV_API_DEVICE_NAME, strlen(k)) == 0){
         caw_nvs_write(caw, k, v);
     } else if (strncmp(k, CV_API_BROKER_IP, strlen(k)) == 0){
+        caw_nvs_write(caw, k, v);
+    } else if (strncmp(k, CV_API_SEAT, strlen(k)) == 0){
         caw_nvs_write(caw, k, v);
     } else if (strncmp(k, CV_API_ANTENNA, strlen(k)) == 0){
         set_antenna(v, caw);
@@ -658,8 +662,8 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
 //         if (httpd_query_key_value(tok, "seat_number", val, sizeof(val)) == ESP_OK) {
 //                 remove_ctrlchars(val);
 //                 ESP_LOGI(TAG_SERVER, "Setting seat number to: %s", val);
-//                 if (set_credential("node_number", val)){
-//                     update_subscriptions_new_node();
+//                 if (set_credential("seat_number", val)){
+//                     update_subscriptions_new_seat();
 //                 }
 //                 memset(&val[0], 0, sizeof(val));
 //         } 
@@ -771,8 +775,8 @@ void serve_title(httpd_req_t *req) {
     free(line);
 }
 
-void serve_node_and_lock(httpd_req_t *req){
-    extern uint8_t desired_node_number;
+void serve_seat_and_lock(httpd_req_t *req){
+    extern uint8_t desired_seat_number;
     char* lock_status = "TODO";
 
     // Allocate memory for the format string
@@ -780,12 +784,12 @@ void serve_node_and_lock(httpd_req_t *req){
     char* line_template = (char*)malloc(n_template);
     snprintf(line_template, n_template, "%s", subtitle_html_start);
 
-    // Display the node number 1 higher than stored in the back end. 
+    // Display the seat number 1 higher than stored in the back end. 
     // Back end
-    int ui_node_number = desired_node_number+1;
-    size_t needed = snprintf(NULL, 0, line_template, ui_node_number, lock_status)+1;
+    int ui_seat_number = desired_seat_number+1;
+    size_t needed = snprintf(NULL, 0, line_template, ui_seat_number, lock_status)+1;
     char* line = (char*)malloc(needed);
-    snprintf(line, needed, line_template, ui_node_number, lock_status);
+    snprintf(line, needed, line_template, ui_seat_number, lock_status);
     free(line_template);
     ESP_ERROR_CHECK(httpd_resp_send_chunk(req, line, HTTPD_RESP_USE_STRLEN));
     free(line);
@@ -830,7 +834,7 @@ static esp_err_t wifi_get_handler(httpd_req_t *req)
 {
     serve_html_beg(req);
     serve_title(req);
-    serve_node_and_lock(req);
+    serve_seat_and_lock(req);
     serve_menu_bar(req);
     serve_wificonfig(req);
     serve_html_end(req);
@@ -842,7 +846,7 @@ static esp_err_t settings_get_handler(httpd_req_t *req)
 {
     serve_html_beg(req);
     serve_title(req);
-    serve_node_and_lock(req);
+    serve_seat_and_lock(req);
     serve_menu_bar(req);
     serve_settingsconfig(req);
     serve_html_end(req);

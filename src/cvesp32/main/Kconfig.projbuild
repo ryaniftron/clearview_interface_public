@@ -45,12 +45,12 @@ menu "ClearView ESP32 Configuration"
         help
             The easy to read name of the ESP32
 
-    config NODE_NUMBER
-        int "Default node number (also called seat number) for startup. Range 0-7"
+    config SEAT_NUMBER
+        int "Default seat number for startup. Range 0-7"
         default 0
         range 0 7
         help
-            Which node number between 0 and 7 (inclusive) the unit starts on
+            Which seat number between 0 and 7 (inclusive) the unit starts on
 
     menu "Enable and Disable CV Features"
 

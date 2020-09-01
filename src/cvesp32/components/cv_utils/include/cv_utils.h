@@ -23,7 +23,7 @@ extern char desired_ap_ssid[WIFI_CRED_MAXLEN];
 extern char desired_ap_pass[WIFI_CRED_MAXLEN];
 extern char desired_friendly_name[WIFI_CRED_MAXLEN];
 extern char desired_mqtt_broker_ip[WIFI_CRED_MAXLEN];
-extern uint8_t desired_node_number;
+extern uint8_t desired_seat_number;
 
 #define UNIQUE_ID_LENGTH 16
 extern void get_chip_id(char* ssid, const int len);
@@ -37,7 +37,7 @@ typedef enum  {
     nvs_wifi_pass,
     nvs_fname,
     nvs_broker_ip,
-    nvs_node_number
+    nvs_seat_number
 } CV_NVS_KEY;
 extern bool get_nvs_value(CV_NVS_KEY nvs_key);
 extern bool set_nvs_u8val(CV_NVS_KEY nvs_key, uint8_t val);

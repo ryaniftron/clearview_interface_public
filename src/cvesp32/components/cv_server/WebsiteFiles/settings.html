@@ -2,7 +2,9 @@
 
 <!-- Channel Number -->
 <form method="POST" enctype="text/plain">
-    <label for="channel">Channel:</label>
+
+    <label for="channel">Channel</label>
+
     <select id="channel" name="channel">
         <option value="0">1</option>
         <option value="1">2</option>
@@ -13,7 +15,8 @@
         <option value="6">7</option>
         <option value="7">8</option>
     </select>
-    <input type="submit" value="Set Channel">
+
+    <!-- <input type="submit" value="Set Channel"> -->
 </form>
 <div id="error_channel"></div>
 
@@ -37,7 +40,7 @@
         <option value="e">Y</option>
         <option value="f">Z</option>
     </select>
-    <input type="submit" value="Set Band">
+    <!-- <input type="submit" value="Set Band"> -->
 </form>
 <div id="error_band"></div>
 
@@ -61,7 +64,7 @@
         <option value="N">NTSC</option>
         <option value="P">PAL</option>
     </select>
-    <input type="submit" value="Set Video Mode">
+    <!-- <input type="submit" value="Set Video Mode"> -->
 </form>
 <div id="error_video_format"></div>
 
@@ -69,7 +72,7 @@
 <form method="POST" enctype="text/plain">
     <label for="id">ID String:</label>
     <input type="text" id="id", name="id">
-    <input type="submit" value="Set Pilot ID">
+    <input type="submit" value="Save Pilot ID">
 </form>
 <div id="error_id"></div>
 
@@ -77,7 +80,7 @@
 <form method="POST" enctype="text/plain">
     <label for="user_msg">User Message:</label>
     <input type="text" id="user_msg", name="user_msg">
-    <input type="submit" value="Set User Message">
+    <input type="submit" value="Save User Message">
 </form>
 <div id="error_user_msg"></div>
 
@@ -86,8 +89,9 @@
     <!-- <input type="submit" value="Show Live Video"> -->
 <!-- </form>  -->
 
-<script src="cv_js.js">
+<script>
     document.title = "CVCM Settings";
+    console.log("Settings block")
 
     getAllJSON({
         "channel": "?",

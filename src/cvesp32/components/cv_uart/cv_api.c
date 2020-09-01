@@ -153,7 +153,7 @@ extern void process_report(struct cv_api_read* ret, char* full_report, int repor
         ESP_LOGW(TAG_API, "Can't process empty report");
         return;
     }
-    
+    ESP_LOGI(TAG_API, "Preprocess full_report %s\n", full_report); 
     char* report_snippet = malloc(strlen(full_report)+1); //TODO ensure this is freed
     bool parse_tot_succ = parse_command_payload(full_report,report_snippet);
     ESP_LOGI(TAG_API, "Processed '%s' -> '%s'", full_report, report_snippet);

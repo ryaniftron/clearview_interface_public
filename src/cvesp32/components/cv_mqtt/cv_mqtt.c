@@ -45,7 +45,7 @@ static int qos_test = 0;
 char device_name[20]; 
 #define DEVICE_TYPE "rx"
 #define PROTOCOL_VERSION "cv1"
-extern uint8_t desired_node_number;
+extern uint8_t desired_seat_number;
 bool active_status = false;
 # define MAX_TOPIC_LEN 75
 # define MAX_TOPIC_HEADER_LEN 10 // should encompass "/rx/cv1/" . room for null chars is not needed
@@ -60,10 +60,10 @@ static char* attempted_hostname;
 #define STATIC_STATUS_REQ "status_static?"
 
 #define VARIABLE_STATUS_FMT \
-"{\"node_number\":\"%i\"\
+"{\"seat_number\":\"%i\"\
 }"
 #define VARIABLE_STATUS_REQ "status_var?"
-#define NODE_SET_CMD "node_number="
+#define SEAT_SET_CMD "seat_number="
 
 //*******************
 //** Format Topic Defines **
@@ -75,8 +75,8 @@ static char* attempted_hostname;
 //1 Send command to all receivers
 const char* receiver_command_all_topic_fmt = "%s/%s/cmd_all";
 
-//2 Send command to a node_number
-const char* receiver_command_node_topic_fmt = "%s/%s/cmd_node/%d"; //,"node_number");
+//2 Send command to a seat_number
+const char* receiver_command_seat_topic_fmt = "%s/%s/cmd_seat/%d"; //,"seat_number");
 
 //3 Send command to a specific receiver
 const char* receiver_command_targeted_topic_fmt = "%s/%s/cmd_target/%s";//,"receiver_serial_num")
@@ -90,12 +90,12 @@ const char* receiver_active_topic_fmt = "%s/%s/active/%s";//,"receiver_serial_nu
 //6 Make a request to all receivers (all receivers reply)
 const char* receiver_request_all_topic_fmt = "%s/%s/req_all";
 
-//7 Make a request to all nodes at a node number (all nodes at that node_number reply)
-const char* receiver_request_node_all_topic_fmt = "%s/%s/req_node_all/%d";//, None)
+//7 Make a request to all seats at a seat number (all seats at that seat_number reply)
+const char* receiver_request_seat_all_topic_fmt = "%s/%s/req_seat_all/%d";//, None)
 
-//8 Make a request to the active node at a node index
-// Only the active receiver at that node replies
-const char* receiver_request_node_active_topic_fmt = "%s/%s/req_node_active/%d";//,"node_number")
+//8 Make a request to the active seat at a seat index
+// Only the active receiver at that seat replies
+const char* receiver_request_seat_active_topic_fmt = "%s/%s/req_seat_active/%d";//,"seat_number")
 
 //9 Make a request to a specific receiver
 const char* receiver_request_targeted_topic_fmt = "%s/%s/req_target/%s";//,"receiver_serial_num")
@@ -105,11 +105,11 @@ const char* receiver_request_targeted_topic_fmt = "%s/%s/req_target/%s";//,"rece
 //10 Response for all
 const char* receiver_response_all_topic_fmt = "%s/%s/resp_all";
 
-//11 Response for a node number
-const char* receiver_response_node_topic_fmt = "%s/%s/resp_node/%d";//, "*")
+//11 Response for a seat number
+const char* receiver_response_seat_topic_fmt = "%s/%s/resp_seat/%d";//, "*")
 
 //12 Connection status for receivers
-const char* receiver_connection_topic_fmt = "rxcn/%s";//, "node_number")
+const char* receiver_connection_topic_fmt = "rxcn/%s";//, "seat_number")
 
 //13
 const char* status_static_fmt = "status_static/%s"; // receiver_serial_number
@@ -125,8 +125,8 @@ const char* receiver_response_target_fmt = "%s/%s/resp_target/%s"; //receiver_se
 //16 All command topic for *ESP* 
 const char* receiver_command_esp_all_topic_fmt = "%s/%s/cmd_esp_all";
 
-//17 Send command to an *ESP* at a node_number
-const char* receiver_command_esp_node_topic_fmt = "%s/%s/cmd_esp_node/%d"; // node_number
+//17 Send command to an *ESP* at a seat_number
+const char* receiver_command_esp_seat_topic_fmt = "%s/%s/cmd_esp_seat/%d"; // seat_number
 
 //18 Send command to an *ESP* at a specific receiver
 const char* receiver_command_esp_targeted_topic_fmt = "%s/%s/cmd_esp_target/%s"; // receiver_serial_num
@@ -135,112 +135,112 @@ const char* receiver_command_esp_targeted_topic_fmt = "%s/%s/cmd_esp_target/%s";
 typedef struct
 {
     char* rx_cmd_all; //1
-    char* rx_cmd_node;  //2
+    char* rx_cmd_seat;  //2
     char* rx_cmd_targeted;  //3 
     char* rx_kick;  //4
     char* rx_active;    //5
     char* rx_req_all;   //6
-    char* rx_req_node_all;  //7
-    char* rx_req_node_active;   //8
+    char* rx_req_seat_all;  //7
+    char* rx_req_seat_active;   //8
     char* rx_req_targeted; //9
     char* rx_resp_all; //10
-    char* rx_resp_node; //11
+    char* rx_resp_seat; //11
     char* rx_conn;  //12
     char* rx_stat_static;   //13
     char* rx_stat_variable; //14
     char* rx_resp_target; //15
     char* rx_cmd_esp_all; //16
-    char* rx_cmd_esp_node; //17
+    char* rx_cmd_esp_seat; //17
     char* rx_cmd_esp_targeted; //18
 } mqtt_topics;
 
 //Allocate memory for the topic names
 char rx_cmd_all_topic[MAX_TOPIC_LEN]; //1
-char rx_cmd_node_topic[MAX_TOPIC_LEN];
+char rx_cmd_seat_topic[MAX_TOPIC_LEN];
 char rx_cmd_targeted_topic[MAX_TOPIC_LEN];
 char rx_kick_topic[MAX_TOPIC_LEN];
 char rx_active_topic[MAX_TOPIC_LEN];
 char rx_req_all_topic[MAX_TOPIC_LEN];
-char rx_req_node_all_topic[MAX_TOPIC_LEN];
-char rx_req_node_active_topic[MAX_TOPIC_LEN];
+char rx_req_seat_all_topic[MAX_TOPIC_LEN];
+char rx_req_seat_active_topic[MAX_TOPIC_LEN];
 char rx_req_targeted_topic[MAX_TOPIC_LEN];
 char rx_resp_all_topic[MAX_TOPIC_LEN];
-char rx_resp_node_topic[MAX_TOPIC_LEN];
+char rx_resp_seat_topic[MAX_TOPIC_LEN];
 char rx_conn_topic[MAX_TOPIC_LEN];
 char status_static_topic[MAX_TOPIC_LEN];
 char status_variable_topic[MAX_TOPIC_LEN];
 char rx_resp_targeted_topic[MAX_TOPIC_LEN];
 char rx_cmd_esp_all_topic[MAX_TOPIC_LEN];
-char rx_cmd_esp_node_topic[MAX_TOPIC_LEN];
+char rx_cmd_esp_seat_topic[MAX_TOPIC_LEN];
 char rx_cmd_esp_targeted_topic[MAX_TOPIC_LEN]; //18
 
 //Initialize the topics used in the struct
 mqtt_topics mtopics = {
     .rx_cmd_all=rx_cmd_all_topic, //1
-    .rx_cmd_node=rx_cmd_node_topic,
+    .rx_cmd_seat=rx_cmd_seat_topic,
     .rx_cmd_targeted=rx_cmd_targeted_topic,
     .rx_kick=rx_kick_topic,
     .rx_active=rx_active_topic,
     .rx_req_all=rx_req_all_topic,
-    .rx_req_node_all=rx_req_node_all_topic,
-    .rx_req_node_active=rx_req_node_active_topic,
+    .rx_req_seat_all=rx_req_seat_all_topic,
+    .rx_req_seat_active=rx_req_seat_active_topic,
     .rx_req_targeted=rx_req_targeted_topic,
     .rx_resp_all=rx_resp_all_topic,
-    .rx_resp_node=rx_resp_node_topic,
+    .rx_resp_seat=rx_resp_seat_topic,
     .rx_conn=rx_conn_topic,
     .rx_stat_static=status_static_topic,
     .rx_stat_variable=status_variable_topic,
     .rx_resp_target=rx_resp_targeted_topic, //15
     .rx_cmd_esp_all=rx_cmd_esp_all_topic, //16
-    .rx_cmd_esp_node=rx_cmd_esp_node_topic,
+    .rx_cmd_esp_seat=rx_cmd_esp_seat_topic,
     .rx_cmd_esp_targeted=rx_cmd_esp_targeted_topic, //18
 };
 
 
-void update_mqtt_pub_node_topics()
+void update_mqtt_pub_seat_topics()
 {
-    snprintf(mtopics.rx_resp_node,
+    snprintf(mtopics.rx_resp_seat,
         MAX_TOPIC_LEN,
-        receiver_response_node_topic_fmt,
+        receiver_response_seat_topic_fmt,
         DEVICE_TYPE,
         PROTOCOL_VERSION); 
 }
 
-void update_mqtt_sub_node_topics()
+void update_mqtt_sub_seat_topics()
 {
 
-    snprintf(mtopics.rx_cmd_node,
+    snprintf(mtopics.rx_cmd_seat,
             MAX_TOPIC_LEN,
-            receiver_command_node_topic_fmt,
+            receiver_command_seat_topic_fmt,
             DEVICE_TYPE,
             PROTOCOL_VERSION,
-            desired_node_number);
+            desired_seat_number);
 
-    snprintf(mtopics.rx_req_node_all,
+    snprintf(mtopics.rx_req_seat_all,
             MAX_TOPIC_LEN,
-            receiver_request_node_all_topic_fmt,
+            receiver_request_seat_all_topic_fmt,
             DEVICE_TYPE,
             PROTOCOL_VERSION,
-            desired_node_number);
+            desired_seat_number);
 
-    snprintf(mtopics.rx_req_node_active,
+    snprintf(mtopics.rx_req_seat_active,
             MAX_TOPIC_LEN,
-            receiver_request_node_active_topic_fmt,
+            receiver_request_seat_active_topic_fmt,
             DEVICE_TYPE,
             PROTOCOL_VERSION,
-            desired_node_number);
+            desired_seat_number);
             
-    snprintf(mtopics.rx_cmd_esp_node,
+    snprintf(mtopics.rx_cmd_esp_seat,
             MAX_TOPIC_LEN,
-            receiver_command_esp_node_topic_fmt,
+            receiver_command_esp_seat_topic_fmt,
             DEVICE_TYPE,
             PROTOCOL_VERSION,
-            desired_node_number);
+            desired_seat_number);
 }
 
 void update_mqtt_pub_topics()
 {
-    update_mqtt_pub_node_topics();
+    update_mqtt_pub_seat_topics();
 
     snprintf(mtopics.rx_conn,
             MAX_TOPIC_LEN,
@@ -268,7 +268,7 @@ void update_mqtt_pub_topics()
 
 void update_mqtt_sub_topics()
 {
-    update_mqtt_sub_node_topics();
+    update_mqtt_sub_seat_topics();
     
     snprintf(mtopics.rx_cmd_all, 
             MAX_TOPIC_LEN, 
@@ -370,50 +370,50 @@ static bool mqtt_subscribe_to_topics(esp_mqtt_client_handle_t client)
     bool sub_fail = false;
 
     sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_cmd_all);
-    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_cmd_node); 
+    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_cmd_seat); 
     sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_cmd_targeted);
     sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_kick);
     sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_active);
     sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_req_all);
-    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_req_node_all);
-    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_req_node_active);
+    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_req_seat_all);
+    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_req_seat_active);
     sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_req_targeted);
     sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_cmd_esp_all);
-    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_cmd_esp_node);
+    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_cmd_esp_seat);
     sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_cmd_esp_targeted);
     return !sub_fail;
 }
 
-static bool mqtt_unsubscribe_to_node_topics(esp_mqtt_client_handle_t client){
+static bool mqtt_unsubscribe_to_seat_topics(esp_mqtt_client_handle_t client){
     bool unsub_fail = false;
 
-    unsub_fail &= !mqtt_unsubscribe_single(client, mtopics.rx_cmd_node); 
-    unsub_fail &= !mqtt_unsubscribe_single(client, mtopics.rx_req_node_all);
-    unsub_fail &= !mqtt_unsubscribe_single(client, mtopics.rx_req_node_active);
-    unsub_fail &= !mqtt_unsubscribe_single(client, mtopics.rx_cmd_esp_node);
+    unsub_fail &= !mqtt_unsubscribe_single(client, mtopics.rx_cmd_seat); 
+    unsub_fail &= !mqtt_unsubscribe_single(client, mtopics.rx_req_seat_all);
+    unsub_fail &= !mqtt_unsubscribe_single(client, mtopics.rx_req_seat_active);
+    unsub_fail &= !mqtt_unsubscribe_single(client, mtopics.rx_cmd_esp_seat);
     return !unsub_fail;
 }
 
-static bool mqtt_subscribe_to_node_topics(esp_mqtt_client_handle_t client){
+static bool mqtt_subscribe_to_seat_topics(esp_mqtt_client_handle_t client){
     bool sub_fail = false;
 
-    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_cmd_node); 
-    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_req_node_all);
-    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_req_node_active);
-    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_cmd_esp_node);
+    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_cmd_seat); 
+    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_req_seat_all);
+    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_req_seat_active);
+    sub_fail &= !mqtt_subscribe_single(client, mtopics.rx_cmd_esp_seat);
     return !sub_fail;
 }
 
-extern bool update_subscriptions_new_node()
+extern bool update_subscriptions_new_seat()
 {
     if (_client_conn){ //only update subscriptions if connected to broker. 
-        if (!mqtt_unsubscribe_to_node_topics(mqtt_client)) {
+        if (!mqtt_unsubscribe_to_seat_topics(mqtt_client)) {
             ESP_LOGW("update_subs", "Unsub failure");
         }
-        update_mqtt_sub_node_topics();
-        return mqtt_subscribe_to_node_topics(mqtt_client);
+        update_mqtt_sub_seat_topics();
+        return mqtt_subscribe_to_seat_topics(mqtt_client);
     } else { //just change the stored topic names
-        update_mqtt_sub_node_topics();
+        update_mqtt_sub_seat_topics();
         return true;
     }
 }
@@ -447,9 +447,9 @@ static void mqtt_publish_retained(esp_mqtt_client_handle_t client, char* topic, 
 }
 
 void send_variable_status(esp_mqtt_client_handle_t client){
-    size_t needed = snprintf(NULL, 0, VARIABLE_STATUS_FMT, desired_node_number)+1;
+    size_t needed = snprintf(NULL, 0, VARIABLE_STATUS_FMT, desired_seat_number)+1;
     char* message = (char*)malloc(needed);
-    snprintf(message, needed, VARIABLE_STATUS_FMT, desired_node_number);
+    snprintf(message, needed, VARIABLE_STATUS_FMT, desired_seat_number);
     mqtt_publish_to_topic(client, mtopics.rx_stat_variable, message);
     free(message);
 }
@@ -478,12 +478,12 @@ static bool process_command_esp(esp_mqtt_client_handle_t client, char* cmd){
         return true;
     }
 
-    match = NODE_SET_CMD;
+    match = SEAT_SET_CMD;
     if (strncmp(cmd,match,strlen(match))==0) {
-        char* new_node_num = malloc(strlen("0")); //allocate for null terminated 1 character string
-        strcpy(new_node_num,cmd + strlen(match));
-        if (set_credential("node_number", new_node_num)){
-            update_subscriptions_new_node();
+        char* new_seat_num = malloc(strlen("0")); //allocate for null terminated 1 character string
+        strcpy(new_seat_num,cmd + strlen(match));
+        if (set_credential("seat_number", new_seat_num)){
+            update_subscriptions_new_seat();
             return true;
         }
     }
@@ -544,20 +544,20 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
             return true;
         } 
 
-        match = "node/";
-        if (strncmp(topic,match,strlen(match))==0) { // <topic_header>cmd_node/
+        match = "seat/";
+        if (strncmp(topic,match,strlen(match))==0) { // <topic_header>cmd_seat/
             topic += strlen(match);
             topic_len -= strlen(match);
 
-            //match node number
-            long int node_num_parsed = strtol(topic,NULL,10);
-            if (node_num_parsed == desired_node_number){
-                ESP_LOGI(ptag, "matched cmd_node/<node_number>");
+            //match seat number
+            long int seat_num_parsed = strtol(topic,NULL,10);
+            if (seat_num_parsed == desired_seat_number){
+                ESP_LOGI(ptag, "matched cmd_seat/<seat_number>");
                 cvuart_send_command(data);
                 return true;
             } else {
                 //TODO output an error message on an MQTT_Error Topic
-                ESP_LOGW(ptag, "Nonmatching node number. Got %ld. Expected %d",node_num_parsed,desired_node_number );
+                ESP_LOGW(ptag, "Nonmatching seat number. Got %ld. Expected %d",seat_num_parsed,desired_seat_number );
                 return false; //short circuit the rest of the parser
             }
 
@@ -594,23 +594,23 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
                 return true;
             } //end match_cmd_esp_all
 
-            match = "node/";
-            if (strncmp(topic,match,strlen(match))==0) { // <topic_header>cmd_node/
+            match = "seat/";
+            if (strncmp(topic,match,strlen(match))==0) { // <topic_header>cmd_seat/
                 topic += strlen(match);
                 topic_len -= strlen(match);
 
-                //match node number
-                long int node_num_parsed = strtol(topic,NULL,10);
-                if (node_num_parsed == desired_node_number){
-                    ESP_LOGI(ptag, "matched cmd_esp_node/<node_number>");
+                //match seat number
+                long int seat_num_parsed = strtol(topic,NULL,10);
+                if (seat_num_parsed == desired_seat_number){
+                    ESP_LOGI(ptag, "matched cmd_esp_seat/<seat_number>");
                     process_command_esp(client,data);
                     return true;
                 } else {
                     //TODO output an error message on an MQTT_Error Topic
-                    ESP_LOGW(ptag, "Nonmatching node number. Got %ld. Expected %d",node_num_parsed,desired_node_number );
+                    ESP_LOGW(ptag, "Nonmatching seat number. Got %ld. Expected %d",seat_num_parsed,desired_seat_number );
                     return false; //short circuit the rest of the parser
                 }
-            } //end match_cmd_esp_node/
+            } //end match_cmd_esp_seat/
             
             match = "target/";
             if (strncmp(topic,match,strlen(match))==0) { // <topic_header>cmd_target/
@@ -655,15 +655,15 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
             return true;
         } 
 
-        match = "node_all/";
-        if (strncmp(topic,match,strlen(match))==0) { // <topic_header>req_node_all/
+        match = "seat_all/";
+        if (strncmp(topic,match,strlen(match))==0) { // <topic_header>req_seat_all/
             topic += strlen(match);
             topic_len -= strlen(match);
 
-            //match node number
-            long int node_num_parsed = strtol(topic,NULL,10);
-            if (node_num_parsed == desired_node_number){
-                ESP_LOGI(ptag, "matched req_node_all/<node_number> => '%s'", data);
+            //match seat number
+            long int seat_num_parsed = strtol(topic,NULL,10);
+            if (seat_num_parsed == desired_seat_number){
+                ESP_LOGI(ptag, "matched req_seat_all/<seat_number> => '%s'", data);
                 int repCount = cvuart_send_report(data, dataRx);
                 if (repCount > 0){
                     mqtt_publish_to_topic(client, mtopics.rx_resp_target, (char* )dataRx);
@@ -675,21 +675,21 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
                 return true;
             } else {
                 //TODO output an error message on an MQTT_Error Topic
-                ESP_LOGW(ptag, "Nonmatching node number. Got %ld. Expected %d",node_num_parsed,desired_node_number );
+                ESP_LOGW(ptag, "Nonmatching seat number. Got %ld. Expected %d",seat_num_parsed,desired_seat_number );
                 free(dataRx);
                 return false; //short circuit the rest of the parser
             }
         } 
 
-        match = "node_active/";
-        if (strncmp(topic,match,strlen(match))==0) { // <topic_header>req_node_active/
+        match = "seat_active/";
+        if (strncmp(topic,match,strlen(match))==0) { // <topic_header>req_seat_active/
             topic += strlen(match);
             topic_len -= strlen(match);
 
-            //match node number
-            long int node_num_parsed = strtol(topic,NULL,10);
-            if (node_num_parsed == desired_node_number){
-                ESP_LOGI(ptag, "matched req_node_active/<node_number>");
+            //match seat number
+            long int seat_num_parsed = strtol(topic,NULL,10);
+            if (seat_num_parsed == desired_seat_number){
+                ESP_LOGI(ptag, "matched req_seat_active/<seat_number>");
                 int repCount = cvuart_send_report(data, dataRx);
                 if (repCount > 0){
                     mqtt_publish_to_topic(client, mtopics.rx_resp_target, (char* )dataRx);
@@ -701,7 +701,7 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
                 return true;
             } else {
                 //TODO output an error message on an MQTT_Error Topic
-                ESP_LOGW(ptag, "Nonmatching node number. Got %ld. Expected %d",node_num_parsed,desired_node_number );
+                ESP_LOGW(ptag, "Nonmatching seat number. Got %ld. Expected %d",seat_num_parsed,desired_seat_number );
                 free(dataRx);
                 return false; //short circuit the rest of the parser
             }

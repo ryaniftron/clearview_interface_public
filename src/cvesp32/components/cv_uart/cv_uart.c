@@ -166,7 +166,7 @@ extern int cvuart_send_report(const char* data, uint8_t* dataRx)
     const int rxBytes = uart_read_bytes(UART_NUM, dataRx, RX_BUF_SIZE, respone_wait_tics);
     if (rxBytes > 0) {
         dataRx[rxBytes] = 0;
-        ESP_LOGD(logName, "Read %d bytes: '%s'", rxBytes, dataRx);
+        ESP_LOGI(logName, "Read %d bytes: '%s'", rxBytes, dataRx);
         //ESP_LOG_BUFFER_HEXDUMP(RX_TASK_TAG, data, rxBytes, ESP_LOG_INFO);
     } else {
         ESP_LOGI(logName, "No data available in rx buffer\n");

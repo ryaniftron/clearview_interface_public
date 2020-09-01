@@ -72,7 +72,10 @@ There is code [here](https://github.com/keithhackbarth/submitAsJSON) that may be
 If the API request is formatted or other error occurs, the following may be returned 
 
 * `error-no_comms` - it means the cv is not responding to the UART requests
-Perhaps there is a firmware version mismatch or cabling issue
+   * UI message: `Error: No response from the ClearView Video Receiver`
+   * Perhaps there is a firmware version mismatch or cabling issue
+* `error-no_wifi` - it means that the esp32 is no longer connected over wifi to the phone
+   * UI message: `Error: No WiFi connection to dongle`
 * `error-invalid_endpoint` - the api endpoint requested does not exist
 * `error-write` - this parameter is intended to be read-only
 * `error-read` - this parameter is intended to be write-only

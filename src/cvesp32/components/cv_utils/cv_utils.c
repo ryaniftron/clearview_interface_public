@@ -23,12 +23,10 @@ char desired_ap_ssid[WIFI_CRED_MAXLEN];
 char desired_ap_pass[WIFI_CRED_MAXLEN];
 char desired_friendly_name[WIFI_CRED_MAXLEN];
 char desired_mqtt_broker_ip[WIFI_CRED_MAXLEN];
-uint8_t desired_node_number;
+uint8_t desired_seat_number;
 
 #define NVS_KSIZE 16 //Including null
 static bool _nvs_is_init = false;
-
-bool nn_update_needed = false; //node number needs to be updated
 
 extern void get_chip_id(char* ssid, const int LEN){
     //TODO it's reverse order. Try this instead https://github.com/espressif/arduino-esp32/issues/932#issuecomment-352307067
@@ -79,17 +77,17 @@ extern bool set_credential(char* credentialName, char* val){
         set_nvs_strval(nvs_fname, val); //no checks needed. set directly here
     } else if (strcmp(credentialName, "broker_ip") == 0) {
         strcpy(desired_mqtt_broker_ip, val);
-    } else if (strcmp(credentialName, "node_number") == 0) {
+    } else if (strcmp(credentialName, "seat") == 0) {
         if (0 <= atoi(val) && atoi(val) <= 7){ //TODO don't use ATOI
-            int new_node_number = atoi(val);
-            if (desired_node_number == new_node_number){
-                ESP_LOGW(TAG_UTILS, "No change in node_number");
+            int new_seat_number = atoi(val);
+            if (desired_seat_number == new_seat_number){
+                ESP_LOGW(TAG_UTILS, "No change in seat_number");
                 return false;
             }
-            desired_node_number = atoi(val);
-            set_nvs_u8val((CV_NVS_KEY) nvs_node_number, desired_node_number);
+            desired_seat_number = atoi(val);
+            set_nvs_u8val((CV_NVS_KEY) nvs_seat_number, desired_seat_number);
         } else {
-            ESP_LOGE(TAG_UTILS, "Ignoring node_number out of range");
+            ESP_LOGE(TAG_UTILS, "Ignoring seat_number out of range");
             return false;
         }
         
@@ -164,8 +162,8 @@ static void get_nvs_str_from_enum(CV_NVS_KEY k, char* nvs_str) {
         case nvs_broker_ip:
             strcpy(nvs_str,"broker_ip");
             break;
-        case nvs_node_number:
-            strcpy(nvs_str,"node_num");
+        case nvs_seat_number:
+            strcpy(nvs_str,"seat_num");
             break;
         default:
             ESP_LOGE(TAG_UTILS, "Invalid NVS key");
@@ -196,8 +194,8 @@ static bool initialize_default_nvs(CV_NVS_KEY k, nvs_handle_t nh){
             err = nvs_set_str(nh, kstr, CONFIG_BROKER_IP);
             get_nvs_value(k);
             break;
-        case nvs_node_number:
-            err = nvs_set_u8(nh, kstr, CONFIG_NODE_NUMBER);
+        case nvs_seat_number:
+            err = nvs_set_u8(nh, kstr, CONFIG_SEAT_NUMBER);
             get_nvs_value(k);
             break;
         default:
@@ -266,10 +264,10 @@ extern bool get_nvs_value(CV_NVS_KEY nvs_key){
             }
             free(str_val);
             break;
-        case nvs_node_number:
+        case nvs_seat_number:
             err = nvs_get_u8(nh, kstr, &u8_val);
             if (err==ESP_OK){
-                desired_node_number = u8_val;
+                desired_seat_number = u8_val;
                 printf("'%u'", u8_val);
             }
             break;
@@ -303,7 +301,7 @@ static bool load_all_nvs(void){
     load_succ &= get_nvs_value(nvs_wifi_pass);
     load_succ &= get_nvs_value(nvs_fname);
     load_succ &= get_nvs_value(nvs_broker_ip);
-    load_succ &= get_nvs_value(nvs_node_number);
+    load_succ &= get_nvs_value(nvs_seat_number);
     return load_succ;
 }
 
