@@ -1,6 +1,9 @@
 #ifndef CV_SERVER_C
 #define CV_SERVER_C
 
+#define WRITE_THEN_READ 1
+
+
 #include <esp_event.h>
 #include <esp_log.h>
 #include <cJSON.h>
@@ -87,6 +90,8 @@ extern const uint8_t menu_bar_end[] asm("_binary_menuBar_html_end");
 #define CV_API_REQ_REPORT "req_report"
 #define CV_API_MAC_ADDR "mac_addr"
 
+#define CV_READ_Q "?"
+
 //TODO make these a struct
 bool ssid_ready = false;
 bool password_ready = false;
@@ -151,6 +156,8 @@ void kv_api_parse_car(struct cv_api_read* car, char* k, char* v) {
         get_channel(car);
     }else if (strncmp(k, CV_API_BAND, strlen(k)) == 0){
         get_band(car);
+    }else if (strncmp(k, CV_API_ID, strlen(k)) == 0){
+        get_id(car);
     }else if (strncmp(k, CV_API_REQ_REPORT, strlen(k)) == 0){
         get_custom_report(v, car);
     }else if (strncmp(k, CV_API_SEAT, strlen(k)) == 0){
@@ -170,6 +177,8 @@ void kv_api_parse_car(struct cv_api_read* car, char* k, char* v) {
         get_cvcm_version_all(car);
     }else if (strncmp(k, CV_API_MAC_ADDR, strlen(k)) == 0){
         get_mac_addr(car);
+    }else if (strncmp(k, CV_API_VIDEO_FORMAT, strlen(k)) == 0){
+        get_videoformat(car);
     } else {
         CV_LOGE(TAG,"Unknown request key of '%s'",k );
         car->success = false;
@@ -201,9 +210,11 @@ void kv_api_parse_caw(struct cv_api_write* caw, char* k, char* v) {
         caw_nvs_write(caw, k, v);
     } else if (strncmp(k, CV_API_ANTENNA, strlen(k)) == 0){
         set_antenna(v, caw);
+    } else if (strncmp(k, CV_API_BAND, strlen(k)) == 0){
+        set_band(v, caw);
     } else if (strncmp(k, CV_API_CHANNEL, strlen(k)) == 0){
         set_channel(v, caw);
-    } else if (strncmp(k, CV_API_BAND, strlen(k)) == 0){
+    } else if (strncmp(k, CV_API_ID, strlen(k)) == 0){
         set_id(v, caw);
     } else if (strncmp(k, CV_API_USER_MESSAGE, strlen(k)) == 0){
         set_usermsg(v, caw);
@@ -223,7 +234,7 @@ static cJSON* run_kv_api(char* k, char* v){
     //char* TAG = "cv_server->run_kv_api";
     cJSON* ret = cJSON_CreateObject();
     // if it's a request, run request and return
-    if (strncmp(v, "?",strlen(v)) == 0 || strncmp(k,CV_API_REQ_REPORT,strlen(CV_API_REQ_REPORT)) == 0){
+    if (strncmp(v, CV_READ_Q ,strlen(v)) == 0 || strncmp(k,CV_API_REQ_REPORT,strlen(CV_API_REQ_REPORT)) == 0){
         struct cv_api_read car;
         struct cv_api_read*carptr = &car;
         kv_api_parse_car(carptr, k, v);
@@ -233,6 +244,16 @@ static cJSON* run_kv_api(char* k, char* v){
         struct cv_api_write* cawptr = &caw;    
         kv_api_parse_caw(cawptr, k, v);
         add_response_to_json_caw(ret, k , cawptr, v);
+        #ifdef WRITE_THEN_READ
+            // If write success, then do a read and replace the value
+            if (cawptr->success){
+                struct cv_api_read car;
+                struct cv_api_read*carptr = &car;
+                vTaskDelay(2000 / portTICK_PERIOD_MS); //Delay 100ms between write and read
+                kv_api_parse_car(carptr, k, CV_READ_Q);
+                add_response_to_json_car(ret, k, carptr); // TODO is the response added or modified?
+            }
+        #endif
     }
     return ret;
 }

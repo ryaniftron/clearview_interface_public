@@ -169,7 +169,7 @@ extern int cvuart_send_report(const char* data, uint8_t* dataRx)
         ESP_LOGD(logName, "Read %d bytes: '%s'", rxBytes, dataRx);
         //ESP_LOG_BUFFER_HEXDUMP(RX_TASK_TAG, data, rxBytes, ESP_LOG_INFO);
     } else {
-        ESP_LOGI(logName, "No data available in buffer\n");
+        ESP_LOGI(logName, "No data available in rx buffer\n");
     }
     //free(dataRx);
     return rxBytes;

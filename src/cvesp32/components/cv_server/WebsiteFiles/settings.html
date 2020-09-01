@@ -84,6 +84,30 @@
 <script>
     document.title = "CVCM Settings";
 
+    function receive_data(msg) {
+        for (var k in msg) {
+            var v = msg[k]
+            console.log(k + "-> " + msg[k])
+            if (k == "req_report") {
+                document.getElementById(k).innerHTML="Response:" + "'" + msg[k]+ "'"
+            } else {
+                var domEl = document.getElementById(k);
+                var domElType = domEl.type
+                var jqEl = $(domEl);
+
+                var domElOp = domEl.querySelector('[value="' + v + '"]');
+                if (domElOp != null) {
+                    domElOp.value = v
+                } else {
+                    console.log("TODO: Process error id " + k)
+                }
+                // el.innerHTML=k[msg]
+            }
+        }
+    }
+
+    
+
     function send_form(jsondata){
       console.log("Sending JSON form to server:" + jsondata)  
       var request = $.ajax({
@@ -93,18 +117,7 @@
             data: jsondata,
             contentType: "application/json",
             processData: false,
-            success: function(msg) {
-              for (var k in msg) {
-                console.log(k + "-> " + msg[k])
-                if (k == "req_report") {
-                    document.getElementById(k).innerHTML="Response:" + "'" + msg[k]+ "'"
-                } else {
-                    var el = document.getElementById(k);
-                    console.log("TODO: Process id " + k)
-                    // el.innerHTML=k[msg]
-                }
-              }
-            }
+            success: receive_data
         })
         .done(function(data){
             console.log("Done")

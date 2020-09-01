@@ -34,11 +34,12 @@ extern bool parse_command_payload(char* full_cmd, char* payload);
 // CV Getters
 extern void get_band(struct cv_api_read* ret);
 extern void get_channel(struct cv_api_read* ret);
+extern void get_id(struct cv_api_read* ret);
 extern void get_custom_report(char* report, struct cv_api_read* ret);
 extern void get_cvcm_version(struct cv_api_read* ret);
 extern void get_cvcm_version_all(struct cv_api_read* ret);
 extern void get_mac_addr(struct cv_api_read* ret);
-
+extern void get_videoformat(struct cv_api_read* ret);
 
 
 // CV Setters
