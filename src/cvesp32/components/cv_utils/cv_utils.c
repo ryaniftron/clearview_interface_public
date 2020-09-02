@@ -96,7 +96,6 @@ extern bool set_credential(char* credentialName, char* val){
         return false;
     }
 
-    //Todo store the value in eeprom
     return true; //successful value set
 }
 

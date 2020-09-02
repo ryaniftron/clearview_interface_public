@@ -1,6 +1,7 @@
 console.log("cv_js_loaded")
 
 $(document).ready(function(){
+    $("select").val("");
     $("select").change( field_change); //attach the field change event to field_change
 });
 
@@ -31,12 +32,11 @@ function process_error_reply(domEl, k, v_new){
 function receive_data(msg) {
     for (var k in msg) {
         var v = msg[k]
-        // console.log(k + "-> " + msg[k])
+        console.log("Received kv pair:" + k + "-> " + msg[k])
         if (k == "req_report") {
             document.getElementById(k).innerHTML="Response:" + "'" + msg[k]+ "'"
         } else {
             var domEl = document.getElementById(k);
-            console.log(k)
             var jqEl = $(domEl);
             var domElTagName = domEl.tagName
             if (domElTagName == "INPUT"){
@@ -50,7 +50,7 @@ function receive_data(msg) {
             
             if (domElOpt != null) {
                 if (domElTagName == "SELECT") { //select got a valid reply
-                    domElOpt.value = v
+                    domEl.value = v
                     $("#" + k).css("background","rgb(0,200,0)");
                     $("#error_" + k).slideUp().hide();
                 } else if (domElTagName == "INPUT"){ //text got some reply
@@ -67,6 +67,7 @@ function receive_data(msg) {
                         $("#" + k).css("background","rgb(200,0,0)");
                         process_error_reply(domEl, k, v);
                     } else {
+                        if (k == "seat") { v = (parseInt(v)+1).toString(10);}
                         domEl.innerText = v
                         $("#" + k).css("background","rgb(0,200,0)");
                         $("#error_" + k).slideUp().hide();

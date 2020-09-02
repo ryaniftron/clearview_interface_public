@@ -94,6 +94,7 @@ extern const uint8_t menu_bar_end[] asm("_binary_menuBar_html_end");
 #define CV_API_SEND_CMD "send_cmd"
 #define CV_API_REQ_REPORT "req_report"
 #define CV_API_MAC_ADDR "mac_addr"
+#define CV_API_WIFI_MODE "wifi_mode"
 
 #define CV_READ_Q "?"
 
@@ -178,6 +179,22 @@ void kv_api_parse_car(struct cv_api_read* car, char* k, char* v) {
             car->success = false;
             car->api_code = CV_ERROR_NVS_READ;
         }
+    }else if (strncmp(k, CV_API_SSID, strlen(k)) == 0){
+        //get_nvs_value(nvs_wifi_ssid); //Don't read from nvs because it will overright the local value
+        car->val = desired_ap_ssid;
+        car->api_code = CV_OK;
+    }else if (strncmp(k, CV_API_PASSWORD, strlen(k)) == 0){
+        //get_nvs_value(nvs_wifi_pass); //Don't read from nvs because it will overright the local value
+        car->val = desired_ap_pass;
+        car->api_code = CV_OK;
+    }else if (strncmp(k, CV_API_DEVICE_NAME, strlen(k)) == 0){
+        //get_nvs_value(nvs_...); //Don't read from nvs because it will overright the local value
+        car->val = desired_friendly_name;
+        car->api_code = CV_OK;
+    }else if (strncmp(k, CV_API_BROKER_IP, strlen(k)) == 0){
+        //get_nvs_value(nvs_...); //Don't read from nvs because it will overright the local value
+        car->val = desired_mqtt_broker_ip;
+        car->api_code = CV_OK;
     } else if (strncmp(k, CV_API_CVCM_VERSION, strlen(k)) == 0){
         get_cvcm_version(car);
     } else if (strncmp(k, CV_API_CVCM_VERSION_ALL, strlen(k)) == 0){
@@ -189,6 +206,8 @@ void kv_api_parse_car(struct cv_api_read* car, char* k, char* v) {
     } else if (strncmp(k, CV_API_USER_MESSAGE, strlen(k)) == 0){
         car->success = false;
         car->api_code = CV_ERROR_READ;
+    }else if (strncmp(k, CV_API_WIFI_MODE, strlen(k)) == 0){
+        get_band(car);
     } else {
         CV_LOGE(TAG,"Unknown request key of '%s'",k );
         car->success = false;
