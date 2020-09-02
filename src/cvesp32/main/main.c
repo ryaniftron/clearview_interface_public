@@ -113,18 +113,8 @@ void app_main(void)
         run_cv_uart_test_task();
     #else //Normal program logic
         //Start Wifi
-        #if CONFIG_STARTUP_WIFI_STA | CONFIG_STA_ALLOWED
-            strcpy(desired_ap_ssid, AP_TARGET_SSID);
-            strcpy(desired_ap_pass, AP_TARGET_PASS);
-            strcpy(desired_mqtt_broker_ip, CONFIG_BROKER_IP);
-            strcpy(desired_friendly_name, CONFIG_FRIENDLY_NAME);
-            //strcpy(seat_number, CONFIG_SEAT_NUMBER);
-            initialise_sta_wifi(chipid);
-        #elif CONFIG_STARTUP_WIFI_SOFTAP 
-            demo_sequential_wifi(chipid, UNIQUE_ID_LENGTH); //this returns on successful connection
-        #elif CONFIG_SOFTAP_ALLOWED
-            initialize_softAP_wifi(chipid, UNIQUE_ID_LENGTH);
-        #endif //SKIP_SOFTAP
+        start_wifi(chipid, UNIQUE_ID_LENGTH);
+        
         //only after in sequential wifi do we start mqtt. Give it some time
         vTaskDelay(2000 / portTICK_PERIOD_MS);
 

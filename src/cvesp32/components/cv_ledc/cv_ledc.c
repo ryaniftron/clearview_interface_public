@@ -5,6 +5,8 @@
 #include "driver/ledc.h"
 #include "sdkconfig.h"
 #include "esp_log.h"
+#include "string.h"
+
 
 
 //This file uses two methods for controlling the LED: gpio and ledc.
@@ -68,6 +70,65 @@ ledc_channel_config_t ledc_channel[LEDC_CH_NUM] = {
         .timer_sel  = LEDC_HS_TIMER
     },
 };
+
+extern void set_led(char* value, struct cv_api_write* cawptr){
+    cawptr->success = true;
+    cawptr->api_code = CV_OK;
+    if (strncmp(value, "on", strlen(value))==0){
+        set_ledc_code(0, led_on);
+    } else if (strncmp(value, "off", strlen(value))==0){
+        set_ledc_code(0, led_off);
+    }else if (strncmp(value, "breathe_slow", strlen(value))==0){
+        set_ledc_code(0, led_breathe_slow);
+    }else if (strncmp(value, "breathe_fast", strlen(value))==0){
+        set_ledc_code(0, led_breathe_fast);
+    }else if (strncmp(value, "blink_slow", strlen(value))==0){
+        set_ledc_code(0, led_blink_slow);
+    }else if (strncmp(value, "blink_fast", strlen(value))==0){
+        set_ledc_code(0, led_blink_fast);
+    }else {
+        ESP_LOGE(TAG_LEDC, "Unknown set_led value %s", value);
+        cawptr->success = false;
+        cawptr->api_code = CV_ERROR_VALUE;
+    }
+}
+
+static CV_LED_Code_t get_ledc_code(int channel){
+    //TODO this only reads channel 0
+    return _led_state;
+}
+
+extern void get_led(struct cv_api_read* carptr, int channel){
+
+
+    carptr->success = true;
+    carptr->api_code = CV_OK;
+    switch(get_ledc_code(channel))
+    {
+        case led_off:
+            carptr->val="off";
+            break;
+        case led_on:
+            carptr->val="on";
+            break;
+        case led_breathe_fast:
+            carptr->val="breathe_fast";
+            break;
+        case led_breathe_slow:
+            carptr->val="breathe_slow";
+            break;
+        case led_blink_fast:
+            carptr->val="blink_fast";
+            break;
+        case led_blink_slow:
+            carptr->val="blink_slow";
+            break;
+        default:
+            ESP_LOGE(TAG_LEDC, "Unknown ledc code");
+            carptr->success=false;
+            carptr->api_code=CV_ERROR_VALUE;
+    }
+}
 
 //For some of the constant states, only need to tell LED what to do once
 void _change_led_state(ledc_channel_config_t led_channel_conft){

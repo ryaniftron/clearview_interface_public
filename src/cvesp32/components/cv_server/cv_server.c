@@ -19,6 +19,7 @@
 #include "cv_ledc.h"
 #include "cv_api.h"
 #include "cv_utils.h"
+#include "cv_wifi.h"
 
 #ifndef MIN
 #define MIN(a,b) (((a)<(b))?(a):(b)) //where does this come from? see http_server_simple example
@@ -65,11 +66,6 @@ extern const uint8_t menu_bar_end[] asm("_binary_menuBar_html_end");
 #endif
 
 
-
-// URI Defines
-#define CV_CONFIG_WIFI_URI "/wifi"
-#define CV_CONFIG_WIFI_INSTANT_URI "/wifi_instant"
-
 // API ENDPOINTS
 #define CV_API_ADDRESS "address"
 #define CV_API_SSID "ssid"
@@ -94,15 +90,15 @@ extern const uint8_t menu_bar_end[] asm("_binary_menuBar_html_end");
 #define CV_API_SEND_CMD "send_cmd"
 #define CV_API_REQ_REPORT "req_report"
 #define CV_API_MAC_ADDR "mac_addr"
-#define CV_API_WIFI_MODE "wifi_mode"
+#define CV_API_WIFI_STATE "wifi_state"
 
 #define CV_READ_Q "?"
 
-//TODO make these a struct
-bool ssid_ready = false;
-bool password_ready = false;
-bool device_name_ready = false;
-bool broker_ip_ready = false;
+// //TODO Deprecated
+// bool ssid_ready = false;
+// bool password_ready = false;
+// bool device_name_ready = false;
+// bool broker_ip_ready = false;
 
 //Return 0 if content type is json
 static int is_content_json(httpd_req_t *req){
@@ -135,6 +131,7 @@ void add_response_to_json_car(cJSON* ret, char* k, struct cv_api_read* car){
         else if (car->api_code == CV_ERROR_NVS_READ) {cJSON_AddStringToObject(ret, k, "error-nvs_read");}
         else {CV_LOGE("artjc", "Unknown car->api_code");}
     }
+    //if (car->val != NULL) free(car->val); //TODO memory needs freeing
 }
 
 void add_response_to_json_caw(cJSON* ret, char* k, struct cv_api_write* caw, char* v) {
@@ -203,11 +200,24 @@ void kv_api_parse_car(struct cv_api_read* car, char* k, char* v) {
         get_mac_addr(car);
     }else if (strncmp(k, CV_API_VIDEO_FORMAT, strlen(k)) == 0){
         get_videoformat(car);
+    }else if (strncmp(k, CV_API_LED, strlen(k)) == 0){
+        get_led(car, 0);//channel 0
     } else if (strncmp(k, CV_API_USER_MESSAGE, strlen(k)) == 0){
         car->success = false;
         car->api_code = CV_ERROR_READ;
-    }else if (strncmp(k, CV_API_WIFI_MODE, strlen(k)) == 0){
-        get_band(car);
+    }else if (strncmp(k, CV_API_WIFI_STATE, strlen(k)) == 0){
+        CV_WIFI_MODE wifimode = get_wifi_mode();
+        ESP_LOGI(TAG_SERVER, "Reading wifi state");
+        car->success = true;
+        car->api_code=CV_OK;
+        if (wifimode == CVWIFI_STA)
+            car->val = "sta";
+        else if (wifimode == CVWIFI_AP)
+            car->val = "ap";
+        else {
+            car->success = false;
+            car->api_code = CV_ERROR_VALUE;
+        }
     } else {
         CV_LOGE(TAG,"Unknown request key of '%s'",k );
         car->success = false;
@@ -251,8 +261,31 @@ void kv_api_parse_caw(struct cv_api_write* caw, char* k, char* v) {
         set_usermsg(v, caw);
     } else if (strncmp(k, CV_API_VIDEO_FORMAT, strlen(k)) == 0){
         set_videoformat(v, caw);
+    } else if (strncmp(k, CV_API_LED, strlen(k)) == 0){
+        set_led(v, caw);
     } else if (strncmp(k, CV_API_SEND_CMD, strlen(k)) == 0) {
         set_custom_w(v, caw);
+    } else if (strncmp(k, CV_API_WIFI_STATE, strlen(k))== 0) {
+        //TODO put in own function
+        CV_WIFI_STATE_MSG state_msg;
+        if (strncmp(v,"ap", strlen(v)) == 0){
+            state_msg = set_wifi_mode(CVWIFI_AP);
+        } else if (strncmp(v, "sta", strlen(v)) == 0){
+            state_msg = set_wifi_mode(CVWIFI_STA);
+        } else {
+            ESP_LOGW(TAG_SERVER, "Invalid wifi value of %s", v);
+            caw->success = false;
+            caw->api_code = CV_ERROR_VALUE;
+            return;
+        }
+        if (state_msg == CVWIFI_SUCCESS || state_msg == CVWIFI_NO_CHANGE){
+            caw->success = true;
+            caw->api_code = CV_OK;
+        } else {
+            caw->success = false;
+            caw->api_code = CV_ERROR_VALUE;
+        }
+        
     } else {
         CV_LOGE(TAG,"Unknown write key of '%s'",k );
         caw->success = false;
@@ -282,7 +315,7 @@ static cJSON* run_kv_api(char* k, char* v){
                 struct cv_api_read*carptr = &car;
                 vTaskDelay(1000 / portTICK_PERIOD_MS); //Delay 100ms between write and read
                 kv_api_parse_car(carptr, k, CV_READ_Q);
-                add_response_to_json_car(ret, k, carptr); // TODO is the response added or modified?
+                add_response_to_json_car(ret, k, carptr); 
             }
         #endif
     }
@@ -316,104 +349,6 @@ static cJSON* run_json_api(cJSON* obj)
     }
     return retJSON;
 }
-
-// static esp_err_t config_test_post_handler(httpd_req_t *req)
-// {
-//     char buf[100]; // TODO check expected behavior for buffer overflow
-//     char val[64];
-//     int ret, remaining = req->content_len;
-    
-//     while (remaining > 0) {
-//         /* Read the data for the request */
-//         if ((ret = httpd_req_recv(req, buf,
-//                         MIN(remaining, sizeof(buf)))) <= 0) {
-//             if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
-//                 /* Retry receiving if timeout occurred */
-//                 continue;
-//             }
-//             return ESP_FAIL;
-//         }
-        
-//         if (is_content_json(req) == 0) {
-//             ESP_LOGI(TAG_SERVER, "Content is json");
-//         } else {
-//             ESP_LOGI(TAG_SERVER, "Content not json");
-//         }
-
-//         if (httpd_query_key_value(buf, "UM", val, sizeof(val)) == ESP_OK) {
-//             remove_ctrlchars(val);
-//             ESP_LOGD(TAG_SERVER, "Setting user message string to: %s", val);
-//             set_usermsg(val);
-//             memset(&val[0], 0, sizeof(val));
-//         } 
-//         else if (httpd_query_key_value(buf, "RL", val, sizeof(val)) == ESP_OK) {
-//             ESP_LOGD(TAG_SERVER, "Found URL query parameter => Request Lock Status"); //unused param
-//             uint8_t* dataRx = (uint8_t*) malloc(RX_BUF_SIZE+1);
-//             int repCount = cvuart_send_report(LOCK_REPORT_FMT, dataRx);
-//             if (repCount > 0){
-//                 remove_ctrlchars((char*)dataRx);
-//                 httpd_resp_send_chunk(req, (char*)dataRx, HTTPD_RESP_USE_STRLEN);
-//             } else if (repCount == 0 ) {
-//                 httpd_resp_send_chunk(req, "No uart response", HTTPD_RESP_USE_STRLEN);
-//             } else if (repCount == -1) {
-//                 httpd_resp_send_chunk(req, "Error: uart disabled", HTTPD_RESP_USE_STRLEN);
-//             }
-//                 // cvuart_send_report("\n09RPMV%%\r", dataRx);
-//                 // cvuart_send_report("\n09RPVF%%\r", dataRx);
-//                 //cvuart_send_report("\n09RPID%%\r", dataRx);
-//                 //run_cv_uart_test_task();
-//             free(dataRx);
-//         } 
-//         else if (httpd_query_key_value(buf, "LED", val, sizeof(val)) == ESP_OK) {
-    
-//             #if CONFIG_ENABLE_LED
-//                 if ((strncmp(val, "ON", 2)) == 0){
-//                     httpd_resp_send_chunk(req, "LED ON", HTTPD_RESP_USE_STRLEN);
-//                     set_ledc_code(0, led_on);
-//                 } else if ((strncmp(val, "OFF", 3)) == 0){
-//                     httpd_resp_send_chunk(req, "LED OFF", HTTPD_RESP_USE_STRLEN);
-//                     set_ledc_code(0, led_off);
-//                 } else {
-//                     ESP_LOGE(TAG_SERVER, "Unsupported LED value of %s", val);
-//                     httpd_resp_send_chunk(req, "Error: unknown led state", HTTPD_RESP_USE_STRLEN);
-//                 }
-//             #else //not CONFIG_ENABLE_LED
-//                 httpd_resp_send_chunk(req, "Error: LED is disabled", HTTPD_RESP_USE_STRLEN);
-//             #endif //CONFIG_ENABLE_LED
-//         }
-//         else {
-//             ESP_LOGW(TAG_SERVER, "Unknown param in %s", buf);
-//             httpd_resp_set_status(req, HTTPD_400);
-//             httpd_resp_send_chunk(req, "Error: Invalid API Endpoint<br>", HTTPD_RESP_USE_STRLEN);
-//             httpd_resp_send_chunk(req, buf, ret);
-//             httpd_resp_send_chunk(req, NULL, 0);
-//             return ESP_OK;
-//         }
-
-//         //Redirect
-//         httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 
-//         char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"3; URL=http://192.168.4.1/test\">";
-//         httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);
-//         httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);  
-//         httpd_resp_send_chunk(req, "Redirecting in 3s. <br>", HTTPD_RESP_USE_STRLEN);
-
-        
-
-//         /* Send back the same data */
-//         httpd_resp_send_chunk(req, buf, ret);
-
-//         /* Log data received */
-//         ESP_LOGI(TAG_SERVER, "=========== RECEIVED DATA ==========");
-//         ESP_LOGI(TAG_SERVER, "%.*s", ret, buf);
-//         ESP_LOGI(TAG_SERVER, "====================================");
-//         remaining -= ret;
-    
-
-//     }
-//     // End response
-//     httpd_resp_send_chunk(req, NULL, 0);
-//     return ESP_OK;
-// }
 
 
 static esp_err_t config_settings_post_handler(httpd_req_t *req)
@@ -487,10 +422,7 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
                 free(cjson_returned);
             }
             free(cjson_arrived);
-            
         }
-        
-
         cJSON_Delete(json_post);
     } else {
         ESP_LOGW(TAG_SERVER, "Content not json - ignore parsing");
@@ -503,278 +435,16 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
         sprintf(content_msg,"Error: header content-type must be 'application/json', not '%s'", content_type );
 
         httpd_resp_send(req, content_msg, HTTPD_RESP_USE_STRLEN);
-        return ESP_FAIL;
         success = false;
-        //char val[64];
-        //Loop through the key and values. 
-
-
-        // Desired: run_kv_api(char* k, char* v)
-        // if (httpd_query_key_value(buf, "address", val, sizeof(val)) == ESP_OK) {
-        //     remove_ctrlchars(val);
-        //     ESP_LOGD(TAG_SERVER, "Setting address to: %s", val);
-        //     set_address(val);
-        //     memset(&val[0], 0, sizeof(val));
-        // } 
-        // else if (httpd_query_key_value(buf, "antenna_mode", val, sizeof(val)) == ESP_OK) {
-        //     remove_ctrlchars(val);
-        //     ESP_LOGD(TAG_SERVER, "Setting antenna mode to: %s", val);
-        //     set_antenna(val);
-        //     memset(&val[0], 0, sizeof(val));
-        // } 
-        // else if (httpd_query_key_value(buf, "channel", val, sizeof(val)) == ESP_OK) {
-        //     remove_ctrlchars(val);
-        //     ESP_LOGD(TAG_SERVER, "Setting channel to: %s", val);
-        //     set_channel(val);
-        //     memset(&val[0], 0, sizeof(val));
-        // } 
-        // else if (httpd_query_key_value(buf, "band", val, sizeof(val)) == ESP_OK) {
-        //     remove_ctrlchars(val);
-        //     ESP_LOGD(TAG_SERVER, "Setting band to: %s", val);
-        //     set_band(val);
-        //     memset(&val[0], 0, sizeof(val));
-        // } 
-        // else if (httpd_query_key_value(buf, "id", val, sizeof(val)) == ESP_OK) {
-        //     remove_ctrlchars(val);
-        //     ESP_LOGD(TAG_SERVER, "Setting user id string to: %s", val);
-        //     set_id(val);
-        //     memset(&val[0], 0, sizeof(val));
-        // } 
-        // else if (httpd_query_key_value(buf, "user_message", val, sizeof(val)) == ESP_OK) {
-        //     ESP_LOGI(TAG_SERVER, "BUF: '%s'", buf);
-        //     ESP_LOGI(TAG_SERVER, "Before CTL: '%s'", val);
-        //     remove_ctrlchars(val);
-        //     ESP_LOGI(TAG_SERVER, "Setting user message string to: '%s'", val);
-        //     set_usermsg(val);
-        //     printf("\nAPI LENGTH %d\n", strlen(val));
-        //     memset(&val[0], 0, sizeof(val));
-        // } 
-        // else if (httpd_query_key_value(buf, "mode", val, sizeof(val)) == ESP_OK) {
-        //     remove_ctrlchars(val);
-        //     ESP_LOGD(TAG_SERVER, "Setting mode to: %s", val);
-        //     set_mode(val);
-        //     memset(&val[0], 0, sizeof(val));
-        // } 
-        // else if (httpd_query_key_value(buf, "osd_visibility", val, sizeof(val)) == ESP_OK) {
-        //     remove_ctrlchars(val);
-        //     ESP_LOGD(TAG_SERVER, "Setting osd visibility to: %s", val);
-        //     set_osdvis(val);
-        //     memset(&val[0], 0, sizeof(val));
-        // } 
-        // else if (httpd_query_key_value(buf, "osd_position", val, sizeof(val)) == ESP_OK) {
-        //     remove_ctrlchars(val);
-        //     ESP_LOGD(TAG_SERVER, "Setting osd position to: %s", val);
-        //     set_osdpos(val);
-        //     memset(&val[0], 0, sizeof(val));
-        // }
-        // else if (httpd_query_key_value(buf, "reset_lock", val, sizeof(val)) == ESP_OK) {
-        //     remove_ctrlchars(val);
-        //     ESP_LOGD(TAG_SERVER, "Resetting Lock; unused val: %s", val);
-        //     reset_lock();
-        //     memset(&val[0], 0, sizeof(val));
-        // } 
-        // else if (httpd_query_key_value(buf, "video_format", val, sizeof(val)) == ESP_OK) {
-        //     remove_ctrlchars(val);
-        //     ESP_LOGI(TAG_SERVER, "Setting video format to: %s", val);
-        //     if (strcmp(val, "Auto") == 0)set_videoformat("A");
-        //     else if (strcmp(val, "NTSC") == 0)set_videoformat("N");
-        //     else if (strcmp(val, "PAL") == 0)set_videoformat("P");
-        //     memset(&val[0], 0, sizeof(val));
-        // }
-        // else if (httpd_query_key_value(buf, "send_cmd", val, sizeof(val)) == ESP_OK) {
-        //     remove_ctrlchars(val);
-        //     ESP_LOGI(TAG_SERVER, "Sending custom cmd: %s", val);
-        //     set_custom_w(val);
-        //     memset(&val[0], 0, sizeof(val));
-        // }    
-        // else if (httpd_query_key_value(buf, "send_rep", val, sizeof(val)) == ESP_OK) {
-        //     remove_ctrlchars(val);
-        //     ESP_LOGI(TAG_SERVER, "Sending custom report: %s", val);
-        //     struct cv_api_read* car = get_custom_report(val);
-        //     printf("Response: %s", car->val);
-        //     memset(&val[0], 0, sizeof(val));
-        // }  
-        // else {
-        //     ESP_LOGW(TAG_SERVER, "config_settings_post:Unknown API endpoint in %s", buf);
-        //     httpd_resp_set_status(req, HTTPD_400);
-        //     httpd_resp_send_chunk(req, "Error: Invalid API Endpoint<br>", HTTPD_RESP_USE_STRLEN);
-        //     httpd_resp_send_chunk(req, buf, ret);
-        //     httpd_resp_send_chunk(req, NULL, 0);
-        //     return ESP_OK;
-        // }
+        return ESP_FAIL;
     }
-
-
     if (success){
-        //Redirect
-        // httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 
-        // char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"0; URL=http://192.168.4.1/settings\">";
-        // httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);
-        // httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);  
-        // httpd_resp_send_chunk(req, "Redirecting in 3s. TODO verify data was set in CV <br>", HTTPD_RESP_USE_STRLEN);    
-        ESP_LOGD(TAG_SERVER, "Parse Success: '%s'", buf);
+        ESP_LOGI(TAG_SERVER, "Parse of request success: '%s'", buf);
     } 
-
-    
-
-
-
     // End response
     httpd_resp_send_chunk(req, NULL, 0);
     return ESP_OK;
 }
-
-// static esp_err_t config_wifi_post_handler(httpd_req_t *req)
-// {
-
-//     char buf[100]; // TODO check expected behavior for buffer overflow
-//     char val[64];
-//     int ret, remaining = req->content_len;
-    
-//     while (remaining > 0) {
-//         /* Read the data for the request */
-//         if ((ret = httpd_req_recv(req, buf,
-//                         MIN(remaining, sizeof(buf)))) <= 0) {
-//             if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
-//                 /* Retry receiving if timeout occurred */
-//                 continue;
-//             }
-//             return ESP_FAIL;
-//         }
-//         remaining -= ret;
-//     }
-
-//     char* tok;
-//     char * search = "\r\n";
-//     tok = strtok(buf, search);
-
-//     while ( tok != NULL){
-//         printf("Tok: '%s'\n", tok);
-//         if (httpd_query_key_value(tok, "ssid", val, sizeof(val)) == ESP_OK) {
-//             remove_ctrlchars(val);
-//             ESP_LOGI(TAG_SERVER, "Found URL query valeter => ssid=%s", val);
-//             ssid_ready = true; //TODO state machine set false
-//             set_credential("ssid", val);
-//             memset(&val[0], 0, sizeof(val));
-//         }
-//         if (httpd_query_key_value(tok, "password", val, sizeof(val)) == ESP_OK) {
-//             remove_ctrlchars(val);
-//             ESP_LOGI(TAG_SERVER, "Found URL query parameter => password=%s", val);
-//             password_ready = true;
-//             set_credential("password", val);
-//             memset(&val[0], 0, sizeof(val));
-//         }
-//         if (httpd_query_key_value(tok, "device_name", val, sizeof(val)) == ESP_OK) {
-//             remove_ctrlchars(val);
-//             ESP_LOGI(TAG_SERVER, "Found URL query parameter => device_name=%s", val);
-//             device_name_ready = true;
-//             set_credential("device_name", val);
-//             memset(&val[0], 0, sizeof(val));
-//         }
-//         if (httpd_query_key_value(tok, "broker_ip", val, sizeof(val)) == ESP_OK) {
-//             remove_ctrlchars(val);
-//             ESP_LOGI(TAG_SERVER, "Found URL query parameter => broker_ip=%s", val);
-//             broker_ip_ready = true;
-//             set_credential("broker_ip", val);
-//             memset(&val[0], 0, sizeof(val));
-//         }
-//         if (httpd_query_key_value(tok, "seat_number", val, sizeof(val)) == ESP_OK) {
-//                 remove_ctrlchars(val);
-//                 ESP_LOGI(TAG_SERVER, "Setting seat number to: %s", val);
-//                 if (set_credential("seat_number", val)){
-//                     update_subscriptions_new_seat();
-//                 }
-//                 memset(&val[0], 0, sizeof(val));
-//         } 
-//         tok = strtok(NULL, search);
-//     }
-
-
-    
-
-
-//     if (ssid_ready && password_ready && device_name_ready && broker_ip_ready){
-//         //Match the URI to determine whether to send instantly or not
-//         printf("%s\n", req->uri);
-//         bool is_instant = false;
-//         bool is_matched = false;
-
-//         bool uri_match;
-//         uri_match = httpd_uri_match_wildcard(CV_CONFIG_WIFI_URI, req->uri, strlen(CV_CONFIG_WIFI_URI));
-//         if (uri_match) {
-//             is_instant = false;
-//             is_matched = true;
-//         }
-//         uri_match = httpd_uri_match_wildcard(CV_CONFIG_WIFI_INSTANT_URI, req->uri, strlen(CV_CONFIG_WIFI_INSTANT_URI));;
-//         if (uri_match) {
-//                         is_instant = false;
-//                         is_matched = true;
-//         }
-//         if (!is_matched){
-//             //ESP_LOGI(TAG_SERVER, LOG_FMT("URI '%s' unmatched"), req->uri);
-//             ESP_LOGE(TAG_SERVER, "Unmatched URI");
-//         }
-
-//         /*
-//         // TODO add in content in the response to say "form submitted".
-//         // Redirect both address immediately to "/wifi_config_saved". Save _is_instant. 
-//         // Set up /wifi_config_saved to serve the saved wifi settings. 
-//         // Try encoding the data as a json file encoding using the HTML headers */
-
-//         if (is_instant){
-//             ESP_LOGI(TAG_SERVER, "All WiFi Creds received. Configuring now");
-//             // HTML Redirect https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections
-//             // httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 
-//             // char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"0; URL=http://192.168.4.1/\">";
-//             // httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);
-//             // httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);     
-//             // httpd_resp_send_chunk(req, NULL, 0);
-//             // vTaskDelay(1000 / portTICK_PERIOD_MS);
-//         } else {
-//             ESP_LOGI(TAG_SERVER, "All WiFi Creds received. Sending Delayed Redirect");
-//             // httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 
-//             // char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"3; URL=http://192.168.4.1/\">";
-//             // httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);
-//             // httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);     
-//             // httpd_resp_send_chunk(req, NULL, 0);
-//             //vTaskDelay(6000 / portTICK_PERIOD_MS);
-//         }
-        
-//         // TODO the redirect may be causing an issue as far as timing and switching out of the ode
-//         // Maybe this should return with no delay? 
-//         /* 
-//         W (164882) httpd_txrx: httpd_sock_err: error in send : 113
-//         ESP_ERROR_CHECK failed: esp_err_t 0xb006 (ERROR) at 0x40090df4
-//         0x40090df4: _esp_error_check_failed at /home/ryan/esp/esp-idf/components/esp32/panic.c:726
-
-//         file: "../main/cv_server.c" line 208
-//         func: serve_title
-//         expression: httpd_resp_send_chunk(req, line, HTTPD_RESP_USE_STRLEN)
-//         */
-        
-//         // HTTP Redirect Method
-//         // https://esp32.com/viewtopic.php?t=11012
-//         // httpd_resp_set_type(req, "text/html");
-//         // httpd_resp_set_status(req, "307 Temporary Redirect");
-//         // httpd_resp_set_hdr(req, "Location", "http://192.168.4.1/wifi_confirmation");
-
-//         //Redirect
-//         httpd_resp_send_chunk(req, "<head>", HTTPD_RESP_USE_STRLEN); 
-//         char* redirect_str = "<meta http-equiv=\"Refresh\" content=\"3; URL=http://192.168.4.1/\">";
-//         httpd_resp_send_chunk(req, redirect_str, HTTPD_RESP_USE_STRLEN);
-//         httpd_resp_send_chunk(req, "</head>", HTTPD_RESP_USE_STRLEN);  
-//         httpd_resp_send_chunk(req, "Wifi Configuring. <br>", HTTPD_RESP_USE_STRLEN);
-
-//         httpd_resp_send(req, NULL, 0);
-//         vTaskDelay(1000 / portTICK_PERIOD_MS);
-//         extern bool switch_to_sta;
-//         switch_to_sta = true;
-//     } else {
-//         httpd_resp_send(req, NULL, 0);
-//     }
-
-//     return ESP_OK;
-// }
 
 void serve_title(httpd_req_t *req) {
     char chipid[UNIQUE_ID_LENGTH];

@@ -44,7 +44,31 @@ static char* TAG = "CV_WIFI";
 static EventGroupHandle_t wifi_event_group;
 static const int CONNECTED_BIT = BIT0;
 
-bool switch_to_sta = false;
+CV_WIFI_MODE _wifi_mode = CVWIFI_NOT_STARTED;
+static bool _switch_to_sta = false;
+
+extern CV_WIFI_MODE get_wifi_mode() {
+    return _wifi_mode;
+}
+extern CV_WIFI_STATE_MSG set_wifi_mode(CV_WIFI_MODE mode){
+    if (_wifi_mode == CVWIFI_AP) {
+        _switch_to_sta = true;
+    } else if (_wifi_mode == CVWIFI_NOT_STARTED) {
+        ESP_LOGE(TAG, "WiFi must be started before switching state");
+        return CVWIFI_NOT_STARTED;
+    } else if (_wifi_mode == CVWIFI_OFF) {
+        ESP_LOGE(TAG, "TODO");
+    } else if (_wifi_mode == CVWIFI_AP) {
+        ESP_LOGE(TAG, "TODO");
+    } else {
+        ESP_LOGE(TAG, "Unknown requested wifi mode");
+        return CVWIFI_STATE_ERROR;
+    }
+
+    return CVWIFI_SUCCESS;
+}
+
+
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
@@ -161,10 +185,10 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
 
 
 
-extern void initialize_softAP_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_LEN)
+static void initialize_softAP_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_LEN)
 {
     // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/wifi.html
-    printf("Starting ESP32 softAP mode.\n");
+    ESP_LOGI(TAG, "Starting ESP32 softAP mode");
     if (wifi_connect_fail){
         set_ledc_code(0, led_blink_fast);
     } else {
@@ -304,46 +328,39 @@ static bool initialise_sta_wifi(char* PARAM_HOSTNAME)
 }
 
 //disconnect and kill wifi driver no matter which mode it is in
-void kill_wifi(void){
+static void kill_wifi(void){
     #if HW == HW_ESP_WROOM_32
-    wifi_mode_t mode;
-    ESP_ERROR_CHECK(esp_wifi_get_mode(&mode));
+        wifi_mode_t mode;
+        ESP_ERROR_CHECK(esp_wifi_get_mode(&mode));
 
-    if (mode == WIFI_MODE_STA){ ///TODO this condition needs testing on all three modes
-        //Answer the question: When do you need to run esp_wifi_disconnect. 
-        //Confirmed: Don't run in WIFI_MODE_AP because there is nothing to disconnect from and it breaks.
-        ESP_ERROR_CHECK(esp_wifi_disconnect());
-    }
-    ESP_ERROR_CHECK(esp_wifi_stop());
-    ESP_ERROR_CHECK(esp_wifi_deinit());
-    ESP_ERROR_CHECK(esp_event_loop_delete_default());
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
+        if (mode == WIFI_MODE_STA){ ///TODO this condition needs testing on all three modes
+            //Answer the question: When do you need to run esp_wifi_disconnect. 
+            //Confirmed: Don't run in WIFI_MODE_AP because there is nothing to disconnect from and it breaks.
+            ESP_ERROR_CHECK(esp_wifi_disconnect());
+        }
+        ESP_ERROR_CHECK(esp_wifi_stop());
+        ESP_ERROR_CHECK(esp_wifi_deinit());
+        ESP_ERROR_CHECK(esp_event_loop_delete_default());
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
     
     #elif HW == HW_ESP_WROOM_32D
-        printf("Can't kill wifi in 32D\n");
+        ESP_LOGE(TAG_SERVER, "Can't kill wifi in 32D");
         ESP_ERROR_CHECK(esp_event_loop_delete_default());
     #endif
-
 }
 
 
-extern void demo_sequential_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_LEN)
+static void demo_sequential_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_LEN)
 {
-    printf("Starting ESP32 both mode.\n"); 
-    initialize_softAP_wifi(PARAM_ESP_WIFI_SSID,PARAM_SSID_LEN);
-    //printf("Starting http server\n");
-    //xTaskCreate(&http_server, "http_server", 2048, NULL, 5, NULL);
-
-    
-
-
-    printf("Waiting for  switch_to_sta\n");;
+    ESP_LOGI(TAG, "Starting in softAP but will allow Sta later.");
+    initialize_softAP_wifi(PARAM_ESP_WIFI_SSID, PARAM_SSID_LEN);
+    ESP_LOGI(TAG, "Waiting for  _switch_to_sta");
     while (true){
         vTaskDelay(2000 / portTICK_PERIOD_MS);
-        if (switch_to_sta == true)
+        if (_switch_to_sta == true)
         {   
-            printf("Switching from softAP to station\n");
-            switch_to_sta = false;
+            ESP_LOGI(TAG, "Switching from softAP to station\n");
+            _switch_to_sta = false;
            
             break;
         }
@@ -359,9 +376,24 @@ extern void demo_sequential_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_L
         }
         
     #elif HW == HW_ESP_WROOM_32D
-        printf("Not restarting wifi yet...\n");
+        ESP_LOGW(TAG, "Not restarting wifi yet...");
         bool sta_succ = initialise_sta_wifi(PARAM_ESP_WIFI_SSID);
     #endif
+}
+
+extern void start_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_LEN){
+    #if CONFIG_STARTUP_WIFI_STA | CONFIG_STA_ALLOWED
+        strcpy(desired_ap_ssid, AP_TARGET_SSID);
+        strcpy(desired_ap_pass, AP_TARGET_PASS);
+        strcpy(desired_mqtt_broker_ip, CONFIG_BROKER_IP);
+        strcpy(desired_friendly_name, CONFIG_FRIENDLY_NAME);
+        //strcpy(seat_number, CONFIG_SEAT_NUMBER);
+        initialise_sta_wifi(PARAM_ESP_WIFI_SSID);
+    #elif CONFIG_STARTUP_WIFI_SOFTAP 
+        demo_sequential_wifi(PARAM_ESP_WIFI_SSID, UNIQUE_ID_LENGTH); //this returns on successful connection
+    #elif CONFIG_SOFTAP_ALLOWED
+        initialize_softAP_wifi(PARAM_ESP_WIFI_SSID, UNIQUE_ID_LENGTH);
+    #endif //SKIP_SOFTAP
 }
 
 #endif // WIFI_ON

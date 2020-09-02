@@ -1,10 +1,13 @@
 <form action="/settings" method="POST" enctype="text/plain">
   <label for="LED">Choose a LED State</label>
   <select id="led" name="led" >
-    <option value="ON">Turn On</option>
-    <option value="OFF">Turn Off</option>
+    <option value="on">Turn On</option>
+    <option value="off">Turn Off</option>
+    <option value="breathe_slow">Breathe Slow</option>
+    <option value="breathe_fast">Breathe Fast</option>
+    <option value="blink_slow">Blink Slow</option>
+    <option value="blink_fast">Blink Fast</option>
   </select>
-  <input type="submit" value = "Set LED State">
 </form>
 
 <!-- <form action="/settings" method="POST" enctype="text/plain">
@@ -30,6 +33,8 @@
   <input type="submit" value = "Send Report">
   <label id="req_report"></label>
 </form>
+<hr>
+<h3>Advanced Settings</h3>
 
 <script>
     console.log("Test block")

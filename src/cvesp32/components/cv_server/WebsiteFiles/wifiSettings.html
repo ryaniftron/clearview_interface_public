@@ -39,8 +39,8 @@
 
 <!-- Wifi Mode -->
 <form method="POST" enctype="text/plain" action = "/settings">
-    <label for="wifi">Wifi Mode:</label>
-    <select id="wifi" name="wifi">
+    <label for="wifi_state">Wifi Mode:</label>
+    <select id="wifi_state" name="wifi_state">
         <option value="ap">Access Point Hotspot (server)</option>
         <option value="sta">Station (client)</option>
     </select>
@@ -52,12 +52,12 @@
     console.log("Wifi block")
     document.title = "CVCM Wifi";
 
-    // getAllJSON({
-    //     "ssid": "?",
-    //     "password": "?",
-    //     "device_name": "?",
-    //     "broker_ip": "?",
-    //     "wifi": "?"
-    // });
+    getAllJSON({
+        "ssid": "?",
+        "password": "?",
+        "device_name": "?",
+        "broker_ip": "?",
+        "wifi_state": "?"
+    });
     
 </script>
