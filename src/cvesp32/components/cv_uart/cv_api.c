@@ -469,19 +469,23 @@ extern void get_custom_report(char* report, struct cv_api_read* ret){
 }
 
 extern void get_cvcm_version(struct cv_api_read* ret){
-    strcpy(ret->val,(char*) esp_ota_get_app_description()->version);
+    const int VER_LEN = 32;
+    ret->val = strndup(esp_ota_get_app_description()->version, VER_LEN); //TODO memory
     ret->api_code=CV_OK;
     ret->success=true;
 }
 
 extern void get_cvcm_version_all(struct cv_api_read* ret){
-    char fullversion[100];
+    const int VER_LEN = 100;
+    char fullversion[VER_LEN];
     sprintf(fullversion, "%s - %s - %s",(char*) esp_ota_get_app_description()->version,__DATE__, __TIME__);
-    strcpy(ret->val, fullversion);
+    ret->val = strndup(fullversion, VER_LEN);
     ret->api_code=CV_OK;
     ret->success=true;
 }
 
 extern void get_mac_addr(struct cv_api_read* ret){
-    get_chip_id(ret->val, UNIQUE_ID_LENGTH);
+    char buf[UNIQUE_ID_LENGTH];
+    get_chip_id(buf, UNIQUE_ID_LENGTH);
+    ret->val = strndup(buf, UNIQUE_ID_LENGTH);
 }

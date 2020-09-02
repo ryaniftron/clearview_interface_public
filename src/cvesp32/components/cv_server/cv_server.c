@@ -25,7 +25,7 @@
 #define MIN(a,b) (((a)<(b))?(a):(b)) //where does this come from? see http_server_simple example
 #endif //MIN
 
-#define POST_BUFFER_SZ 200
+#define POST_BUFFER_SZ 400
 
 const char* TAG_SERVER = "CV_SERVER";
 static bool _server_started = false;

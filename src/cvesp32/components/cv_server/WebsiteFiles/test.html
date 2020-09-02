@@ -34,7 +34,53 @@
   <label id="req_report"></label>
 </form>
 <hr>
+
 <h3>Advanced Settings</h3>
+
+<p>address:</p>
+<output id="address">...</output>
+<div id="error_address"></div>
+
+<p>mode:</p>
+<output id="mode">...</output>
+<div id="error_mode"></div>
+
+<p>osd_visibility:</p>
+<output id="osd_visibility">...</output>
+<div id="error_address"></div>
+
+<p>lock status:</p>
+<output id="lock">...</output>
+<div id="error_lock"></div>
+
+<p>video format:</p>
+<output id="video_format">...</output>
+<div id="error_video_format"></div>
+
+<p>cv_version:</p>
+<output id="cv_version">...</output>
+<div id="error_cv_version"></div>
+
+<p>cvcm_version:</p>
+<output id="cvcm_version">...</output>
+<div id="error_cvcm_version"></div>
+
+<p>cvcm_version_all:</p>
+<output id="cvcm_version_all">...</output>
+<div id="error_cvcm_version_all"></div>
+
+<p>mac address:</p>
+<output id="mac_addr">...</output>
+<div id="error_mac_addr"></div>
+
+<p>ip address:</p>
+<output id="ip_addr">...</output>
+<div id="error_ip_addr"></div>
+
+<p>wifi_state:</p>
+<output id="wifi_state">...</output>
+<div id="error_wifi_state"></div>
+
 
 <script>
     console.log("Test block")
@@ -42,6 +88,17 @@
 
     getAllJSON({
         "led": "?",
+        "address": "?",
+        "mode": "?",
+        "osd_visibility": "?",
+        "lock": "?",
+        "video_format": "?",
+        "cv_version": "?",
+        "cvcm_version": "?",
+        "cvcm_version_all": "?",
+        "mac_addr": "?",
+        "ip_addr": "?",
+        "wifi_state": "?"
     });
     
 </script>
