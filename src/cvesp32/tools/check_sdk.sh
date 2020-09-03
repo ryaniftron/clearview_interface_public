@@ -1,12 +1,20 @@
 #!/bin/bash
 
-echo Checking skdconfig is ready for production
+echo "Checking sdkconfig is ready for production"
 
 success=0
 fail_console=1
 fail_uart=2
+fail_no_sdk=3
 
 sdk_path=sdkconfig
+
+if [ -f tools/$sdk_path ]; then
+        echo "FAIL: No sdkconfig found in " `pwd` "/tools/" $sdk_path 
+        exit $fail_no_sdk
+fi
+
+
 if grep -q "HW_VERSION_IFTRON_A=y" $sdk_path; then
         echo SUCCESS: `grep "HW_VERSION_IFTRON_A" $sdk_path`;
 else
