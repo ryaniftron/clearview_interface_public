@@ -320,11 +320,13 @@ static cJSON* run_kv_api(char* k, char* v){
         struct cv_api_read*carptr = &car;
         kv_api_parse_car(carptr, k, v);
         add_response_to_json_car(ret, k, carptr);
+        vTaskDelay(250 / portTICK_PERIOD_MS); //Delay 250ms after any read
     } else { // It's a command, write value
         struct cv_api_write caw;
         struct cv_api_write* cawptr = &caw;    
         kv_api_parse_caw(cawptr, k, v);
         add_response_to_json_caw(ret, k , cawptr, v);
+        vTaskDelay(250 / portTICK_PERIOD_MS); //Delay 250ms between write and read
         #ifdef WRITE_THEN_READ
             // If write success, then do a read and replace the value
             if (cawptr->success){

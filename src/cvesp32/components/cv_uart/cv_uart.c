@@ -50,7 +50,7 @@
 //general uart settings
 
 static bool _uart_is_init = false; //this is checked to make sure uart is active before sending
-#define REPORT_REPLY_TIME 100 //how many ms to wait for a reply after a send. Should be >50ms
+#define REPORT_REPLY_TIME 250 //how many ms to wait for a reply after a send. Should be >50ms
 
 //cv protocol specifics
 #define cv_start_char '\02'
