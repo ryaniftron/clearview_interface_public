@@ -34,7 +34,9 @@ function receive_data(msg) {
         var v = msg[k]
         console.log("Received kv pair:" + k + "-> " + msg[k])
         if (k == "req_report") {
-            document.getElementById(k).innerHTML="Response:" + "'" + msg[k]+ "'"
+            document.getElementById(k).innerHTML="Response:" + "'" + msg[k]+ "'";
+        }else if (k == "send_cmd"){
+             continue
         } else {
             var domEl = document.getElementById(k);
             var jqEl = $(domEl);
