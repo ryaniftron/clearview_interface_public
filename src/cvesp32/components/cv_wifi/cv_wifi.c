@@ -9,6 +9,9 @@
 #include "esp_log.h"
 #include "string.h"
 
+static void initialize_softAP_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_LEN);
+static void demo_sequential_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_LEN);
+
 #define WIFI_ON 1
 
 //If uncommended, these override Kconfig.projbuild
@@ -41,8 +44,8 @@
 
 #if WIFI_ON == 1
 static char* TAG = "CV_WIFI";
-static EventGroupHandle_t wifi_event_group;
-static const int CONNECTED_BIT = BIT0;
+// static EventGroupHandle_t wifi_event_group;
+// static const int CONNECTED_BIT = BIT0;
 
 CV_WIFI_MODE _wifi_mode = CVWIFI_NOT_STARTED;
 static bool _switch_to_sta = false;
@@ -68,7 +71,43 @@ extern CV_WIFI_STATE_MSG set_wifi_mode(CV_WIFI_MODE mode){
     return CVWIFI_SUCCESS;
 }
 
+extern uint8_t get_wifi_power(){
+    int8_t power = 0;
+    int8_t* pPower;
+    pPower = &power;
+    ESP_ERROR_CHECK(esp_wifi_get_max_tx_power(pPower));
+    return power;
+}
 
+extern void set_wifi_power_i8(int8_t power){
+    ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(power));
+}
+
+//set wifi power. Return true if in range or false if not
+extern bool set_wifi_power_pChr(char* power){
+    int8_t p = strtol(power, NULL, 10);
+    switch(p){
+        case 8:
+        case 20:
+        case 28:
+        case 29:
+        case 34:
+        case 44:
+        case 52:
+        case 56:
+        case 60:
+        case 66:
+        case 72:
+        case 78:
+            set_wifi_power_i8(p);
+            break;
+        default:
+           ESP_LOGE(TAG, "Wifi power of %i is not supported",p);
+           return false;
+    }
+    set_wifi_power_i8(p);
+    return true;
+}
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
@@ -128,8 +167,9 @@ static void ap_event_handler(void* arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "got ip:%s",
                  ip4addr_ntoa(&event->ip_info.ip));
 
-        ip4_addr_t cv_ip;
-        
+        //ip4_addr_t cv_ip;
+        //TODO get ip address
+
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }
@@ -137,24 +177,24 @@ static void ap_event_handler(void* arg, esp_event_base_t event_base,
 
 
 
-static esp_err_t event_handler(void *ctx, system_event_t *event)
-{
-	switch(event->event_id) {
-		case SYSTEM_EVENT_STA_START:
-			esp_wifi_connect();
-			break;
-		case SYSTEM_EVENT_STA_GOT_IP:
-			xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
-			break;
-		case SYSTEM_EVENT_STA_DISCONNECTED:
-			esp_wifi_connect();
-			xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
-			break;
-		default:
-			break;
-	}
-	return ESP_OK;
-}
+// static esp_err_t event_handler(void *ctx, system_event_t *event)
+// {
+// 	switch(event->event_id) {
+// 		case SYSTEM_EVENT_STA_START:
+// 			esp_wifi_connect();
+// 			break;
+// 		case SYSTEM_EVENT_STA_GOT_IP:
+// 			xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+// 			break;
+// 		case SYSTEM_EVENT_STA_DISCONNECTED:
+// 			esp_wifi_connect();
+// 			xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+// 			break;
+// 		default:
+// 			break;
+// 	}
+// 	return ESP_OK;
+// }
 
 //TODO combine this with event_handler
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,

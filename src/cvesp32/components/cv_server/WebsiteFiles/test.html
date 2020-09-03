@@ -1,5 +1,5 @@
 <form action="/settings" method="POST" enctype="text/plain">
-  <label for="LED">Choose a LED State</label>
+  <label for="led">Choose a LED State</label>
   <select id="led" name="led" >
     <option value="on">Turn On</option>
     <option value="off">Turn Off</option>
@@ -81,6 +81,10 @@
 <output id="wifi_state">...</output>
 <div id="error_wifi_state"></div>
 
+<p>wifi_power (0.25 dBm):</p>
+<output id="wifi_power">...</output>
+<div id="error_wifi_power"></div>
+
 
 <script>
     console.log("Test block")
@@ -98,7 +102,8 @@
         "cvcm_version_all": "?",
         "mac_addr": "?",
         "ip_addr": "?",
-        "wifi_state": "?"
+        "wifi_state": "?",
+        "wifi_power": "?"
     });
     
 </script>

@@ -91,6 +91,7 @@ extern const uint8_t menu_bar_end[] asm("_binary_menuBar_html_end");
 #define CV_API_REQ_REPORT "req_report"
 #define CV_API_MAC_ADDR "mac_addr"
 #define CV_API_WIFI_STATE "wifi_state"
+#define CV_API_WIFI_POWER "wifi_power"
 
 #define CV_READ_Q "?"
 
@@ -218,7 +219,15 @@ void kv_api_parse_car(struct cv_api_read* car, char* k, char* v) {
             car->success = false;
             car->api_code = CV_ERROR_VALUE;
         }
-    } else {
+    }else if (strncmp(k, CV_API_WIFI_POWER, strlen(k)) == 0){
+        int8_t wifi_power = get_wifi_power();
+        ESP_LOGI(TAG_SERVER, "Reading wifi power");
+        car->success = true;
+        car->api_code = CV_OK;
+        char power[6];
+        snprintf(power, 6, "%i", wifi_power);
+        car->val = strdup(power);
+    }else {
         CV_LOGE(TAG,"Unknown request key of '%s'",k );
         car->success = false;
         car->api_code = CV_ERROR_INVALID_ENDPOINT;
@@ -285,8 +294,16 @@ void kv_api_parse_caw(struct cv_api_write* caw, char* k, char* v) {
             caw->success = false;
             caw->api_code = CV_ERROR_VALUE;
         }
-        
-    } else {
+
+    } else if (strncmp(k, CV_API_WIFI_POWER, strlen(k))== 0) {
+        if (set_wifi_power_pChr(v)){
+            caw->success = true;
+            caw->api_code = CV_OK;
+        }  else {
+            caw->success = false;
+            caw->api_code = CV_ERROR_VALUE;
+        }
+    }else {
         CV_LOGE(TAG,"Unknown write key of '%s'",k );
         caw->success = false;
         caw->api_code = CV_ERROR_INVALID_ENDPOINT;

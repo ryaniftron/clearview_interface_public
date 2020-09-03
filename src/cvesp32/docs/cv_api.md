@@ -32,7 +32,8 @@ Some settings support reading the parameter. To read a parameter, simply pass in
 | req_report | Send arbitrary UART report | W | --- |
 | mac_addr | Get mac address of wifi | R | CV_342832C40A24 | 
 | ip_addr | Get ip address of wifi | R | 192.168.4.1 |
-| wifi_state | Wifi state | R/W | ['ap','sta'] | ['ap','sta']
+| wifi_state | WiFi State | R/W | ['ap','sta'] | ['ap','sta']
+| wifi_power | WiFi Power | R/W | [8,20,28,34,44,52,56,60,66,72,78]] multiply by 0.25 to get power in dBm
 
 ## MQTT Topics
 

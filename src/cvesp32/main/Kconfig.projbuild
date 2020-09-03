@@ -62,6 +62,11 @@ menu "ClearView ESP32 Configuration"
             bool "Iftron Hardware RevA"
             default n
             depends on ENABLE_SERIAL
+            select ESP_CONSOLE_NONE if HW_VERSION_IFTRON_A=y
+            select ESP_CONSOLE_UART_DEFAULT if HW_VERSION_IFTRON_A=n
+
+            # ESP_CONSOLE_NONE
+            # ESP_CONSOLE_UART_DEFAULT
             
         config ENABLE_LED
             bool "Enable LED codes"
@@ -133,11 +138,11 @@ menu "ClearView ESP32 Configuration"
             endchoice
                 
         endif # SOFTAP_ALLOWED || STA_ALLOWED || BOTH_WIFI_ALLOWED # Wifi is on
-
+        
         config CV_INITIAL_PROGRAM
             bool "Enable Initial Firmware Program Version"
             default n
-            # help "Turn this on to make the module function just for initial programming and test"
+            # help "Turn this on to make the module include more programming and test"
 
     endmenu 
         

@@ -7,7 +7,7 @@
 #include "esp_log.h"
 #include "string.h"
 
-
+static CV_LED_Code_t get_ledc_code(int channel);
 
 //This file uses two methods for controlling the LED: gpio and ledc.
 //Don't use both at the same time. ledc is more capable anyways

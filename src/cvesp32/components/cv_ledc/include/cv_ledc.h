@@ -12,6 +12,6 @@ typedef enum  {
 } CV_LED_Code_t;
 extern void init_cv_ledc(CV_LED_Code_t initial_led_state);
 extern void set_ledc_code(int channel, CV_LED_Code_t led_code);
-static CV_LED_Code_t get_ledc_code(int channel);
+
 extern void set_led(char* value, struct cv_api_write* cawptr);
 extern void get_led(struct cv_api_read* carptr, int channel);
