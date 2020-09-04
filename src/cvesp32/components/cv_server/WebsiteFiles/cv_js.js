@@ -38,49 +38,60 @@ function receive_data(msg) {
         }else if (k == "send_cmd"){
              continue
         } else {
-            var domEl = document.getElementById(k);
-            var jqEl = $(domEl);
-            var domElTagName = domEl.tagName
-            if (domElTagName == "INPUT"){
-                var domElOpt = domEl;
-            } else if (domElTagName == "SELECT") {
-                var domElOpt = domEl.querySelector('[value="' + v + '"]');
+            var domEls = Array(document.getElementById(k));
+            var domCls = document.getElementsByClassName(k);
+            if (domCls.length >= 1) {
+                var loop_els = domCls;
+                console.log("Using class looper")
             } else {
-                var domElOpt = domEl
-            } 
+                var loop_els = domEls;
+                console.log("Using 1 element looper")
+            }
 
-            
-            if (domElOpt != null) {
-                if (domElTagName == "SELECT") { //select got a valid reply
-                    domEl.value = v
-                    $("#" + k).css("background","rgb(0,200,0)");
-                    $("#error_" + k).slideUp().hide();
-                } else if (domElTagName == "INPUT"){ //text got some reply
-                    if (v.includes("error")) { // error reply
-                        $("#" + k).css("background","rgb(200,0,0)");
-                        process_error_reply(domEl, k, v);
-                    } else { //success text reply
-                        domElOpt.value = v
+            for (let domEl of loop_els){
+                // var jqEl = $(domEl);
+                var domElTagName = domEl.tagName
+                if (domElTagName == "INPUT"){
+                    var domElOpt = domEl;
+                } else if (domElTagName == "SELECT") {
+                    var domElOpt = domEl.querySelector('[value="' + v + '"]');
+                } else {
+                    var domElOpt = domEl
+                } 
+
+                
+                if (domElOpt != null) {
+                    if (domElTagName == "SELECT") { //select got a valid reply
+                        domEl.value = v
                         $("#" + k).css("background","rgb(0,200,0)");
                         $("#error_" + k).slideUp().hide();
+                    } else if (domElTagName == "INPUT"){ //text got some reply
+                        if (v.includes("error")) { // error reply
+                            $("#" + k).css("background","rgb(200,0,0)");
+                            process_error_reply(domEl, k, v);
+                        } else { //success text reply
+                            domElOpt.value = v
+                            $("#" + k).css("background","rgb(0,200,0)");
+                            $("#error_" + k).slideUp().hide();
+                        } 
+                    } else {
+                        if (v.includes("error")) {
+                            $("#" + k).css("background","rgb(200,0,0)");
+                            process_error_reply(domEl, k, v);
+                        } else {
+                            if (k == "seat") { v = (parseInt(v)+1).toString(10);}
+                            domEl.innerText = v
+                            $("#" + k).css("background","rgb(0,200,0)");
+                            $("#error_" + k).slideUp().hide();
+                        }
                     } 
                 } else {
-                    if (v.includes("error")) {
-                        $("#" + k).css("background","rgb(200,0,0)");
-                        process_error_reply(domEl, k, v);
-                    } else {
-                        if (k == "seat") { v = (parseInt(v)+1).toString(10);}
-                        domEl.innerText = v
-                        $("#" + k).css("background","rgb(0,200,0)");
-                        $("#error_" + k).slideUp().hide();
-                    }
-                } 
-            } else {
-                console.log("Process error id " + k);
-                // Fade: https://stackoverflow.com/questions/26936811/css-transition-fade-background-color-resetting-after
-                process_error_reply(domEl, k,v);
-            }
-            // el.innerHTML=k[msg]
+                    console.log("Process error id " + k);
+                    // Fade: https://stackoverflow.com/questions/26936811/css-transition-fade-background-color-resetting-after
+                    process_error_reply(domEl, k,v);
+                }
+                // el.innerHTML=k[msg]
+            };
         }
     }
 }
