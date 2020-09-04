@@ -25,7 +25,7 @@ from . import formatter
 
 clearview_specs = comspecs.clearview_specs
 
-__version__ = '1.20a1'
+__version__ = '1.21a4'
 
 logger = logging.getLogger(__name__)
 
