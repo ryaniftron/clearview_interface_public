@@ -153,9 +153,10 @@ pattern_response_payload_limits = {
     "get_address": "(%s)"%pattern_setter_payload_limits["set_address"],
     "get_channel": "(%s)"%pattern_setter_payload_limits["set_channel"],
     "get_band": "(%s)"%pattern_setter_payload_limits["set_band"],
-    "get_lock_format": "(%s)(%s)(%s)"%(cv_device_limits["video_formats"],
+    "get_lock_format": "(%s)(%s)(%s)(%s)"%(cv_device_limits["video_formats"],
                                    cv_device_limits["force_auto"],
-                                   cv_device_limits["lock_unlock"]),
+                                   cv_device_limits["lock_unlock"],
+                                   cv_device_limits["video_static"]),
 }
 
 
@@ -284,7 +285,8 @@ matched_response_tuples = {
                                                          'rx_address', 
                                                          'chosen_camera_type', 
                                                          'forced_or_auto', 
-                                                         'locked_or_unlocked']),
+                                                         'locked_or_unlocked',
+                                                         'video_or_static']),
 }
 
 # link the getter name to the data field name and report name

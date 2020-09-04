@@ -669,7 +669,7 @@ class ClearView:
         #python3
 
         #if (report := self._read_until_termchar()) is not None:
-        report = self._read_until_termchar()
+        report = self._read_until_termchar().encode('UTF-8')
         if report is not None:
             fmt = formatter.pattern_responses[report_name]
             match = re.search(fmt, report)
@@ -677,7 +677,7 @@ class ClearView:
             if match is None:
                 logger.error("Parsing of '%s' not possibe " 
                         "Attempted to match against pattern %s"%
-                        (report, repr(fmt.pattern)))
+                        (report, repr(fmt)))
                 
             else:
                 nt = formatter.matched_response_tuples[report_name]._make(match.groups())

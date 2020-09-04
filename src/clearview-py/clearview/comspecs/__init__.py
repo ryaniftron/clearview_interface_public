@@ -14,7 +14,7 @@ cv_device_limits = {
     'min_seat_number': 1,   # set receiver address target
     'max_seat_number': 8, #docs says this is actual 0-9,a-f but implementation seems to differ
     'min_destination': 0,
-    'max_destination': 8,
+    'max_destination': 9,
     'min_source_addr': 1,
     'max_source_addr': 9,
     'min_antenna_mode': 0,
@@ -28,9 +28,10 @@ cv_device_limits = {
     'min_osd_position': 0,
     'max_osd_position': 7,
     'video_format_list': ['N', 'P', 'A'],
-    'video_formats': "[NPA]",  # camera type = NTSC, AUTO, PAL  
-    'lock_unlock': "[LU]",
-    'force_auto': "[FA]",
+    'video_formats': "[NPA]",  # camera type = NTSC, AUTO, PAL, also RPLF arg1  
+    'lock_unlock': "[LMU]",   # RPLF, arg2
+    'force_auto': "[FA]",    #RPLF, arg3
+    'video_static': "[VS]",  #RPLF, arg4
     'antenna_modes': "[0-3]",
     'bands': "[0-9,a-f]",
     'video_modes': "[LSM]",     # live, spectrum, menu  

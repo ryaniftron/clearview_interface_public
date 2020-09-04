@@ -29,13 +29,13 @@ sim_file_save_name = "cv_saved_settings.txt"
 
 def main_formatter(rx_id, bc_id):
     cv = clearview.ClearView(
-        port=None,    # port name, COMX on windows
-        debug=False,
+        port='/dev/ttyUSB0',    # port name, COMX on windows
+        debug=True,
         # Slows stuff down. TODO not implemented well yet
         robust=False,            # checks all data sent was actually received
         timeout=0.1,            # serial read timeout
         simulate_serial_port=False,
-        return_formatted_commands=True,
+        return_formatted_commands=False,
         sim_file_load_name=sim_file_load_name,
         sim_file_save_name=sim_file_save_name,
         )
@@ -152,37 +152,38 @@ def main_formatter(rx_id, bc_id):
     #     cv.send_report_cstm(rx_id)
 
     # ########### Example Setters ############
-    # print(cv.set_custom_frequency(frequency=5800,rcvr_target=0))
-    print(cv.set_address(robust=False, rcvr_target=rx_id, new_target=rx_id).strip())
-    print(cv.set_antenna_mode(rcvr_target=rx_id, antenna_mode=1).strip())
-    print(cv.set_band_channel(robust=False, rcvr_target=rx_id, band_channel=0).strip())
-    print(cv.set_band_group(rcvr_target=rx_id, band_group=1).strip())
-    print(cv.set_video_mode(rcvr_target=rx_id, mode="menu").strip()) 
-    print(cv.show_osd(rcvr_target=rx_id).strip())
-    print(cv.hide_osd(rcvr_target=rx_id).strip())
-    print(cv.set_osd_at_predefined_position(rcvr_target=rx_id, desired_position=0).strip())
-    print(cv.set_osd_string(rcvr_target=rx_id, osd_str="Pilot#^1Fast").strip())
-    # print(cv.set_osd_string(rcvr_target=rx_id, osd_str="TestPilot1TooLong"))  # Demo length guard
-    # print("Newline Pilot:",repr(cv.set_osd_string(rcvr_target=rx_id, osd_str="\npilotNL")))    # reserved \n
-    # print("CR Pilot", repr(cv.set_osd_string(rcvr_target=rx_id, osd_str="\rpilotCR")))    # reserved \r
-    # print("CSUM Pilot", repr(cv.set_osd_string(rcvr_target=rx_id, osd_str="%pilotCS")))     # reserved &
-    print(cv.reset_lock(rcvr_target=rx_id).strip())
-    print(cv.set_video_format(rcvr_target=rx_id, video_format="n").strip())
-    print(cv.move_cursor(rcvr_target=rx_id, desired_move='+'))
+    # # print(cv.set_custom_frequency(frequency=5800,rcvr_target=0))
+    # print(cv.set_address(robust=False, rcvr_target=rx_id, new_target=rx_id).strip())
+    # print(cv.set_antenna_mode(rcvr_target=rx_id, antenna_mode=1).strip())
+    # print(cv.set_band_channel(robust=False, rcvr_target=rx_id, band_channel=0).strip())
+    # print(cv.set_band_group(rcvr_target=rx_id, band_group=1).strip())
+    # print(cv.set_video_mode(rcvr_target=rx_id, mode="menu").strip()) 
+    # print(cv.show_osd(rcvr_target=rx_id).strip())
+    # print(cv.hide_osd(rcvr_target=rx_id).strip())
+    # print(cv.set_osd_at_predefined_position(rcvr_target=rx_id, desired_position=0).strip())
+    # print(cv.set_osd_string(rcvr_target=rx_id, osd_str="Pilot#^1Fast").strip())
+    # # print(cv.set_osd_string(rcvr_target=rx_id, osd_str="TestPilot1TooLong"))  # Demo length guard
+    # # print("Newline Pilot:",repr(cv.set_osd_string(rcvr_target=rx_id, osd_str="\npilotNL")))    # reserved \n
+    # # print("CR Pilot", repr(cv.set_osd_string(rcvr_target=rx_id, osd_str="\rpilotCR")))    # reserved \r
+    # # print("CSUM Pilot", repr(cv.set_osd_string(rcvr_target=rx_id, osd_str="%pilotCS")))     # reserved &
+    # print(cv.reset_lock(rcvr_target=rx_id).strip())
+    # print(cv.set_video_format(rcvr_target=rx_id, video_format="n").strip())
+    # print(cv.move_cursor(rcvr_target=rx_id, desired_move='+'))
 
     # ########### Example Getters #############
     # print(cv.get_connected_receiver_list())
-    print(cv.get_address(rcvr_target=rx_id).strip())
-    print(cv.get_channel(rcvr_target=rx_id).strip())
-    print(cv.get_band(rcvr_target=rx_id).strip())
-    print(cv.get_frequency(rcvr_target=rx_id).strip()) #Not implemented. Need to make band chart table"""
-    print(cv.get_osd_string(rcvr_target=rx_id).strip())
-    print(cv.get_lock_format(rcvr_target=rx_id).strip()) #Not implemented. Need to set up the rf simulator"""
-    print(cv.get_mode(rcvr_target=rx_id).strip())
-    print(cv.get_model_version(rcvr_target=rx_id).strip()) #Not implemented."""
-    print(cv.get_rssi(rcvr_target=rx_id).strip()) #Not implemented"""
-    print(cv.get_osd_state(rcvr_target=rx_id).strip())
-    print(cv.get_video_format(rcvr_target=rx_id).strip())
+    # print(cv.get_address(rcvr_target=rx_id).strip())
+    # print(cv.get_channel(rcvr_target=rx_id).strip())
+    # print(cv.get_band(rcvr_target=rx_id).strip())
+    # print(cv.get_frequency(rcvr_target=rx_id).strip()) #Not implemented. Need to make band chart table"""
+    # print(cv.get_osd_string(rcvr_target=rx_id).strip())
+    r = cv.get_lock_format(rcvr_target=rx_id) #Not implemented. Need to set up the rf simulator"""
+    print(r)
+    # print(cv.get_mode(rcvr_target=rx_id).strip())
+    # print(cv.get_model_version(rcvr_target=rx_id).strip()) #Not implemented."""
+    # print(cv.get_rssi(rcvr_target=rx_id).strip()) #Not implemented"""
+    # print(cv.get_osd_state(rcvr_target=rx_id).strip())
+    # print(cv.get_video_format(rcvr_target=rx_id).strip())
 
     # cv.set_video_mode(rcvr_target=rx_id, mode="menu")
     # cv.set_osd_string_positional(rcvr_target=rx_id, starting_index=0, osd_str="1234")
@@ -289,8 +290,8 @@ if __name__ == "__main__":      # example usage
     rx_id = 1               # ensure the cv is set to that rx_id
     bc_id = 0
 
-    # main_formatter(rx_id, bc_id)
-    hw_reset_lock(rx_id, bc_id)
+    main_formatter(rx_id, bc_id)
+    # hw_reset_lock(rx_id, bc_id)
     
 
 
