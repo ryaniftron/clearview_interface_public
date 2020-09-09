@@ -12,6 +12,7 @@
 #include <esp_http_server.h>
 #include "esp_ota_ops.h"
 #include "freertos/event_groups.h"
+#include "cv_server.h"
 
 // Embedded Files. To add or remove make changes is component.mk file as well. 
 extern const uint8_t index_html_start[] asm("_binary_ota_html_start");
@@ -63,23 +64,28 @@ void otaRebootTask(void * parameter)
 	}
 }
 /* Send index.html Page */
-esp_err_t OTA_index_html_handler(httpd_req_t *req)
+extern esp_err_t OTA_index_html_handler(httpd_req_t *req)
 {
 	ESP_LOGI("OTA", "index.html Requested");
 
 	// Clear this every time page is requested
 	flash_status = 0;
-	
-	httpd_resp_set_type(req, "text/html");
-
-	httpd_resp_send(req, (const char *)index_html_start, index_html_end - index_html_start);
+	httpd_resp_send_chunk(req, (const char *)index_html_start, index_html_end - index_html_start);
 
     char ver[32];
     strcpy(ver,(char*) esp_ota_get_app_description()->version);
-    printf("Version: %s\n",ver);
-    //esp_app_desc_t * app_desc = 
 
 	return ESP_OK;
+}
+
+static esp_err_t ota_get_handler(httpd_req_t *req)
+{
+    serve_html_beg(req);
+    serve_title(req);
+	serve_menu_bar(req);
+    OTA_index_html_handler(req);
+    serve_html_end(req);
+    return ESP_OK;
 }
 /* Send .ICO (icon) file  */
 esp_err_t OTA_favicon_ico_handler(httpd_req_t *req)
@@ -236,7 +242,7 @@ esp_err_t OTA_update_post_handler(httpd_req_t *req)
 httpd_uri_t OTA_index_html = {
 	.uri = "/ota",
 	.method = HTTP_GET,
-	.handler = OTA_index_html_handler,
+	.handler = ota_get_handler,
 	/* Let's pass response string in user
 	 * context to demonstrate it's usage */
 	.user_ctx = NULL
