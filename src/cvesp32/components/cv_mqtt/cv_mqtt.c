@@ -63,7 +63,7 @@ static char* attempted_hostname;
 "{\"seat_number\":\"%i\"\
 }"
 #define VARIABLE_STATUS_REQ "status_var?"
-#define SEAT_SET_CMD "seat_number="
+#define SEAT_SET_CMD "seat="
 
 //*******************
 //** Format Topic Defines **
@@ -482,7 +482,7 @@ static bool process_command_esp(esp_mqtt_client_handle_t client, char* cmd){
     if (strncmp(cmd,match,strlen(match))==0) {
         char* new_seat_num = malloc(strlen("0")); //allocate for null terminated 1 character string
         strcpy(new_seat_num,cmd + strlen(match));
-        if (set_credential("seat_number", new_seat_num)){
+        if (set_credential("seat", new_seat_num)){
             update_subscriptions_new_seat();
             return true;
         }
