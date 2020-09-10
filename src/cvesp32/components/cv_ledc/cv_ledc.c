@@ -17,13 +17,19 @@ static CV_LED_Code_t get_ledc_code(int channel);
 
 bool _ledc_init = false;
 const char* TAG_LEDC = "CV_LEDC";
-#ifndef LED_DRIVE
-    #define LED_DRIVE 1 //1 for sourcing from vcc, 2 for sinking to gnd
-#endif
 
 #define LEDC_HS_TIMER            LEDC_TIMER_0
 #define LEDC_HS_MODE             LEDC_HIGH_SPEED_MODE
-#define LEDC_HS_CH0_GPIO         (4)
+#ifdef CONFIG_CVLED_PIN_IFTRONA
+    #define LEDC_HS_CH0_GPIO         (4)
+    #define LED_DRIVE 1 // 1 = sourcing from vcc. VCC-LED-RES-GND
+    #warning LED PIN on GPIO4
+#endif
+#ifdef CONFIG_CVLED_PIN_DEVBOARD
+    #define LEDC_HS_CH0_GPIO         (2)
+    #warning LED PIN on GPIO2
+    #define LED_DRIVE 2 // 2= sinking to GND. VCC-RES-LED-GND
+#endif
 #define LEDC_HS_CH0_CHANNEL      LEDC_CHANNEL_0
 
 #define LEDC_CH_NUM              (1) //how many LED's in use 
@@ -35,7 +41,7 @@ const char* TAG_LEDC = "CV_LEDC";
 
 #define LEDC_BLINK_OFF_FAST_TIME (250)
 #define LEDC_BLINK_ON_FAST_TIME  (500)
-#define LEDC_BLINK_OFF_SLOW_TIME (500)
+#define LEDC_BLINK_OFF_SLOW_TIME (1500)
 #define LEDC_BLINK_ON_SLOW_TIME  (1500)
 
 #if LED_DRIVE == 1
@@ -44,11 +50,14 @@ const char* TAG_LEDC = "CV_LEDC";
 #elif LED_DRIVE == 2
     #define LED_ON_DUTY          LEDC_MAX_DUTY
     #define LED_OFF_DUTY         LEDC_MIN_DUTY
+#else
+    #error Unknown LED_DRIVE type
 #endif
 
 
 CV_LED_Code_t _led_state = led_on;
 bool _led_update_state = false; //if true, LED state needs changed
+bool _led_task_block = false; // This is a blocker for changing state because it's midway in a task
 
 
 ledc_timer_config_t ledc_timer = {
@@ -132,10 +141,21 @@ extern void get_led(struct cv_api_read* carptr, int channel){
 
 //For some of the constant states, only need to tell LED what to do once
 void _change_led_state(ledc_channel_config_t led_channel_conft){
+    if (_led_task_block){
+        ESP_LOGW(TAG_LEDC, "LED update blocked by task. Autowaiting for completion");
+        return;
+    }
+    if (!_led_update_state){
+        ESP_LOGD(TAG_LEDC, "LED already updated after task completion");
+        return;
+    }
+
     if (_led_state == led_off){
+        ESP_LOGI(TAG_LEDC, "Setting OFF duty");
         ledc_set_duty(led_channel_conft.speed_mode, led_channel_conft.channel, LED_OFF_DUTY);
         ledc_update_duty(led_channel_conft.speed_mode, led_channel_conft.channel);
     } else if (_led_state == led_on){
+         ESP_LOGI(TAG_LEDC, "Setting ON duty");
         ledc_set_duty(led_channel_conft.speed_mode, led_channel_conft.channel, LED_ON_DUTY);
         ledc_update_duty(led_channel_conft.speed_mode, led_channel_conft.channel);
     } else {
@@ -159,7 +179,9 @@ void set_ledc_code(int channel, CV_LED_Code_t led_code){
         _led_state = led_code; //update local variable here
         ESP_LOGI(TAG_LEDC, "LED STATE: %d", led_code);
     }
+
     _led_update_state = true;
+
 
     ledc_channel_config_t led_channel_conft = ledc_channel[channel];
     _change_led_state(led_channel_conft); //change pin voltage if it's a fixed state
@@ -178,6 +200,7 @@ void breathe_led(ledc_channel_config_t led_channel_conft){
             ESP_LOGE(TAG_LEDC, "Can't breathe LED with _led_state of %i", _led_state);
             return;
         }
+        _led_task_block = true;
 
         //fade down
         ledc_set_fade_with_time(led_channel_conft.speed_mode,
@@ -198,6 +221,7 @@ void breathe_led(ledc_channel_config_t led_channel_conft){
         ledc_fade_start(led_channel_conft.speed_mode,
                         led_channel_conft.channel, 
                         LEDC_FADE_WAIT_DONE);
+        _led_task_block = false;
 }
 
 void blink_led(ledc_channel_config_t led_channel_conft) {
@@ -212,6 +236,7 @@ void blink_led(ledc_channel_config_t led_channel_conft) {
         ESP_LOGE(TAG_LEDC, "Can't blink LED with _led_state of %i", _led_state);
         return;
     }
+    _led_task_block = true;
 
     //on
     ledc_set_duty(led_channel_conft.speed_mode, 
@@ -232,14 +257,15 @@ void blink_led(ledc_channel_config_t led_channel_conft) {
                         led_channel_conft.channel);
                         
     vTaskDelay(blink_off_time / portTICK_PERIOD_MS);
+    _led_task_block = false;
 }
 
 void _run_cur_led_state(ledc_channel_config_t led_channel_conft){
     if (_led_state == led_on){
-        ESP_LOGD(TAG_LEDC, "Ignoring to set current state as its already on");
+        _change_led_state(led_channel_conft); 
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     } else if (_led_state == led_off){
-        ESP_LOGD(TAG_LEDC, "Ignoring to set current state as its already off");
+        _change_led_state(led_channel_conft);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     } else if (_led_state == led_breathe_fast || _led_state == led_breathe_slow){
         breathe_led(led_channel_conft);

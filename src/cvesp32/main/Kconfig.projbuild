@@ -71,6 +71,21 @@ menu "ClearView ESP32 Configuration"
         config ENABLE_LED
             bool "Enable LED codes"
             default y
+
+        choice 
+            prompt "CVCM LED Pin"
+            depends on ENABLE_LED
+            help
+                LED GPIO Pin
+
+            config CVLED_PIN_IFTRONA
+                bool "IftronA - Pin4"
+            
+            config CVLED_PIN_DEVBOARD
+                bool "Devboard - Pin2"
+
+        endchoice
+            
         
         choice 
             prompt "Allowed WiFi Modes. Can Disable Wifi"
