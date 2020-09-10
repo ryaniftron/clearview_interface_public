@@ -57,6 +57,9 @@ extern const uint8_t html_conc_end[] asm("_binary_httpDocConclude_html_end");
 extern const uint8_t cv_js_start[] asm("_binary_cv_js_js_start");
 extern const uint8_t cv_js_end[] asm("_binary_cv_js_js_end");
 
+extern const uint8_t cv_style_start[] asm("_binary_cvcm_style_css_start");
+extern const uint8_t cv_style_end[] asm("_binary_cvcm_style_css_end");
+
 #ifdef CONFIG_CV_INITIAL_PROGRAM
 extern const uint8_t menu_bar_start[] asm("_binary_menuBarTest_html_start");
 extern const uint8_t menu_bar_end[] asm("_binary_menuBarTest_html_end");
@@ -574,14 +577,40 @@ static esp_err_t test_cv_get_handler(httpd_req_t *req)
 /* jquery GET handler */
 static esp_err_t cv_js_handler(httpd_req_t *req)
 {
-	ESP_LOGI(TAG_SERVER, "cv_server requested");
-
+	ESP_LOGD(TAG_SERVER, "cvjs requested");
 	httpd_resp_set_type(req, "application/javascript");
-
 	httpd_resp_send(req, (const char *)cv_js_start, (cv_js_end - cv_js_start)-1);
-
 	return ESP_OK;
 }
+
+/* cv css style GET handler */
+static esp_err_t cv_style_handler(httpd_req_t *req)
+{
+    ESP_LOGD(TAG_SERVER, "style requested");
+    httpd_resp_set_type(req, "text/css");
+	httpd_resp_send(req, (const char *)cv_style_start, (cv_style_end - cv_style_start)-1);
+	return ESP_OK;
+}
+
+static esp_err_t svg_succ_handler(httpd_req_t *req)
+{
+    ESP_LOGD(TAG_SERVER, "svg succ requested");
+    httpd_resp_set_type(req, "image/svg+xml");
+    char* content= "<svg id=\"aba7a625-97ef-414b-9eff-5925cb418267\" data-name=\"Layer 1\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\"><defs><style>.b11ea844-35e0-453b-8431-f6d3de1a238f{fill:#27db8d;}</style></defs><path class=\"b11ea844-35e0-453b-8431-f6d3de1a238f\" d=\"M32,5A27,27,0,1,0,59,32,27,27,0,0,0,32,5ZM30.379,44.885l-6.364,6.364-7.071-7.071L8.883,36.117l6.364-6.364,8.061,8.061L46.061,15.061l7.071,7.071Z\"/></svg>";
+	httpd_resp_send(req, content, HTTPD_RESP_USE_STRLEN);
+	return ESP_OK;
+}
+
+static esp_err_t svg_err_handler(httpd_req_t *req)
+{
+    ESP_LOGD(TAG_SERVER, "svg succ requested");
+    httpd_resp_set_type(req, "image/svg+xml");
+    char* content= "<svg id=\"beb23479-4000-42ba-a617-1c0d17581624\" data-name=\"Layer 1\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\"><defs><style>.bbfeb0ba-e50b-49ff-9929-d14795293362{fill:#db5727;}</style></defs><rect class=\"bbfeb0ba-e50b-49ff-9929-d14795293362\" x=\"3\" y=\"27\" width=\"59\" height=\"10\" transform=\"translate(-13.108 32.354) rotate(-45)\"/><rect class=\"bbfeb0ba-e50b-49ff-9929-d14795293362\" x=\"27.5\" y=\"2.5\" width=\"10\" height=\"59\" transform=\"translate(-13.108 32.354) rotate(-45)\"/></svg>";
+	httpd_resp_send(req, content, HTTPD_RESP_USE_STRLEN);
+	return ESP_OK;
+}
+
+// error <svg id=\"beb23479-4000-42ba-a617-1c0d17581624\" data-name=\"Layer 1\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\"><defs><style>.bbfeb0ba-e50b-49ff-9929-d14795293362{fill:#db5727;}</style></defs><rect class=\"bbfeb0ba-e50b-49ff-9929-d14795293362\" x=\"3\" y=\"27\" width=\"59\" height=\"10\" transform=\"translate(-13.108 32.354) rotate(-45)\"/><rect class=\"bbfeb0ba-e50b-49ff-9929-d14795293362\" x=\"27.5\" y=\"2.5\" width=\"10\" height=\"59\" transform=\"translate(-13.108 32.354) rotate(-45)\"/></svg>
 
 static const httpd_uri_t root_uri = {
     .uri       = "/",
@@ -646,6 +675,25 @@ static const httpd_uri_t cv_js_uri = {
 	.user_ctx = NULL
 };
 
+static const httpd_uri_t cv_style_uri = {
+    .uri       = "/cvcm_style.css",
+    .method    = HTTP_GET,
+    .handler   = cv_style_handler
+};
+
+static const httpd_uri_t svg_succ_uri = {
+    .uri       = "/cvcm_success.svg",
+    .method    = HTTP_GET,
+    .handler   = svg_succ_handler
+};
+
+static const httpd_uri_t svg_error_uri = {
+    .uri       = "/cvcm_error.svg",
+    .method    = HTTP_GET,
+    .handler   = svg_err_handler
+};
+
+
 extern httpd_handle_t start_cv_webserver(void){
     if (_server_started) {
         ESP_LOGW(TAG_SERVER, "SERVER is already running");
@@ -674,8 +722,6 @@ extern httpd_handle_t start_cv_webserver(void){
 
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &root_uri));
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &wifi_uri));
-        //ESP_ERROR_CHECK(httpd_register_uri_handler(server, &config_wifi_uri));
-        //ESP_ERROR_CHECK(httpd_register_uri_handler(server, &config_wifi_instant_uri));
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &config_settings_uri));
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &settings_uri));
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &OTA_index_html));
@@ -685,7 +731,10 @@ extern httpd_handle_t start_cv_webserver(void){
 		ESP_ERROR_CHECK(httpd_register_uri_handler(server, &OTA_status));
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &cv_js_uri));
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &test_uri));
-        //ESP_ERROR_CHECK(httpd_register_uri_handler(server, &config_test_uri));
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &cv_style_uri));
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &svg_succ_uri));
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &svg_error_uri));
+
 
 
         ESP_LOGI(TAG_SERVER, "Webserver started. Login and go to http://192.168.4.1/ \n");

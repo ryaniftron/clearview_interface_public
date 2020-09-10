@@ -1,43 +1,47 @@
-
-
 <!-- Channel Number -->
-<form method="POST">
-    <label for="channel">Channel</label>
-    <select id="channel" name="channel">
-        <option value="0">1</option>
-        <option value="1">2</option>
-        <option value="2">3</option>
-        <option value="3">4</option>
-        <option value="4">5</option>
-        <option value="5">6</option>
-        <option value="6">7</option>
-        <option value="7">8</option>
-    </select>
-    <!-- <input type="submit" value="Set Channel"> -->
+<form method="POST" enctype="text/plain">
+    <ol>
+        <li class="working">
+            <label for="channel">Channel:</label>
+            <select id="channel" name="channel"  class="channel">
+                <option value="0">1</option>
+                <option value="1">2</option>
+                <option value="2">3</option>
+                <option value="3">4</option>
+                <option value="4">5</option>
+                <option value="5">6</option>
+                <option value="6">7</option>
+                <option value="7">8</option>
+            </select>
+        </li>
+    </ol>
 </form>
 <div id="error_channel"></div>
 
 <!-- Band -->
-<form method="POST">
-    <label for="band">Band</label>
-    <select id="band" name="band">
-        <option value="0">A</option>
-        <option value="1">B</option>
-        <option value="2">R</option>
-        <option value="3">E</option>
-        <option value="4">F</option>
-        <option value="5">L</option>
-        <option value="6">H</option>
-        <option value="8">U</option>
-        <option value="9">J</option>
-        <option value="a">S</option>
-        <option value="b">M</option>
-        <option value="c">Q</option>
-        <option value="d">X</option>
-        <option value="e">Y</option>
-        <option value="f">Z</option>
-    </select>
-    <!-- <input type="submit" value="Set Band"> -->
+<form method="POST" enctype="text/plain">
+    <ol>
+        <li class="working">
+            <label for="band">Band:</label>
+            <select id="band" name="band"  class="band">
+                <option value="0">A</option>
+                <option value="1">B</option>
+                <option value="2">R</option>
+                <option value="3">E</option>
+                <option value="4">F</option>
+                <option value="5">L</option>
+                <option value="6">H</option>
+                <option value="8">U</option>
+                <option value="9">J</option>
+                <option value="a">S</option>
+                <option value="b">M</option>
+                <option value="c">Q</option>
+                <option value="d">X</option>
+                <option value="e">Y</option>
+                <option value="f">Z</option>
+            </select>
+        </li>
+    </ol>
 </form>
 <div id="error_band"></div>
 
@@ -53,31 +57,42 @@
     <input type="submit" value="Set Antenna Mode">
 </form> -->
 
-<!-- Vide Format -->
-<form method="POST">
-    <label for="video_format">Video Format</label>
-    <select id="video_format" name="video_format">
-        <option value="A">Auto</option>
-        <option value="N">NTSC</option>
-        <option value="P">PAL</option>
-    </select>
-    <!-- <input type="submit" value="Set Video Mode"> -->
+<!-- Video Format -->
+<form method="POST" enctype="text/plain">
+    <ol>
+        <li class="working">
+            <label for="video_format">Video Format:</label>
+            <select id="video_format" name="video_format"  class="video_format">
+                <option value="A">Auto</option>
+                <option value="N">NTSC</option>
+                <option value="P">PAL</option>
+            </select>
+        </li>
+    </ol>
 </form>
 <div id="error_video_format"></div>
 
 <!-- ID String -->
-<form method="POST">
-    <label for="id">ID String</label>
-    <input type="text" id="id", name="id">
-    <input type="submit" value="Save Pilot ID">
+<form method="POST" enctype="text/plain">
+    <ol>
+        <li class="working">
+            <label for="id">ID String</label>
+            <input type="text" id="id", name="id">
+            <input type="submit" value="Save Pilot ID">
+        </li>
+    </ol>
 </form>
 <div id="error_id"></div>
 
 <!-- User Message -->
-<form method="POST">
-    <label for="user_msg">User Message</label>
-    <input type="text" id="user_msg", name="user_msg">
-    <input type="submit" value="Save User Message">
+<form method="POST" enctype="text/plain">
+    <ol>
+        <li class="working">
+            <label for="user_msg">User Message</label>
+            <input type="text" id="user_msg", name="user_msg">
+            <input type="submit" value="Save User Message">
+        </li>
+    </ol>
 </form>
 <div id="error_user_msg"></div>
 
@@ -86,22 +101,27 @@
     <!-- <input type="submit" value="Show Live Video"> -->
 <!-- </form>  -->
 
-<form action="/settings" method="POST">
-  <label for="wifi_power">WiFi Power</label>
-  <select id="wifi_power" name="wifi_power">
-    <option value="8">2 dBm (Lowest Power)</option>
-    <option value="20">5 dBm</option>
-    <option value="28">7 dBm</option>
-    <option value="34">8 dBm</option>
-    <option value="44">11 dBm</option>
-    <option value="52">13 dBm</option>
-    <option value="56">14 dBm</option>
-    <option value="60">15 dBm</option>
-    <option value="66">16 dBm</option>
-    <option value="72">18 dBm</option>
-    <option value="78">20 dBm (Highest Power)</option>
-  </select>
+<form method="POST" enctype="text/plain">
+    <ol>
+        <li class="working">
+            <label for="wifi_power">Wifi Power:</label>
+            <select id="wifi_power" name="wifi_power"  class="wifi_power">>
+                <option value="8">2 dBm (Lowest Power)</option>
+                <option value="20">5 dBm</option>
+                <option value="28">7 dBm</option>
+                <option value="34">8 dBm</option>
+                <option value="44">11 dBm</option>
+                <option value="52">13 dBm</option>
+                <option value="56">14 dBm</option>
+                <option value="60">15 dBm</option>
+                <option value="66">16 dBm</option>
+                <option value="72">18 dBm</option>
+                <option value="78">20 dBm (Highest Power)</option>
+           </select>
+        </li>
+    </ol>
 </form>
+<div id="error_wifi_power"></div>
 
 
 <script>
@@ -113,7 +133,8 @@
         "band": "?",
         "video_format": "?",
         "id": "?",
-        "user_msg": "?"
+        "user_msg": "?",
+        "wifi_power": "?"
     });
     
 </script>
