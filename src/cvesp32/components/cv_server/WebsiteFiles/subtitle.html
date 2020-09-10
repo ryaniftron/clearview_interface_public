@@ -1,18 +1,20 @@
-<table style="table-layout: fixed; width: 100%;">
-  <tr>
-        <td>
-            <p>Seat:</p>
-            <output id="seat",style="text-align: left; width: 50%;">...</output>
-            <div id="error_seat"></div>
-        </td>
-        <!-- <td>
-            <p>Lock Status:</p>
-            <output id="lock",style="text-align: left; width: 50%;">1</output>
-            <div id="error_lock"></div>
-        </td> -->
-  </tr>
-</table>
-<hr>
+<div id="current_status" class="status">
+    <h2>Current Status</h2>
+    <ol>
+        <li>
+            <div class="label">Seat:</div>
+            <div class="seat">---</div>
+            <div class="error-message error_seat"></div>
+        </li>
+        
+        <!-- <li>
+            <div class="label">Lock Status:</div>
+            <div id="lock">TODO</div>
+            <div id="error_lock" class="error-message"></div>
+        </li> -->
+       
+    </ol>
+</div>
 
 <script>
     console.log("subtitle")

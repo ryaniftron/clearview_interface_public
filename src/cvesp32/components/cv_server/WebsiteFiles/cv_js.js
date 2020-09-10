@@ -7,26 +7,20 @@ $(document).ready(function(){
 
 function field_change() {
     $("#"+this.id).submit()
-    //.css("background", "rgb(200,200,0)").
 }
 
 function process_error_reply(domEl, k, v_new){
-        // domEl.classList.add("style_error")
-        // if (data['status'] == 'fail') {
-		// 		$(body).addClass('no-cv-response');
-        var error_id = "#error_" + k;
-		$(error_id).html("Error: "+ v_new)
-            .css({
-                "color":"#800",
-                "background":"#fcc"
-            })
+    $("#" + k)
+        .prop('disabled', false)
+        .parent()
+        .removeClass()
+        .addClass('error');    
+    
+    var error_id = "#error_" + k;
+        $(error_id)
+            .html("Error: "+ v_new)
             .slideDown();
-				
-		// 	} else {
-		// 		$.each(data, function (key, val) {
-		// 			$('#' + key).val(val);
-		// 		});
-		// 	}
+        
 }
 
 function receive_data(msg) {
@@ -42,10 +36,10 @@ function receive_data(msg) {
             var domCls = document.getElementsByClassName(k);
             if (domCls.length >= 1) {
                 var loop_els = domCls;
-                console.log("Using class looper")
+                // console.log("Using class looper")
             } else {
                 var loop_els = domEls;
-                console.log("Using 1 element looper")
+                // console.log("Using 1 element looper")
             }
 
             for (let domEl of loop_els){
@@ -63,34 +57,57 @@ function receive_data(msg) {
                 if (domElOpt != null) {
                     if (domElTagName == "SELECT") { //select got a valid reply
                         domEl.value = v
-                        $("#" + k).css("background","rgb(0,200,0)");
-                        $("#error_" + k).slideUp().hide();
+                        $("#" + k)
+    						.prop('disabled', false)
+    						.parent()
+    						.removeClass()
+    						.addClass('success');
+    					$("#error_" + k).slideUp();
                     } else if (domElTagName == "INPUT"){ //text got some reply
                         if (v.includes("error")) { // error reply
-                            $("#" + k).css("background","rgb(200,0,0)");
+                            $("#" + k)
+							    .prop('disabled', false)
+							    .parent()
+							    .removeClass()
+							    .addClass('error');
                             process_error_reply(domEl, k, v);
                         } else { //success text reply
                             domElOpt.value = v
-                            $("#" + k).css("background","rgb(0,200,0)");
-                            $("#error_" + k).slideUp().hide();
+                            $("#" + k)
+							    .prop('disabled', false)
+							    .parent()
+							    .removeClass()
+							    .addClass('success');
+                            $("#error_" + k).slideUp()
                         } 
                     } else {
                         if (v.includes("error")) {
-                            $("#" + k).css("background","rgb(200,0,0)");
+                            $("#" + k)
+							    .prop('disabled', false)
+							    .parent()
+							    .removeClass()
+							    .addClass('error');
                             process_error_reply(domEl, k, v);
                         } else {
-                            if (k == "seat") { v = (parseInt(v)+1).toString(10);}
-                            domEl.innerText = v
-                            $("#" + k).css("background","rgb(0,200,0)");
-                            $("#error_" + k).slideUp().hide();
+                            if (k == "seat") { 
+                                domEl.innerText = (parseInt(v)+1).toString(10);
+                            }
+                            else {
+                                domEl.innerText = v;
+                            }
+                            $("#" + k)
+							    .prop('disabled', false)
+							    .parent()
+                                .removeClass()
+                                .addClass('success')
+                            $("#error_" + k).slideUp()
                         }
                     } 
                 } else {
-                    console.log("Process error id " + k);
+                    console.log("Process error reply for id " + k);
                     // Fade: https://stackoverflow.com/questions/26936811/css-transition-fade-background-color-resetting-after
                     process_error_reply(domEl, k,v);
                 }
-                // el.innerHTML=k[msg]
             };
         }
     }
@@ -123,7 +140,14 @@ $(document).on('submit', 'form', function (event){
         $(this).each(function() {
             if (this.name != "") {
                 object[this.name] = this.value
-                $("#" + this.name).css("background","rgb(200,200,0)")
+                
+                if (this.name != "send_cmd" && this.name != "req_report"){
+                    $("#" + this.name)
+                        .prop('disabled', true)
+                        .parent()
+                        .removeClass()
+                        .addClass('working')
+                }
             }
         });
     });

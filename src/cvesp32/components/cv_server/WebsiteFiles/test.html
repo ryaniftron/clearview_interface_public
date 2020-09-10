@@ -1,13 +1,17 @@
-<form action="/settings" method="POST" enctype="text/plain">
-  <label for="led">Choose a LED State</label>
-  <select id="led" name="led" >
-    <option value="on">Turn On</option>
-    <option value="off">Turn Off</option>
-    <option value="breathe_slow">Breathe Slow</option>
-    <option value="breathe_fast">Breathe Fast</option>
-    <option value="blink_slow">Blink Slow</option>
-    <option value="blink_fast">Blink Fast</option>
-  </select>
+<form method="POST" enctype="text/plain">
+    <ol>
+        <li class="working">
+            <label for="led">Choose a LED State:</label>
+            <select id="led" name="led"  class="led">
+              <option value="on">Turn On</option>
+              <option value="off">Turn Off</option>
+              <option value="breathe_slow">Breathe Slow</option>
+              <option value="breathe_fast">Breathe Fast</option>
+              <option value="blink_slow">Blink Slow</option>
+              <option value="blink_fast">Blink Fast</option>
+            </select>
+        </li>
+    </ol>
 </form>
 <div id="error_led"></div>
 
@@ -23,68 +27,93 @@
 </form> -->
 
 <form action="/settings" method="POST" enctype="text/plain">
-  <label for="send_cmd">Custom Command</label>
-  <input type="text" id="send_cmd" name="send_cmd">
-  <input type="submit" value = "Send Command">
+    <ol>
+        <li class="success">
+            <label for="send_cmd">Custom Command</label>
+            <input type="text" id="send_cmd" name="send_cmd">
+            <input type="submit" value = "Send Command">
+        </li>
+    </ol>
 </form>
 
 <form action="/settings" method="POST" enctype="text/plain">
-  <label for="req_report">Custom Report</label>
-  <input type="text" id="send_report" name="req_report">
-  <input type="submit" value = "Send Report">
-  <label id="req_report"></label>
+    <ol>
+        <li class="success">
+            <label for="req_report">Custom Report</label>
+            <input type="text" id="send_report" name="req_report">
+            <input type="submit" value = "Send Report">
+            <label id="req_report"></label>
+        </li>
+    </ol>
 </form>
 <hr>
 
-<h3>Advanced Settings</h3>
 
-<p>address:</p>
-<output id="address">...</output>
-<div id="error_address"></div>
-
-<p>mode:</p>
-<output id="mode">...</output>
-<div id="error_mode"></div>
-
-<p>osd_visibility:</p>
-<output id="osd_visibility">...</output>
-<div id="error_address"></div>
-
-<p>lock status:</p>
-<output id="lock">...</output>
-<div id="error_lock"></div>
-
-<p>video format:</p>
-<output id="video_format">...</output>
-<div id="error_video_format"></div>
-
-<p>cv_version:</p>
-<output id="cv_version">...</output>
-<div id="error_cv_version"></div>
-
-<p>cvcm_version:</p>
-<output id="cvcm_version">...</output>
-<div id="error_cvcm_version"></div>
-
-<p>cvcm_version_all:</p>
-<output id="cvcm_version_all">...</output>
-<div id="error_cvcm_version_all"></div>
-
-<p>mac address:</p>
-<output class="mac_addr" id="mac_addr">...</output>
-<div id="error_mac_addr"></div>
-
-<p>ip address:</p>
-<output id="ip_addr">...</output>
-<div id="error_ip_addr"></div>
-
-<p>wifi_state:</p>
-<output id="wifi_state">...</output>
-<div id="error_wifi_state"></div>
-
-<p>wifi_power (0.25 dBm):</p>
-<output id="wifi_power">...</output>
-<div id="error_wifi_power"></div>
+<div id="advanced_settings" class="status">
+    <h2>Advanced Settings</h2>
+    <ol>
+        <li>
+            <label>address:</label>
+            <output class="address">---</output>
+            <div id="error_address"></div>
+        </li>
+        <li>
+            <label>mode:</label>
+            <output class="mode">---</output>
+            <div id="error_mode"></div>
+        </li>
+        <li>
+            <label>osd_visibility:</label>
+            <output class="osd_visibility">---</output>
+            <div id="error_address"></div>
+        </li>
+        <li>
+            <label>lock status:</label>
+            <output class="lock">---</output>
+            <div id="error_lock"></div>
+        </li>
+        <li>
+            <label>video format:</label>
+            <output class="video_format">---</output>
+            <div id="error_video_format"></div>
+        </li>
+        <li>
+            <label>cv_version:</label>
+            <output class="cv_version">---</output>
+            <div id="error_cv_version"></div>
+        </li>
+        <li>
+            <label>cvcm_version:</label>
+            <output class="cvcm_version">---</output>
+            <div id="error_cvcm_version"></div>
+        </li>
+        <li>
+            <label>cvcm_version_all:</label>
+            <output class="cvcm_version_all">---</output>
+            <div id="error_cvcm_version_all"></div>
+        </li>
+        <li>
+            <label>mac address:</label>
+            <output class="mac_addr" id="mac_addr">---</output>
+            <div id="error_mac_addr"></div>
+        </li>
+        <li>
+            <label>ip address:</label>
+            <output class="ip_addr">---</output>
+            <div id="error_ip_addr"></div>
+        </li>
+        <li>
+            <label>wifi_state:</label>
+            <output class="wifi_state">---</output>
+            <div id="error_wifi_state"></div>
+        </li>
+        <li>
+            <label>wifi_power (0.25 dBm):</label>
+            <output class="wifi_power">---</output>
+            <div id="error_wifi_power"></div>
+        </li>
+    </ol>
+</div>
 
 
 <script>
