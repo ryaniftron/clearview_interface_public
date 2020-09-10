@@ -1,8 +1,10 @@
 #!/bin/bash
-if [ ./tools/check_sdk.sh ]; then
-	echo "A"
+./tools/check_sdk_production.sh
+rval=$?
+if [ $rval -ne 0 ]; then
+	exit
 else
-	echo "B"
+	echo "pass"
 fi
 
 idf.py build
