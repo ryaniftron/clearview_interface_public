@@ -465,7 +465,7 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-void serve_title(httpd_req_t *req) {
+extern void serve_title(httpd_req_t *req) {
     char chipid[UNIQUE_ID_LENGTH];
     get_chip_id(chipid, UNIQUE_ID_LENGTH);
 
@@ -483,7 +483,7 @@ void serve_title(httpd_req_t *req) {
     free(line);
 }
 
-void serve_seat_and_lock(httpd_req_t *req){
+extern void serve_seat_and_lock(httpd_req_t *req){
     extern uint8_t desired_seat_number;
     char* lock_status = "TODO";
 
@@ -504,7 +504,7 @@ void serve_seat_and_lock(httpd_req_t *req){
     //ESP_ERROR_CHECK(httpd_resp_send_chunk(req, line, HTTPD_RESP_USE_STRLEN));
 }
 
-void serve_wificonfig(httpd_req_t *req){
+extern void serve_wificonfig(httpd_req_t *req){
     // Allocate memory for the format string
     size_t n_template = wifiSettings_html_end - wifiSettings_html_start;
     char* line_template = (char*)malloc(n_template);
@@ -517,24 +517,24 @@ void serve_wificonfig(httpd_req_t *req){
     free(line);
 }
 
-void serve_settingsconfig(httpd_req_t *req){
+extern void serve_settingsconfig(httpd_req_t *req){
     ESP_ERROR_CHECK(httpd_resp_send_chunk(req, (const char *)settings_html_start, settings_html_end - settings_html_start));
 }
 
-void serve_test(httpd_req_t *req){
+extern void serve_test(httpd_req_t *req){
     ESP_ERROR_CHECK(httpd_resp_send_chunk(req, (const char *)test_html_start, test_html_end - test_html_start));
 }
 
-void serve_html_beg(httpd_req_t *req){
+extern void serve_html_beg(httpd_req_t *req){
     ESP_ERROR_CHECK(httpd_resp_send_chunk(req, (const char *)html_beg_start, html_beg_end - html_beg_start));
 }
 
-void serve_html_end(httpd_req_t *req){
+extern void serve_html_end(httpd_req_t *req){
     ESP_ERROR_CHECK(httpd_resp_send_chunk(req, (const char *)html_conc_start, html_conc_end - html_conc_start));
     ESP_ERROR_CHECK(httpd_resp_send_chunk(req, NULL, 0));
 }
 
-void serve_menu_bar(httpd_req_t *req){
+extern void serve_menu_bar(httpd_req_t *req){
     ESP_ERROR_CHECK(httpd_resp_send_chunk(req, (const char *)menu_bar_start, menu_bar_end - menu_bar_start));
 }
 
