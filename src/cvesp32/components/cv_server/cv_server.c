@@ -595,6 +595,14 @@ static esp_err_t cv_style_handler(httpd_req_t *req)
 	httpd_resp_send(req, (const char *)cv_style_start, (cv_style_end - cv_style_start)-1);
 	return ESP_OK;
 }
+<<<<<<< HEAD
+
+static esp_err_t svg_succ_handler(httpd_req_t *req)
+{
+    ESP_LOGD(TAG_SERVER, "svg succ requested");
+    httpd_resp_set_type(req, "image/svg+xml");
+    char* content= "<svg id=\"aba7a625-97ef-414b-9eff-5925cb418267\" data-name=\"Layer 1\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\"><defs><style>.b11ea844-35e0-453b-8431-f6d3de1a238f{fill:#27db8d;}</style></defs><path class=\"b11ea844-35e0-453b-8431-f6d3de1a238f\" d=\"M32,5A27,27,0,1,0,59,32,27,27,0,0,0,32,5ZM30.379,44.885l-6.364,6.364-7.071-7.071L8.883,36.117l6.364-6.364,8.061,8.061L46.061,15.061l7.071,7.071Z\"/></svg>";
+=======
 
 static esp_err_t svg_succ_handler(httpd_req_t *req)
 {
@@ -610,10 +618,23 @@ static esp_err_t svg_err_handler(httpd_req_t *req)
     ESP_LOGD(TAG_SERVER, "svg succ requested");
     httpd_resp_set_type(req, "image/svg+xml");
     char* content= "<svg id=\"beb23479-4000-42ba-a617-1c0d17581624\" data-name=\"Layer 1\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\"><defs><style>.bbfeb0ba-e50b-49ff-9929-d14795293362{fill:#db5727;}</style></defs><rect class=\"bbfeb0ba-e50b-49ff-9929-d14795293362\" x=\"3\" y=\"27\" width=\"59\" height=\"10\" transform=\"translate(-13.108 32.354) rotate(-45)\"/><rect class=\"bbfeb0ba-e50b-49ff-9929-d14795293362\" x=\"27.5\" y=\"2.5\" width=\"10\" height=\"59\" transform=\"translate(-13.108 32.354) rotate(-45)\"/></svg>";
+>>>>>>> 19e2b851fdd9bbe404b5434848905a069b3a4a54
 	httpd_resp_send(req, content, HTTPD_RESP_USE_STRLEN);
 	return ESP_OK;
 }
 
+<<<<<<< HEAD
+static esp_err_t svg_err_handler(httpd_req_t *req)
+{
+    ESP_LOGD(TAG_SERVER, "svg succ requested");
+    httpd_resp_set_type(req, "image/svg+xml");
+    char* content= "<svg id=\"beb23479-4000-42ba-a617-1c0d17581624\" data-name=\"Layer 1\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\"><defs><style>.bbfeb0ba-e50b-49ff-9929-d14795293362{fill:#db5727;}</style></defs><rect class=\"bbfeb0ba-e50b-49ff-9929-d14795293362\" x=\"3\" y=\"27\" width=\"59\" height=\"10\" transform=\"translate(-13.108 32.354) rotate(-45)\"/><rect class=\"bbfeb0ba-e50b-49ff-9929-d14795293362\" x=\"27.5\" y=\"2.5\" width=\"10\" height=\"59\" transform=\"translate(-13.108 32.354) rotate(-45)\"/></svg>";
+	httpd_resp_send(req, content, HTTPD_RESP_USE_STRLEN);
+	return ESP_OK;
+}
+
+=======
+>>>>>>> 19e2b851fdd9bbe404b5434848905a069b3a4a54
 // error <svg id=\"beb23479-4000-42ba-a617-1c0d17581624\" data-name=\"Layer 1\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\"><defs><style>.bbfeb0ba-e50b-49ff-9929-d14795293362{fill:#db5727;}</style></defs><rect class=\"bbfeb0ba-e50b-49ff-9929-d14795293362\" x=\"3\" y=\"27\" width=\"59\" height=\"10\" transform=\"translate(-13.108 32.354) rotate(-45)\"/><rect class=\"bbfeb0ba-e50b-49ff-9929-d14795293362\" x=\"27.5\" y=\"2.5\" width=\"10\" height=\"59\" transform=\"translate(-13.108 32.354) rotate(-45)\"/></svg>
 
 static const httpd_uri_t root_uri = {
