@@ -30,12 +30,10 @@ static bool _nvs_is_init = false;
 
 extern void get_chip_id(char* ssid, const int LEN){
     //TODO it's reverse order. Try this instead https://github.com/espressif/arduino-esp32/issues/932#issuecomment-352307067
-    uint64_t chipid = 0LL;
-    esp_efuse_mac_get_default((uint8_t*) (&chipid));
-    uint16_t chip = (uint16_t)(chipid >> 32);
-    //esp_read_mac(chipid);
-    snprintf(ssid, LEN, "CV_%04X%08X", chip, (uint32_t)chipid);
-    ESP_LOGD(TAG_UTILS, "SSID created from chip id: %s\n", ssid);
+	uint8_t baseMac[6];
+	// Get MAC address for WiFi station
+	esp_read_mac(baseMac, ESP_MAC_WIFI_STA);
+    sprintf(ssid,"CV_%02X%02X%02X%02X%02X%02X", baseMac[0],baseMac[1],baseMac[2],baseMac[3],baseMac[4],baseMac[5]);
     return;
 }
 

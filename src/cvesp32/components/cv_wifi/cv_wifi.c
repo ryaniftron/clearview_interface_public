@@ -317,13 +317,13 @@ static bool initialise_sta_wifi(char* PARAM_HOSTNAME)
     
     ESP_ERROR_CHECK(esp_wifi_start() );
     
-    /*esp_err_t ret = tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA ,PARAM_HOSTNAME);
+    esp_err_t ret = tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA ,PARAM_HOSTNAME);
     if(ret != ESP_OK ){
       ESP_LOGE(TAG,"failed to set hostname:%d",ret);  
     } else {
         ESP_LOGI(TAG, "hostname has been set as %s", PARAM_HOSTNAME);
     }
-    */
+    
     ESP_LOGI(TAG, "wifi_init_sta finished. Connecting to SSID:%s password:%s as %s",
              wifi_config.sta.ssid, wifi_config.sta.password,PARAM_HOSTNAME);
 
