@@ -315,7 +315,7 @@ static cJSON* run_kv_api(char* k, char* v){
     //char* TAG = "cv_server->run_kv_api";
     cJSON* ret = cJSON_CreateObject();
     // if it's a request, run request and return
-    if (strncmp(v, CV_READ_Q ,strlen(v)) == 0 || strncmp(k,CV_API_REQ_REPORT,strlen(CV_API_REQ_REPORT)) == 0){
+    if (strncmp(v, CV_READ_Q ,strlen(CV_READ_Q)) == 0 || strncmp(k,CV_API_REQ_REPORT,strlen(CV_API_REQ_REPORT)) == 0){
         struct cv_api_read car;
         struct cv_api_read*carptr = &car;
         kv_api_parse_car(carptr, k, v);

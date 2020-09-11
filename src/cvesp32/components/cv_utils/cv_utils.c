@@ -70,6 +70,9 @@ extern bool set_credential(char* credentialName, char* val){
         strcpy(desired_ap_ssid, val);
     } else if (strcmp(credentialName, "password") == 0) {
         strcpy(desired_ap_pass, val);
+        if (strlen(val) == 0) {
+            desired_ap_pass[0] = '\0'; //unsecured network
+        }
     } else if (strcmp(credentialName, "device_name") == 0) {
         strcpy(desired_friendly_name, val);
         set_nvs_strval(nvs_fname, val); //no checks needed. set directly here
