@@ -49,12 +49,17 @@ static char* TAG = "CV_WIFI";
 
 CV_WIFI_MODE _wifi_mode = CVWIFI_NOT_STARTED;
 static bool _switch_to_sta = false;
+static char* _ip = "";
 
 extern CV_WIFI_MODE get_wifi_mode() {
     return _wifi_mode;
 }
+
 extern CV_WIFI_STATE_MSG set_wifi_mode(CV_WIFI_MODE mode){
-    if (_wifi_mode == CVWIFI_AP) {
+    if (_wifi_mode == mode){
+        ESP_LOGW(TAG, "Wifi Mode no change");
+        return CVWIFI_NO_CHANGE;
+    }else if (_wifi_mode == CVWIFI_AP && mode == CVWIFI_STA) {
         _switch_to_sta = true;
     } else if (_wifi_mode == CVWIFI_NOT_STARTED) {
         ESP_LOGE(TAG, "WiFi must be started before switching state");
@@ -107,6 +112,10 @@ extern bool set_wifi_power_pChr(char* power){
     }
     set_wifi_power_i8(p);
     return true;
+}
+
+extern char* get_wifi_ip() {
+    return _ip;
 }
 
 /* FreeRTOS event group to signal when we are connected*/
@@ -162,13 +171,12 @@ static void ap_event_handler(void* arg, esp_event_base_t event_base,
             xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
         }
         ESP_LOGI(TAG,"connect to the AP fail");
+        _ip = "";
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        ESP_LOGI(TAG, "got ip:%s",
-                 ip4addr_ntoa(&event->ip_info.ip));
-
-        //ip4_addr_t cv_ip;
-        //TODO get ip address
+        _ip = ip4addr_ntoa(&event->ip_info.ip);
+        ESP_LOGI(TAG, "got ip:%s",_ip);
+        _wifi_mode = CVWIFI_STA;
 
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);

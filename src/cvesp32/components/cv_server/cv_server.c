@@ -92,6 +92,7 @@ extern const uint8_t menu_bar_end[] asm("_binary_menuBar_html_end");
 #define CV_API_MAC_ADDR "mac_addr"
 #define CV_API_WIFI_STATE "wifi_state"
 #define CV_API_WIFI_POWER "wifi_power"
+#define CV_API_WIFI_IP "ip_addr"
 
 #define CV_READ_Q "?"
 
@@ -227,6 +228,9 @@ void kv_api_parse_car(struct cv_api_read* car, char* k, char* v) {
         char power[6];
         snprintf(power, 6, "%i", wifi_power);
         car->val = strdup(power);
+    }else if (strncmp(k, CV_API_WIFI_IP, strlen(k)) == 0){
+        car->val = get_wifi_ip();
+        car->api_code = CV_OK;
     }else {
         CV_LOGE(TAG,"Unknown request key of '%s'",k );
         car->success = false;

@@ -24,6 +24,7 @@
 #include "cv_uart.h"
 #include "cv_ledc.h"
 #include "cv_utils.h"
+#include "cv_wifi.h"
 
 
 static const char *TAG_TEST = "CV_MQTT";
@@ -55,7 +56,8 @@ static char* attempted_hostname;
 "{\"dev\":\"rx\",\
   \"ver\":\"TODO_VER\",\
   \"fw\":\"TODO_FW\",\
-  \"nn\":\"%s\"\
+  \"nn\":\"%s\",\
+  \"ip_addr\":\"%s\"\
 }"
 #define STATIC_STATUS_REQ "status_static?"
 
@@ -456,9 +458,9 @@ void send_variable_status(esp_mqtt_client_handle_t client){
 
 void send_static_status(esp_mqtt_client_handle_t client){
     extern char desired_friendly_name[];
-    size_t needed = snprintf(NULL, 0, STATIC_STATUS_FMT, desired_friendly_name)+1;
+    size_t needed = snprintf(NULL, 0, STATIC_STATUS_FMT, desired_friendly_name, get_wifi_ip())+1;
     char* message = (char*)malloc(needed);
-    snprintf(message, needed, STATIC_STATUS_FMT, desired_friendly_name);
+    snprintf(message, needed, STATIC_STATUS_FMT, desired_friendly_name, get_wifi_ip());
     mqtt_publish_to_topic(client, mtopics.rx_stat_static, message);
     free(message);
 }

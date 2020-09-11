@@ -27,4 +27,5 @@ extern uint8_t get_wifi_power();
 extern void set_wifi_power(int8_t power);
 extern bool set_wifi_power_pChr(char* power);
 
+extern char* get_wifi_ip();
 
