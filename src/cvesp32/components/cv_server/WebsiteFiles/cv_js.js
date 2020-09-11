@@ -14,13 +14,13 @@ function process_error_reply(domEl, k, v_new){
         .prop('disabled', false)
         .parent()
         .removeClass()
-        .addClass('error');    
-    
+        .addClass('error');
+
     var error_id = "#error_" + k;
         $(error_id)
             .html("Error: "+ v_new)
             .slideDown();
-        
+
 }
 
 function receive_data(msg) {
@@ -51,9 +51,9 @@ function receive_data(msg) {
                     var domElOpt = domEl.querySelector('[value="' + v + '"]');
                 } else {
                     var domElOpt = domEl
-                } 
+                }
 
-                
+
                 if (domElOpt != null) {
                     if (domElTagName == "SELECT") { //select got a valid reply
                         domEl.value = v
@@ -79,7 +79,7 @@ function receive_data(msg) {
 							    .removeClass()
 							    .addClass('success');
                             $("#error_" + k).slideUp()
-                        } 
+                        }
                     } else {
                         if (v.includes("error")) {
                             $("#" + k)
@@ -89,7 +89,7 @@ function receive_data(msg) {
 							    .addClass('error');
                             process_error_reply(domEl, k, v);
                         } else {
-                            if (k == "seat") { 
+                            if (k == "seat") {
                                 domEl.innerText = (parseInt(v)+1).toString(10);
                             }
                             else {
@@ -97,12 +97,12 @@ function receive_data(msg) {
                             }
                             $("#" + k)
 							    .prop('disabled', false)
-							    .parent()
+							    .parent().not('header')
                                 .removeClass()
                                 .addClass('success')
                             $("#error_" + k).slideUp()
                         }
-                    } 
+                    }
                 } else {
                     console.log("Process error reply for id " + k);
                     // Fade: https://stackoverflow.com/questions/26936811/css-transition-fade-background-color-resetting-after
@@ -113,9 +113,9 @@ function receive_data(msg) {
     }
 }
 
-    
+
 function send_form(jsondata){
-    console.log("Sending JSON form to server:" + jsondata)  
+    console.log("Sending JSON form to server:" + jsondata)
     var request = $.ajax({
         type: "POST",
         url: '/settings',
@@ -140,7 +140,7 @@ $(document).on('submit', 'form', function (event){
         $(this).each(function() {
             if (this.name != "") {
                 object[this.name] = this.value
-                
+
                 if (this.name != "send_cmd" && this.name != "req_report"){
                     $("#" + this.name)
                         .prop('disabled', true)
@@ -153,7 +153,7 @@ $(document).on('submit', 'form', function (event){
     });
     object = JSON.stringify(object);
     send_form(object);
-}); 
+});
 
 function getAllJSON(json_req){
     var xhr = new XMLHttpRequest();
