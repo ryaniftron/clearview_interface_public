@@ -32,6 +32,7 @@
 #define REP_ANTENNA "RPAN"
 #define CMD_ID "ID"
 #define REP_ID "RPID"
+#define REP_LOCK_FMT "RPLF"
 #define CMD_UM "UM"
 #define REP_UM "RPUM"
 #define CMD_MODE "MD"
@@ -72,18 +73,18 @@ extern bool parse_command_payload(char* full_cmd, char* payload){
         ESP_LOGE(TAG_API, "parse_command_payload; Empty cmd or payload");
         return false;
     }
-    ESP_LOGI(TAG_API,"full_cmd_infunc: '%s'\n", full_cmd);
+    // ESP_LOGI(TAG_API,"full_cmd_infunc: '%s'\n", full_cmd);
     // TODO The fmt A%*c%*c.. doens't match only A
     char* fmt_base = "%c%s%%[^%s]%s%c";
     int n = snprintf(NULL, 0, fmt_base, START_CHAR,"%*c%*c", CSUM,CSUM, END_CHAR);
     char* fmt = malloc(++n);
     snprintf(fmt, n, fmt_base, START_CHAR,"%*c%*c", CSUM,CSUM, END_CHAR);
-    ESP_LOGI(TAG_API, "fmt:%s\n",fmt);
+    // ESP_LOGI(TAG_API, "fmt:%s\n",fmt);
     sscanf(full_cmd, fmt, payload);
-    ESP_LOGI(TAG_API, "payload1 %s\n", payload);
+    // ESP_LOGI(TAG_API, "payload1 %s\n", payload);
     free(fmt);
-    ESP_LOGI(TAG_API, "n=%i\n",n);
-    ESP_LOGI(TAG_API, "L=%u\n", strlen(payload));
+    // ESP_LOGI(TAG_API, "n=%i\n",n);
+    // ESP_LOGI(TAG_API, "L=%u\n", strlen(payload));
 
     return strlen(payload) != 0;
 }
@@ -404,6 +405,11 @@ extern void reset_lock(struct cv_api_write* ret) {
         ret->api_code = CV_OK;
     else 
         ret->api_code = CV_ERROR_NO_COMMS;
+}
+
+extern void get_lock(struct cv_api_read* ret){
+    char* cmd_id = REP_LOCK_FMT;
+    run_read(ret, cmd_id);
 }
 
 extern void get_videoformat(struct cv_api_read* ret){
