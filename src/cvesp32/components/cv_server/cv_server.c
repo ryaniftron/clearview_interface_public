@@ -1,13 +1,10 @@
-#ifndef CV_SERVER_C
-#define CV_SERVER_C
-
+#include "cv_server.h"
 #define WRITE_THEN_READ 1
 
 
 #include <esp_event.h>
 #include <esp_log.h>
-#include <cJSON.h>
-#include <cJSON_Utils.h>
+
 
 
 #include "lwip/api.h"
@@ -73,6 +70,7 @@ extern const uint8_t menu_bar_end[] asm("_binary_menuBar_html_end");
 #define CV_API_ADDRESS "address"
 #define CV_API_SSID "ssid"
 #define CV_API_PASSWORD "password"
+#define CV_API_DEVICE_TYPE "device_type"
 #define CV_API_DEVICE_NAME "device_name"
 #define CV_API_BROKER_IP "broker_ip"
 #define CV_API_SEAT "seat"
@@ -114,13 +112,13 @@ static int is_content_json(httpd_req_t *req){
     return strncmp(HTTPD_TYPE_JSON, content_type, strlen(content_type));
 }
 
-static int is_content_html_plain(httpd_req_t *req){
-    //Check content type
-    const char CSZ = 50;
-    char content_type[CSZ];
-    httpd_req_get_hdr_value_str(req, "Content-Type", content_type, CSZ);
-    return strncmp(HTTPD_TYPE_TEXT, content_type, strlen(content_type));
-}
+// static int is_content_html_plain(httpd_req_t *req){
+//     //Check content type
+//     const char CSZ = 50;
+//     char content_type[CSZ];
+//     httpd_req_get_hdr_value_str(req, "Content-Type", content_type, CSZ);
+//     return strncmp(HTTPD_TYPE_TEXT, content_type, strlen(content_type));
+// }
 
 void add_response_to_json_car(cJSON* ret, char* k, struct cv_api_read* car){
     if (car->success) {
@@ -189,14 +187,20 @@ void kv_api_parse_car(struct cv_api_read* car, char* k, char* v) {
         //get_nvs_value(nvs_wifi_pass); //Don't read from nvs because it will overright the local value
         car->val = desired_ap_pass;
         car->api_code = CV_OK;
-    }else if (strncmp(k, CV_API_DEVICE_NAME, strlen(k)) == 0){
+    }else if (strncmp(k, CV_API_DEVICE_TYPE, strlen(k)) == 0){
         //get_nvs_value(nvs_...); //Don't read from nvs because it will overright the local value
         car->val = desired_friendly_name;
+        car->api_code = CV_OK;    
+    }else if (strncmp(k, CV_API_DEVICE_NAME, strlen(k)) == 0){
+        //get_nvs_value(nvs_...); //Don't read from nvs because it will overright the local value
+        car->val = DEVICE_TYPE;
         car->api_code = CV_OK;
     }else if (strncmp(k, CV_API_BROKER_IP, strlen(k)) == 0){
         //get_nvs_value(nvs_...); //Don't read from nvs because it will overright the local value
         car->val = desired_mqtt_broker_ip;
         car->api_code = CV_OK;
+    } else if (strncmp(k, CV_API_LOCK, strlen(k)) == 0){
+        get_lock(car);
     } else if (strncmp(k, CV_API_CVCM_VERSION, strlen(k)) == 0){
         get_cvcm_version(car);
     } else if (strncmp(k, CV_API_CVCM_VERSION_ALL, strlen(k)) == 0){
@@ -376,6 +380,39 @@ static cJSON* run_json_api(cJSON* obj)
     return retJSON;
 }
 
+extern bool json_api_handle(char* buf, cJSON* j){
+    bool success;
+    cJSON *json_post = cJSON_Parse(buf);
+    if (json_post == NULL) {
+        ESP_LOGE(TAG_SERVER, "JSON Parse Failure");
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL)
+        {
+            ESP_LOGI(TAG_SERVER, "JSON Parse Error starting at: %s\n", error_ptr);
+            ESP_LOGI(TAG_SERVER, "Full JSON: %s", buf);
+        }
+        cJSON_AddStringToObject(j, "error", "error-json-parse");
+        success = false;
+    } else {
+        char* cjson_arrived = cJSON_Print(json_post);
+        
+        printf("JSON In: %s\n", cjson_arrived);
+        cJSON* r = run_json_api(json_post); //TODO memory leak?
+        if (r){
+            char* cjson_returned = cJSON_Print(r);
+            printf("JSON Back: %s\n", cjson_returned); 
+            j = cJSONUtils_MergePatchCaseSensitive(j, r);
+            free(cjson_returned);
+            success = true;
+        } else {
+            success = false;
+        }
+        free(cjson_arrived);
+    }
+    
+    cJSON_Delete(json_post);
+    return success;
+}
 
 static esp_err_t config_settings_post_handler(httpd_req_t *req)
 {
@@ -422,34 +459,14 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
 
     if (is_content_json(req) == 0) { //Content is json
         ESP_LOGD(TAG_SERVER, "Content is json");
-        // TODO parse JSON here
-                // TODO parse JSON here
-        cJSON *json_post = cJSON_Parse(buf);
-        if (json_post == NULL) {
-            ESP_LOGE(TAG_SERVER, "JSON Parse Failure");
-            const char *error_ptr = cJSON_GetErrorPtr();
-            if (error_ptr != NULL)
-            {
-                ESP_LOGI(TAG_SERVER, "JSON Parse Error starting at: %s\n", error_ptr);
-                ESP_LOGI(TAG_SERVER, "Full JSON: %s", buf);
-            }
-            httpd_resp_send_chunk(req, "{\"error\":\"error-json-parse\"}",HTTPD_RESP_USE_STRLEN);
-            success = false;
-        } else {
-            char* cjson_arrived = cJSON_Print(json_post);
-            
-            printf("JSON In: %s\n", cjson_arrived);
-            cJSON *json_returned = run_json_api(json_post); //TODO memory leak?
-            if (json_returned){
-                char* cjson_returned = cJSON_Print(json_returned);
-                printf("JSON Back: %s\n", cjson_returned);
-                ESP_ERROR_CHECK(httpd_resp_set_hdr(req,"Content-Type",HTTPD_TYPE_JSON));
-                httpd_resp_send_chunk(req, cjson_returned, HTTPD_RESP_USE_STRLEN);  
-                free(cjson_returned);
-            }
-            free(cjson_arrived);
-        }
-        cJSON_Delete(json_post);
+        cJSON* j = cJSON_CreateObject();
+        success = json_api_handle((char*)buf, j);
+        ESP_ERROR_CHECK(httpd_resp_set_hdr(req,"Content-Type",HTTPD_TYPE_JSON));
+        char* jc = cJSON_Print(j);
+        ESP_LOGI(TAG_SERVER, "Reply: %s", jc);
+        httpd_resp_send_chunk(req, jc, HTTPD_RESP_USE_STRLEN); 
+        free(jc);
+        // httpd_resp_send_chunk(req, j, HTTPD_RESP_USE_STRLEN);
     } else {
         ESP_LOGW(TAG_SERVER, "Content not json - ignore parsing");
         ESP_LOGI(TAG_SERVER, "buf:'%s'",buf);
@@ -752,34 +769,32 @@ extern httpd_handle_t start_cv_webserver(void){
 }
 
 
-static void stop_cv_webserver(httpd_handle_t server)
-{
-    // Stop the httpd server
-    httpd_stop(server);
-    _server_started = false;
-}
+// static void stop_cv_webserver(httpd_handle_t server)
+// {
+//     // Stop the httpd server
+//     httpd_stop(server);
+//     _server_started = false;
+// }
 
 //TODO link the disconnect and connect handlers to joinging/leaving the wifi?
 
-static void cv_disconnect_handler(void* arg, esp_event_base_t event_base, 
-                               int32_t event_id, void* event_data)
-{
-    httpd_handle_t* server = (httpd_handle_t*) arg;
-    if (*server) {
-        ESP_LOGI(TAG_SERVER, "Stopping webserver");
-        stop_cv_webserver(*server);
-        *server = NULL;
-    }
-}
+// static void cv_disconnect_handler(void* arg, esp_event_base_t event_base, 
+//                                int32_t event_id, void* event_data)
+// {
+//     httpd_handle_t* server = (httpd_handle_t*) arg;
+//     if (*server) {
+//         ESP_LOGI(TAG_SERVER, "Stopping webserver");
+//         stop_cv_webserver(*server);
+//         *server = NULL;
+//     }
+// }
 
-static void cv_connect_handler(void* arg, esp_event_base_t event_base, 
-                            int32_t event_id, void* event_data)
-{
-    httpd_handle_t* server = (httpd_handle_t*) arg;
-    if (*server == NULL) {
-        ESP_LOGI(TAG_SERVER, "Starting webserver");
-        *server = start_cv_webserver();
-    }
-}
-
-#endif //CV_SERVER_C
+// static void cv_connect_handler(void* arg, esp_event_base_t event_base, 
+//                             int32_t event_id, void* event_data)
+// {
+//     httpd_handle_t* server = (httpd_handle_t*) arg;
+//     if (*server == NULL) {
+//         ESP_LOGI(TAG_SERVER, "Starting webserver");
+//         *server = start_cv_webserver();
+//     }
+// }
