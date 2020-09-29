@@ -1,6 +1,4 @@
-#include <stdio.h>
-#include <stdint.h>
-#include <stddef.h>
+#include "cv_mqtt.h"
 #include <string.h>
 #include <stdarg.h>
 #include "esp_wifi.h"
@@ -21,21 +19,18 @@
 
 #include "esp_log.h"
 #include "mqtt_client.h"
+
 #include "cv_uart.h"
 #include "cv_ledc.h"
 #include "cv_utils.h"
 #include "cv_wifi.h"
+#include "cv_server.h"
 
 
 static const char *TAG_TEST = "CV_MQTT";
 static EventGroupHandle_t mqtt_event_group;
 const static int CONNECTED_BIT2 = BIT0;
 static esp_mqtt_client_handle_t mqtt_client = NULL;
-static char *expected_data = NULL;
-static char *actual_data = NULL;
-static size_t expected_size = 0;
-static size_t expected_published = 0;
-static size_t actual_published = 0;
 static bool _client_conn = false;
 static int qos_test = 0;
 #define CVMQTT_PORT 1883 
@@ -44,28 +39,12 @@ static int qos_test = 0;
 
 // CV Defines:
 char device_name[20]; 
-#define DEVICE_TYPE "rx"
 #define PROTOCOL_VERSION "cv1"
 extern uint8_t desired_seat_number;
 bool active_status = false;
 # define MAX_TOPIC_LEN 75
 # define MAX_TOPIC_HEADER_LEN 10 // should encompass "/rx/cv1/" . room for null chars is not needed
 static char* attempted_hostname;
-
-#define STATIC_STATUS_FMT \
-"{\"dev\":\"rx\",\
-  \"ver\":\"TODO_VER\",\
-  \"fw\":\"TODO_FW\",\
-  \"nn\":\"%s\",\
-  \"ip_addr\":\"%s\"\
-}"
-#define STATIC_STATUS_REQ "status_static?"
-
-#define VARIABLE_STATUS_FMT \
-"{\"seat_number\":\"%i\"\
-}"
-#define VARIABLE_STATUS_REQ "status_var?"
-#define SEAT_SET_CMD "seat="
 
 //*******************
 //** Format Topic Defines **
@@ -448,51 +427,32 @@ static void mqtt_publish_retained(esp_mqtt_client_handle_t client, char* topic, 
     esp_mqtt_client_publish(client, topic, message, 0, 1, 1);
 }
 
-void send_variable_status(esp_mqtt_client_handle_t client){
-    size_t needed = snprintf(NULL, 0, VARIABLE_STATUS_FMT, desired_seat_number)+1;
-    char* message = (char*)malloc(needed);
-    snprintf(message, needed, VARIABLE_STATUS_FMT, desired_seat_number);
-    mqtt_publish_to_topic(client, mtopics.rx_stat_variable, message);
-    free(message);
-}
-
-void send_static_status(esp_mqtt_client_handle_t client){
-    extern char desired_friendly_name[];
-    size_t needed = snprintf(NULL, 0, STATIC_STATUS_FMT, desired_friendly_name, get_wifi_ip())+1;
-    char* message = (char*)malloc(needed);
-    snprintf(message, needed, STATIC_STATUS_FMT, desired_friendly_name, get_wifi_ip());
-    mqtt_publish_to_topic(client, mtopics.rx_stat_static, message);
-    free(message);
-}
 
 static bool process_command_esp(esp_mqtt_client_handle_t client, char* cmd){
     char* TAG_proc_esp = "PROCESS_ESP_CMD";
+    bool succ = false;
     //Variable will get asked more often, so check it first
-    char* match = VARIABLE_STATUS_REQ; 
-    if (strncmp(cmd,match,strlen(match))==0) {
-        send_variable_status(client);
-        return true;
-    }
+    ESP_LOGI(TAG_proc_esp, "Processing ESP_CMD: %s", cmd);
+    cJSON* j = cJSON_CreateObject();
+    bool s = json_api_handle(cmd, j);
 
-    match = STATIC_STATUS_REQ;
-    if (strncmp(cmd,match,strlen(match))==0) {
-        send_static_status(client);
-        return true;
-    }
-
-    match = SEAT_SET_CMD;
-    if (strncmp(cmd,match,strlen(match))==0) {
-        char* new_seat_num = malloc(strlen("0")); //allocate for null terminated 1 character string
-        strcpy(new_seat_num,cmd + strlen(match));
-        if (set_credential("seat", new_seat_num)){
-            update_subscriptions_new_seat();
-            return true;
+    if (s){
+        if (j){
+            // char* jc = cJSON_Print(j);
+            // mqtt_publish_to_topic(client, mtopics.rx_resp_target, jc);
+            // free(jc);
+            char* jc = cJSON_Print(j);
+            ESP_LOGI(TAG_proc_esp, "Reply: %s", jc);
+            mqtt_publish_to_topic(client, mtopics.rx_resp_target, jc);
+            free(jc);
+            succ = true;
+        } else {
+            ESP_LOGW(TAG_proc_esp, "No JSON response can be created");
         }
+    } else {
+        ESP_LOGW(TAG_proc_esp, "No MQTT Response Sent");
     }
-
-
-    ESP_LOGW(TAG_proc_esp, "Unprocessed ESP command of %s", cmd);
-    return false;
+    return succ;
 }
 
 //Parses a message. 
@@ -748,8 +708,6 @@ static bool process_mqtt_message(esp_mqtt_client_handle_t client, int topic_len,
 static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 {
     esp_mqtt_client_handle_t client = event->client;
-    static int msg_id = 0;
-    static int actual_len = 0;
     // your_context_t *context = event->context;
     switch (event->event_id) {
         case MQTT_EVENT_CONNECTED:
@@ -831,21 +789,21 @@ static void mqtt_app_start(const char* mqtt_hostname)
 
 
 
-static void get_string(char *line, size_t size)
-{
-    int count = 0;
-    while (count < size) {
-        int c = fgetc(stdin);
-        if (c == '\n') {
-            line[count] = '\0';
-            break;
-        } else if (c > 0 && c < 127) {
-            line[count] = c;
-            ++count;
-        }
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
-}
+// static void get_string(char *line, size_t size)
+// {
+//     int count = 0;
+//     while (count < size) {
+//         int c = fgetc(stdin);
+//         if (c == '\n') {
+//             line[count] = '\0';
+//             break;
+//         } else if (c > 0 && c < 127) {
+//             line[count] = c;
+//             ++count;
+//         }
+//         vTaskDelay(10 / portTICK_PERIOD_MS);
+//     }
+// }
 
 
 void cv_mqtt_init(char* chipid, uint8_t chip_len, const char* mqtt_hostname) 
