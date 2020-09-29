@@ -172,3 +172,17 @@ def band_name_to_cv_index(band):
         return band_map_display_to_cv[band]
     except KeyError:
         return None
+
+# Return {band:X, Channel:X} given a frequency
+def frequency_to_bandchannel_dict(frequency):
+    bc = frequency_to_bandchannel(frequency)
+    if bc is not None:
+        band = band_map_display_to_cv[bc[0]]
+        channel = bc[1]
+        bc_dict = {
+            "band":band,
+            "channel":channel
+        }
+        return bc_dict
+    else:
+        return None
