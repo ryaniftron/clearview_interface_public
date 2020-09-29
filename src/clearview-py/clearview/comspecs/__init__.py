@@ -178,7 +178,7 @@ def frequency_to_bandchannel_dict(frequency):
     bc = frequency_to_bandchannel(frequency)
     if bc is not None:
         band = band_map_display_to_cv[bc[0]]
-        channel = bc[1]
+        channel = str(int(bc[1]) - 1) 
         bc_dict = {
             "band":band,
             "channel":channel
