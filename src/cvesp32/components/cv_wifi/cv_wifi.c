@@ -287,7 +287,7 @@ static void initialize_softAP_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID
 
 // Connect as station to AP
 // Returns true on success, false on fail
-static bool initialise_sta_wifi(char* PARAM_HOSTNAME)
+static bool initialize_sta_wifi(char* PARAM_HOSTNAME)
 {    
     if (s_wifi_event_group != NULL) {
         ESP_LOGE(TAG, "s_wifi_event_group is not NULL");
@@ -416,7 +416,7 @@ static void demo_sequential_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_L
     kill_wifi();
     
     #if HW == HW_ESP_WROOM_32
-        bool sta_succ = initialise_sta_wifi(PARAM_ESP_WIFI_SSID);
+        bool sta_succ = initialize_sta_wifi(PARAM_ESP_WIFI_SSID);
         if (!sta_succ) { 
             //restart sequential wifi
             kill_wifi();
@@ -425,7 +425,7 @@ static void demo_sequential_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_L
         
     #elif HW == HW_ESP_WROOM_32D
         ESP_LOGW(TAG, "Not restarting wifi yet...");
-        bool sta_succ = initialise_sta_wifi(PARAM_ESP_WIFI_SSID);
+        bool sta_succ = initialize_sta_wifi(PARAM_ESP_WIFI_SSID);
     #endif
 }
 
@@ -436,11 +436,13 @@ extern void start_wifi(char* PARAM_ESP_WIFI_SSID, uint8_t PARAM_SSID_LEN){
         strcpy(desired_mqtt_broker_ip, CONFIG_BROKER_IP);
         strcpy(desired_friendly_name, CONFIG_FRIENDLY_NAME);
         //strcpy(seat_number, CONFIG_SEAT_NUMBER);
-        initialise_sta_wifi(PARAM_ESP_WIFI_SSID);
+        initialize_sta_wifi(PARAM_ESP_WIFI_SSID);
     #elif CONFIG_STARTUP_WIFI_SOFTAP 
         demo_sequential_wifi(PARAM_ESP_WIFI_SSID, UNIQUE_ID_LENGTH); //this returns on successful connection
     #elif CONFIG_SOFTAP_ALLOWED
         initialize_softAP_wifi(PARAM_ESP_WIFI_SSID, UNIQUE_ID_LENGTH);
+    #elif CONFIG_STARTUP_STA_IF_CREDS_ELSE_SOFTAP
+        initialize_sta_wifi(PARAM_ESP_WIFI_SSID);
     #endif //SKIP_SOFTAP
 }
 
