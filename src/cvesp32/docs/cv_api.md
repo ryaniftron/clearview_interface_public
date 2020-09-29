@@ -34,10 +34,10 @@ Some settings support reading the parameter. To read a parameter, simply pass in
 | ip_addr | Get ip address of wifi | R | 192.168.4.1 |
 | wifi_state | WiFi State | R/W | ['ap','sta'] | ['ap','sta']
 | wifi_power | WiFi Power | R/W | [8,20,28,34,44,52,56,60,66,72,78]] multiply by 0.25 to get power in dBm
+| ~~status_static~~ (not implemented) | Static Status | R | (dev, ver, cvcm_version, mac_addr, ip_addr) | |
+| ~~status_variable~~ (not implemented) | Variable Status | R | (seat_number) | |
+| device_type | Device Type | R | ['rx'] | Get the device type. Video receivers reply with rx |
 
-## MQTT Topics
-
-TODO
 
 ## HTTP Endpoints
 
@@ -47,8 +47,17 @@ TODO
     * `POST`
 * Headers Needed
     * `Content-Type` = `application/json` for JSON 
-    * `Content-Type` = `text/html` for plaintext
+    * ~~`Content-Type` = `text/html` for plaintext~~ (DEPRECATED)
 
+## MQTT Topics
+
+* Commands
+  * JSON for all units: `rx/cv1/cmd_esp_all`
+  * JSON for all units at a seat `0`: `rx/cv1/cmd_esp_seat/0`
+  * JSON to single receiver `CV_240AC4D3320C`: `rx/cv1/cmd_esp_target/CV_240AC4D3320C`
+
+* Responses
+  * JSON for any response: `rx/cv1/resp_target/CV_240AC4D3320C`
 
 
 ## Examples
@@ -56,17 +65,40 @@ TODO
 ### HTTP
 
 To get the cvcm_version using JSON, send a POST to `192.168.4.1/settings` with the content-type header of JSON
-    * content: `{"cvcm_version", "?"}
-    * reply: `{"cvcm_version", "v1.21.a2"}
-The request could also have been done with content-type header of text/html
-    * content: `cvcm_version=?`
-    * reply: `{"cvcm_version", "v1.21.a2"}
-    Note how the reply is always JSON
+
+* content: `{"cvcm_version", "?"}
+* reply: `{"cvcm_version", "v1.21.a2"}
+
+~~The request could also have been done with content-type header of text/html~~
+
+* ~~content: `cvcm_version=?`~~
+* ~~reply: `{"cvcm_version", "v1.21.a2"}~~
+* ~~Note how the reply is always JSON~~
+* This text/html method is now deprecated as of v1.21.a6
 
 When values are set, the JSON is returned. If there is an error, the key "error" is returned with some debug info. 
 
 Note: It would be fantastic to only use JSON, but HTML forms don't normally submit as JSON. 
 There is code [here](https://github.com/keithhackbarth/submitAsJSON) that may be a good replacement.
+
+### MQTT
+
+First, configure the module to join a WiFi network and MQTT broker in the WiFi tab. 
+Next, make it enter station mode.
+You should see it subscribed in the MQTT broker and publish a connection message 
+
+To get the ip address of all receivers using JSON, send a MQTT publish
+* command topic: `rx/cv1/cmd_esp_all`
+* command payload `{"ip_addr": "?"}`
+* response topic: `rx/cv1/resp_target/CV_240AC4D3320C`
+* response payload: `{"ip_addr":      "10.59.11.47"}`
+
+To set the band of all receivers on seat 0 to band:2 and channel:1:
+* command topic: `rx/cv1/cmd_esp_seat/0`
+* command payload `{"band": "2", "channel": "1"}`
+* response topic `rx/cv1/resp_target/CV_240AC4D3320C`
+* response payload `{"band": "2", "channel": "1"}`
+
 
 ## Return Codes:
 
@@ -97,5 +129,5 @@ If the POST is not the right content type,
 
 ## Combined Requests
 
-There is a desire to have combined reports that when requesting a combined report, multiple values are returned back. Information would be added here.
+There is a desire to have combined reports that when requesting a combined report, multiple values are returned back. Information would be added here. For example, status_static, status_variable, and lock format all could return multiple keys of information with one key request. This would save data and also multiple serial reads for lock status.
 
