@@ -4,6 +4,7 @@
 // https://github.com/espressif/esp-idf/tree/1aebfdf/examples/system/ota
 // https://github.com/versamodule/ESP32-OTA-Commandline
 
+#include "cv_ota.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
