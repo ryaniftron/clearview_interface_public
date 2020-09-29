@@ -187,11 +187,11 @@ void kv_api_parse_car(struct cv_api_read* car, char* k, char* v) {
         //get_nvs_value(nvs_wifi_pass); //Don't read from nvs because it will overright the local value
         car->val = desired_ap_pass;
         car->api_code = CV_OK;
-    }else if (strncmp(k, CV_API_DEVICE_TYPE, strlen(k)) == 0){
+    }else if (strncmp(k, CV_API_DEVICE_NAME, strlen(k)) == 0){
         //get_nvs_value(nvs_...); //Don't read from nvs because it will overright the local value
         car->val = desired_friendly_name;
         car->api_code = CV_OK;    
-    }else if (strncmp(k, CV_API_DEVICE_NAME, strlen(k)) == 0){
+    }else if (strncmp(k, CV_API_DEVICE_TYPE, strlen(k)) == 0){
         //get_nvs_value(nvs_...); //Don't read from nvs because it will overright the local value
         car->val = DEVICE_TYPE;
         car->api_code = CV_OK;
