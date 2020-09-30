@@ -1,6 +1,7 @@
 #include "cv_wifi.h" 
 #include "cv_ledc.h"
 #include "cv_utils.h"
+#include "cv_mqtt.h"
 
 #include "esp_wifi.h"
 #include "esp_event.h"
@@ -64,10 +65,16 @@ extern CV_WIFI_STATE_MSG set_wifi_mode(CV_WIFI_MODE mode){
     } else if (_wifi_mode == CVWIFI_NOT_STARTED) {
         ESP_LOGE(TAG, "WiFi must be started before switching state");
         return CVWIFI_NOT_STARTED;
-    } else if (_wifi_mode == CVWIFI_OFF) {
-        ESP_LOGE(TAG, "TODO");
-    } else if (_wifi_mode == CVWIFI_AP) {
-        ESP_LOGE(TAG, "TODO");
+    } else if (mode == CVWIFI_OFF) {
+        ESP_LOGE(TAG, "TODO turn off wifi");
+        kill_wifi();
+    } else if (mode == CVWIFI_AP) {
+        ESP_LOGE(TAG, "Switching to AP");
+        mqtt_app_stop();
+        kill_wifi();
+        char chipid[UNIQUE_ID_LENGTH];
+        get_chip_id(chipid, UNIQUE_ID_LENGTH);
+        initialize_softAP_wifi(chipid, UNIQUE_ID_LENGTH);
     } else {
         ESP_LOGE(TAG, "Unknown requested wifi mode");
         return CVWIFI_STATE_ERROR;

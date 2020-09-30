@@ -764,7 +764,7 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 }
 
 
-static void mqtt_app_start(const char* mqtt_hostname)
+extern void mqtt_app_start(const char* mqtt_hostname)
 {
     update_all_mqtt_topics();
     attempted_hostname = mqtt_hostname;
@@ -787,6 +787,15 @@ static void mqtt_app_start(const char* mqtt_hostname)
     ESP_LOGI(TAG_TEST, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
 }
 
+extern void mqtt_app_stop()
+{
+    if (mqtt_client) {
+        ESP_ERROR_CHECK(esp_mqtt_client_disconnect(mqtt_client));
+        ESP_ERROR_CHECK(esp_mqtt_client_stop(mqtt_client));
+    } else {
+        ESP_LOGE(TAG_TEST, "can't stop nonexistant mqtt_client");
+    }
+}
 
 
 // static void get_string(char *line, size_t size)
