@@ -214,6 +214,8 @@ void kv_api_parse_car(struct cv_api_read* car, char* k, char* v) {
     } else if (strncmp(k, CV_API_USER_MESSAGE, strlen(k)) == 0){
         car->success = false;
         car->api_code = CV_ERROR_READ;
+    } else if (strncmp(k, CV_API_OSD_VISIBILITY, strlen(k)) == 0){
+        get_osdvis(car);
     }else if (strncmp(k, CV_API_WIFI_STATE, strlen(k)) == 0){
         CV_WIFI_MODE wifimode = get_wifi_mode();
         ESP_LOGI(TAG_SERVER, "Reading wifi state");
@@ -277,6 +279,8 @@ void kv_api_parse_caw(struct cv_api_write* caw, char* k, char* v) {
         set_channel(v, caw);
     } else if (strncmp(k, CV_API_ID, strlen(k)) == 0){
         set_id(v, caw);
+    } else if (strncmp(k, CV_API_OSD_VISIBILITY, strlen(k)) == 0){
+        set_osdvis(v, caw);
     } else if (strncmp(k, CV_API_USER_MESSAGE, strlen(k)) == 0){
         set_usermsg(v, caw);
     } else if (strncmp(k, CV_API_VIDEO_FORMAT, strlen(k)) == 0){

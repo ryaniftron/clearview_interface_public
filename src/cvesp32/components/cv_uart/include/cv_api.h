@@ -37,6 +37,7 @@ extern bool parse_command_payload(char* full_cmd, char* payload);
 extern void get_band(struct cv_api_read* ret);
 extern void get_channel(struct cv_api_read* ret);
 extern void get_id(struct cv_api_read* ret);
+extern void get_osdvis(struct cv_api_read* ret);
 extern void get_lock(struct cv_api_read* ret);
 extern void get_custom_report(char* report, struct cv_api_read* ret);
 extern void get_cvcm_version(struct cv_api_read* ret);
