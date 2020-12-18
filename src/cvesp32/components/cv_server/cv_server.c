@@ -83,6 +83,7 @@ extern const uint8_t menu_bar_end[] asm("_binary_menuBar_html_end");
 #define CV_API_OSD_VISIBILITY "osd_visibility"
 #define CV_API_OSD_POSITION "osd_position"
 #define CV_API_LOCK "lock"
+#define CV_API_RESET_LOCK "reset_lock"
 #define CV_API_VIDEO_FORMAT "video_format"
 #define CV_API_CV_VERSION "cv_version"
 #define CV_API_CVCM_VERSION "cvcm_version"
@@ -126,9 +127,9 @@ void add_response_to_json_car(cJSON* ret, char* k, struct cv_api_read* car){
     }
     else {
         if (car->api_code == CV_ERROR_NO_COMMS) {cJSON_AddStringToObject(ret, k, "error-no_comms");}
-        else if (car->api_code == CV_ERROR_WRITE) {cJSON_AddStringToObject(ret, k, "error-write_on_read_only_param");} 
-        else if (car->api_code == CV_ERROR_READ) {cJSON_AddStringToObject(ret, k, "error-read_on_write_only_param");} 
-        else if (car->api_code == CV_ERROR_VALUE) {cJSON_AddStringToObject(ret, k, "error-value");} 
+        else if (car->api_code == CV_ERROR_WRITE) {cJSON_AddStringToObject(ret, k, "error-write_on_read_only_param");}
+        else if (car->api_code == CV_ERROR_READ) {cJSON_AddStringToObject(ret, k, "error-read_on_write_only_param");}
+        else if (car->api_code == CV_ERROR_VALUE) {cJSON_AddStringToObject(ret, k, "error-value");}
         else if (car->api_code == CV_ERROR_INVALID_ENDPOINT) {cJSON_AddStringToObject(ret, k, "error-invalid_endpoint");}
         else if (car->api_code == CV_ERROR_NVS_WRITE) {cJSON_AddStringToObject(ret, k, "error-nvs_write");}
         else if (car->api_code == CV_ERROR_NVS_READ) {cJSON_AddStringToObject(ret, k, "error-nvs_read");}
@@ -143,9 +144,9 @@ void add_response_to_json_caw(cJSON* ret, char* k, struct cv_api_write* caw, cha
     }
     else {
         if (caw->api_code == CV_ERROR_NO_COMMS) {cJSON_AddStringToObject(ret, k, "error-no_comms");}
-        else if (caw->api_code == CV_ERROR_WRITE) {cJSON_AddStringToObject(ret, k, "error-write");} 
-        else if (caw->api_code == CV_ERROR_READ) {cJSON_AddStringToObject(ret, k, "error-read");} 
-        else if (caw->api_code == CV_ERROR_VALUE) {cJSON_AddStringToObject(ret, k, "error-value");} 
+        else if (caw->api_code == CV_ERROR_WRITE) {cJSON_AddStringToObject(ret, k, "error-write");}
+        else if (caw->api_code == CV_ERROR_READ) {cJSON_AddStringToObject(ret, k, "error-read");}
+        else if (caw->api_code == CV_ERROR_VALUE) {cJSON_AddStringToObject(ret, k, "error-value");}
         else if (caw->api_code == CV_ERROR_INVALID_ENDPOINT) {cJSON_AddStringToObject(ret, k, "error-invalid_endpoint");}
         else if (caw->api_code == CV_ERROR_NVS_WRITE) {cJSON_AddStringToObject(ret, k, "error-nvs_write");}
         else if (caw->api_code == CV_ERROR_NVS_READ) {cJSON_AddStringToObject(ret, k, "error-nvs_read");}
@@ -157,8 +158,10 @@ void add_response_to_json_caw(cJSON* ret, char* k, struct cv_api_write* caw, cha
 void kv_api_parse_car(struct cv_api_read* car, char* k, char* v) {
     char* TAG = "cv_server->kv_api_parse_car";
     CV_LOGI(TAG, "Getting value for '%s'",k);
-        
-    if (strncmp(k, CV_API_CHANNEL, strlen(k)) == 0){
+
+    if (strncmp(k, CV_API_ANTENNA, strlen(k)) == 0){
+        get_antenna(car);
+    }else if (strncmp(k, CV_API_CHANNEL, strlen(k)) == 0){
         get_channel(car);
     }else if (strncmp(k, CV_API_BAND, strlen(k)) == 0){
         get_band(car);
@@ -190,7 +193,7 @@ void kv_api_parse_car(struct cv_api_read* car, char* k, char* v) {
     }else if (strncmp(k, CV_API_DEVICE_NAME, strlen(k)) == 0){
         //get_nvs_value(nvs_...); //Don't read from nvs because it will overright the local value
         car->val = desired_friendly_name;
-        car->api_code = CV_OK;    
+        car->api_code = CV_OK;
     }else if (strncmp(k, CV_API_DEVICE_TYPE, strlen(k)) == 0){
         //get_nvs_value(nvs_...); //Don't read from nvs because it will overright the local value
         car->val = DEVICE_TYPE;
@@ -199,6 +202,8 @@ void kv_api_parse_car(struct cv_api_read* car, char* k, char* v) {
         //get_nvs_value(nvs_...); //Don't read from nvs because it will overright the local value
         car->val = desired_mqtt_broker_ip;
         car->api_code = CV_OK;
+    } else if (strncmp(k, CV_API_MODE, strlen(k)) == 0){
+        get_mode(car);
     } else if (strncmp(k, CV_API_LOCK, strlen(k)) == 0){
         get_lock(car);
     } else if (strncmp(k, CV_API_CVCM_VERSION, strlen(k)) == 0){
@@ -212,10 +217,11 @@ void kv_api_parse_car(struct cv_api_read* car, char* k, char* v) {
     }else if (strncmp(k, CV_API_LED, strlen(k)) == 0){
         get_led(car, 0);//channel 0
     } else if (strncmp(k, CV_API_USER_MESSAGE, strlen(k)) == 0){
-        car->success = false;
-        car->api_code = CV_ERROR_READ;
+        get_usermsg(car);
     } else if (strncmp(k, CV_API_OSD_VISIBILITY, strlen(k)) == 0){
         get_osdvis(car);
+    } else if (strncmp(k, CV_API_OSD_POSITION, strlen(k)) == 0){
+        get_osdpos(car);
     }else if (strncmp(k, CV_API_WIFI_STATE, strlen(k)) == 0){
         CV_WIFI_MODE wifimode = get_wifi_mode();
         ESP_LOGI(TAG_SERVER, "Reading wifi state");
@@ -261,6 +267,8 @@ void kv_api_parse_caw(struct cv_api_write* caw, char* k, char* v) {
     char* TAG = "cv_server->kv_api_parse_caw";
     if (strncmp(k, CV_API_ADDRESS, strlen(k)) == 0){
         set_address(v, caw);
+    }else if (strncmp(k, CV_API_ANTENNA, strlen(k)) == 0){
+        set_antenna(v, caw);
     } else if (strncmp(k, CV_API_SSID, strlen(k)) == 0){
         caw_nvs_write(caw, k, v);
     } else if (strncmp(k, CV_API_PASSWORD, strlen(k)) == 0){
@@ -271,16 +279,22 @@ void kv_api_parse_caw(struct cv_api_write* caw, char* k, char* v) {
         caw_nvs_write(caw, k, v);
     } else if (strncmp(k, CV_API_SEAT, strlen(k)) == 0){
         caw_nvs_write(caw, k, v);
-    } else if (strncmp(k, CV_API_ANTENNA, strlen(k)) == 0){
-        set_antenna(v, caw);
     } else if (strncmp(k, CV_API_BAND, strlen(k)) == 0){
         set_band(v, caw);
     } else if (strncmp(k, CV_API_CHANNEL, strlen(k)) == 0){
         set_channel(v, caw);
     } else if (strncmp(k, CV_API_ID, strlen(k)) == 0){
         set_id(v, caw);
+    } else if (strncmp(k, CV_API_MODE, strlen(k)) == 0){
+        set_mode(v, caw);
     } else if (strncmp(k, CV_API_OSD_VISIBILITY, strlen(k)) == 0){
         set_osdvis(v, caw);
+    } else if (strncmp(k, CV_API_OSD_POSITION, strlen(k)) == 0){
+        set_osdpos(v, caw);
+    } else if (strncmp(k, CV_API_RESET_LOCK, strlen(k)) == 0){
+        // reset_lock(caw);
+        caw->api_code=CV_ERROR_WRITE;
+        caw->success=false;
     } else if (strncmp(k, CV_API_USER_MESSAGE, strlen(k)) == 0){
         set_usermsg(v, caw);
     } else if (strncmp(k, CV_API_VIDEO_FORMAT, strlen(k)) == 0){
@@ -338,7 +352,7 @@ static cJSON* run_kv_api(char* k, char* v){
         vTaskDelay(250 / portTICK_PERIOD_MS); //Delay 250ms after any read
     } else { // It's a command, write value
         struct cv_api_write caw;
-        struct cv_api_write* cawptr = &caw;    
+        struct cv_api_write* cawptr = &caw;
         kv_api_parse_caw(cawptr, k, v);
         add_response_to_json_caw(ret, k , cawptr, v);
         vTaskDelay(250 / portTICK_PERIOD_MS); //Delay 250ms between write and read
@@ -349,7 +363,7 @@ static cJSON* run_kv_api(char* k, char* v){
                 struct cv_api_read*carptr = &car;
                 vTaskDelay(1000 / portTICK_PERIOD_MS); //Delay 100ms between write and read
                 kv_api_parse_car(carptr, k, CV_READ_Q);
-                add_response_to_json_car(ret, k, carptr); 
+                add_response_to_json_car(ret, k, carptr);
             }
         #endif
     }
@@ -399,12 +413,12 @@ extern bool json_api_handle(char* buf, cJSON* j){
         success = false;
     } else {
         char* cjson_arrived = cJSON_Print(json_post);
-        
+
         printf("JSON In: %s\n", cjson_arrived);
         cJSON* r = run_json_api(json_post); //TODO memory leak?
         if (r){
             char* cjson_returned = cJSON_Print(r);
-            printf("JSON Back: %s\n", cjson_returned); 
+            printf("JSON Back: %s\n", cjson_returned);
             j = cJSONUtils_MergePatchCaseSensitive(j, r);
             free(cjson_returned);
             success = true;
@@ -413,7 +427,7 @@ extern bool json_api_handle(char* buf, cJSON* j){
         }
         free(cjson_arrived);
     }
-    
+
     cJSON_Delete(json_post);
     return success;
 }
@@ -427,7 +441,7 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
      * In case of string data, null termination will be absent, and
      * content length would give length of string */
     char buf[POST_BUFFER_SZ]; //TODO optimize size based on 32char
-    
+
     bool success = true;
 
     /* Truncate if content length larger than the buffer */
@@ -456,7 +470,7 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
         httpd_resp_send_chunk(req,err , HTTPD_RESP_USE_STRLEN);
         httpd_resp_send_chunk(req, NULL, 0);
         ESP_LOGW(TAG_SERVER, "Content Length 0 or other issue");
-        
+
         return ESP_FAIL;
     }
     buf[ret] = '\0';
@@ -468,7 +482,7 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
         ESP_ERROR_CHECK(httpd_resp_set_hdr(req,"Content-Type",HTTPD_TYPE_JSON));
         char* jc = cJSON_Print(j);
         ESP_LOGI(TAG_SERVER, "Reply: %s", jc);
-        httpd_resp_send_chunk(req, jc, HTTPD_RESP_USE_STRLEN); 
+        httpd_resp_send_chunk(req, jc, HTTPD_RESP_USE_STRLEN);
         free(jc);
         // httpd_resp_send_chunk(req, j, HTTPD_RESP_USE_STRLEN);
     } else {
@@ -487,7 +501,7 @@ static esp_err_t config_settings_post_handler(httpd_req_t *req)
     }
     if (success){
         ESP_LOGI(TAG_SERVER, "Parse of request success: '%s'", buf);
-    } 
+    }
     // End response
     httpd_resp_send_chunk(req, NULL, 0);
     return ESP_OK;
@@ -520,7 +534,7 @@ extern void serve_seat_and_lock(httpd_req_t *req){
     char* line_template = (char*)malloc(n_template);
     snprintf(line_template, n_template, "%s", subtitle_html_start);
 
-    // Display the seat number 1 higher than stored in the back end. 
+    // Display the seat number 1 higher than stored in the back end.
     // Back end
     int ui_seat_number = desired_seat_number+1;
     size_t needed = snprintf(NULL, 0, line_template, ui_seat_number, lock_status)+1;
@@ -590,7 +604,7 @@ static esp_err_t settings_get_handler(httpd_req_t *req)
 }
 
 static esp_err_t test_cv_get_handler(httpd_req_t *req)
-{   
+{
     serve_html_beg(req);
     serve_title(req);
     serve_menu_bar(req);
@@ -740,7 +754,7 @@ extern httpd_handle_t start_cv_webserver(void){
     ESP_ERROR_CHECK(ret); // this should bail if the server can't start
     // Start the httpd server
     ESP_LOGI(TAG_SERVER, "Server started");
-    
+
     if (ret == ESP_OK){
         // Set URI handlers
         ESP_LOGI(TAG_SERVER, "Registering URI handlers");
@@ -782,7 +796,7 @@ extern httpd_handle_t start_cv_webserver(void){
 
 //TODO link the disconnect and connect handlers to joinging/leaving the wifi?
 
-// static void cv_disconnect_handler(void* arg, esp_event_base_t event_base, 
+// static void cv_disconnect_handler(void* arg, esp_event_base_t event_base,
 //                                int32_t event_id, void* event_data)
 // {
 //     httpd_handle_t* server = (httpd_handle_t*) arg;
@@ -793,7 +807,7 @@ extern httpd_handle_t start_cv_webserver(void){
 //     }
 // }
 
-// static void cv_connect_handler(void* arg, esp_event_base_t event_base, 
+// static void cv_connect_handler(void* arg, esp_event_base_t event_base,
 //                             int32_t event_id, void* event_data)
 // {
 //     httpd_handle_t* server = (httpd_handle_t*) arg;

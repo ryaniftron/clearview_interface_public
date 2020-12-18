@@ -2,7 +2,7 @@
 <form method="POST" enctype="text/plain">
     <ol>
         <li class="working">
-            <label for="channel">Channel:</label>
+            <label for="channel">Channel</label>
             <select id="channel" name="channel"  class="channel">
                 <option value="0">1</option>
                 <option value="1">2</option>
@@ -22,7 +22,7 @@
 <form method="POST" enctype="text/plain">
     <ol>
         <li class="working">
-            <label for="band">Band:</label>
+            <label for="band">Band</label>
             <select id="band" name="band"  class="band">
                 <option value="0">A</option>
                 <option value="1">B</option>
@@ -45,23 +45,27 @@
 </form>
 <div id="error_band"></div>
 
-<!-- Antenna Mode - No return method so disabled
-<form method="POST" >
-    <label for="antenna_mode">Antenna Mode:</label>
-    <select id="antenna_mode" name="antenna_mode">
-        <option value="3">ClearView</option>
-        <option value="1">Left Only</option>
-        <option value="2">Right Only</option>
-        <option value="0">Legacy Diversity</option>
-    </select>
-    <input type="submit" value="Set Antenna Mode">
-</form> -->
+<!-- Antenna Mode -->
+<form method="POST" enctype="text/plain">
+    <ol>
+        <li class="working">
+            <label for="antenna">Antenna Mode</label>
+            <select id="antenna" name="antenna"  class="antenna">
+                <option value="3">ClearView</option>
+                <option value="1">Left Only</option>
+                <option value="2">Right Only</option>
+                <option value="0">Legacy Diversity</option>
+            </select>
+        </li>
+    </ol>
+</form>
+<div id="error_antenna"></div>
 
 <!-- Video Format -->
 <form method="POST" enctype="text/plain">
     <ol>
         <li class="working">
-            <label for="video_format">Video Format:</label>
+            <label for="video_format">Video Format</label>
             <select id="video_format" name="video_format"  class="video_format">
                 <option value="A">Auto</option>
                 <option value="N">NTSC</option>
@@ -104,8 +108,8 @@
 <form method="POST" enctype="text/plain">
     <ol>
         <li class="working">
-            <label for="wifi_power">Wifi Power:</label>
-            <select id="wifi_power" name="wifi_power"  class="wifi_power">>
+            <label for="wifi_power">Wifi Power</label>
+            <select id="wifi_power" name="wifi_power"  class="wifi_power">
                 <option value="8">2 dBm (Lowest Power)</option>
                 <option value="20">5 dBm</option>
                 <option value="28">7 dBm</option>
@@ -123,6 +127,62 @@
 </form>
 <div id="error_wifi_power"></div>
 
+<form method="POST" enctype="text/plain">
+    <ol>
+        <li class="working">
+            <label for="mode">Display Mode</label>
+            <select id="mode" name="mode"  class="mode">
+                <option value="L">Live Video</option>
+                <option value="M">Menu</option>
+                <option value="S">Spectrum Analyzer</option>
+           </select>
+        </li>
+    </ol>
+</form>
+<div id="error_mode"></div>
+
+<form method="POST" enctype="text/plain">
+    <ol>
+        <li class="working">
+            <label for="osd_position">OSD Position</label>
+            <select id="osd_position" name="osd_position"  class="osd_position">
+                <option value="0">Top Left</option>
+                <option value="1">Mid Left</option>
+                <option value="2">Low Left</option>
+                <option value="3">Bottom Left</option>
+                <option value="4">Top Right</option>
+                <option value="5">Mid Right</option>
+                <option value="6">Low Right</option>
+                <option value="7">Bottom Right</option>
+           </select>
+        </li>
+    </ol>
+</form>
+<div id="error_osd_position"></div>
+
+<form method="POST" enctype="text/plain">
+    <ol>
+        <li class="working">
+            <label for="osd_visibility">OSD Visibility</label>
+            <select id="osd_visibility" name="osd_visibility"  class="osd_visibility">
+                <option value="E">Showing</option>
+                <option value="D">Hidden</option>
+           </select>
+        </li>
+    </ol>
+</form>
+<div id="error_osd_visibility"></div>
+
+<!-- <form method="POST" enctype="text/plain">
+    <ol>
+        <li class="working">
+            <button id="reset_lock" name="reset_lock"  class="reset_lock" value="1" innerHTML="Reset Lock">
+        </li>
+    </ol>
+</form>
+<div id="error_reset_lock"></div>  -->
+
+
 
 <script>
     document.title = "CVCM Settings";
@@ -131,46 +191,14 @@
     getAllJSON({
         "channel": "?",
         "band": "?",
+        "antenna": "?",
         "video_format": "?",
         "id": "?",
         "user_msg": "?",
-        "wifi_power": "?"
+        "wifi_power": "?",
+        "mode": "?",
+        "osd_position": "?",
+        "osd_visibility": "?"
     });
-    
+
 </script>
-<!-- 
-<script type="text/javascript" charset="utf-8">
-	$(document).ready(function () {
-		$.getJSON("/cvcmstatus", function (data) {
-			if (data['status'] == 'fail') {
-				$(body).addClass('no-cv-response');
-				$('#message').html('Failed to get data from CVCM').slideDown();
-				
-			} else {
-				$.each(data, function (key, val) {
-					$('#' + key).val(val);
-				});
-			}
-		})
-		.fail (function() {
-			$(body).addClass('no-cv-response');
-			$('#message').html('Failed to get data from ESP32').slideDown();
-		}); 
-	})
-</script> -->
-
-<!-- <style>
-
-#message {
-	display: none;
-	background: #fcc;
-	color: #800;
-	border: solid thin #800;
-}
-
-.style_error {
-    color: #800;
-}
-
-</style> -->
-

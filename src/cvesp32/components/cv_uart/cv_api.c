@@ -32,6 +32,7 @@
 #define REP_ANTENNA "RPAN"
 #define CMD_ID "ID"
 #define REP_ID "RPID"
+#define CMD_RESET_LOCK "RL"
 #define REP_LOCK_FMT "RPLF"
 #define CMD_UM "UM"
 #define REP_UM "RPUM"
@@ -41,6 +42,8 @@
 #define REP_VIDEO_FORMAT "RPVF"
 #define CMD_OSD_VIS "OD"
 #define REP_OSD_VIS "RPOD"
+#define CMD_OSD_POS "ODP"
+#define REP_OSD_POS "RPODP"
 
 
 // Generates CV command from payload and puts into buffer output_command
@@ -128,14 +131,14 @@ int main () {
     printf("full_cmd: '%s'\n", full_cmd);
     char* payload = malloc(strlen(full_cmd));
     bool r = parse_command_payload(full_cmd, payload);
-    if(r) 
+    if(r)
      ESP_LOGI("TEST1", "%s", payload);
     else
      ESP_LOGI("TEST1", "fail");
 
     full_cmd = "X09FR5740!B";\
     r = parse_command_payload(full_cmd, payload);
-    if(r) 
+    if(r)
      ESP_LOGI("TEST2", "%s", payload);
     else
      ESP_LOGI("TEST2!", "fail");
@@ -154,11 +157,11 @@ extern void process_report(struct cv_api_read* ret, char* full_report, int repor
         ESP_LOGW(TAG_API, "Can't process empty report");
         return;
     }
-    ESP_LOGI(TAG_API, "Preprocess full_report %s\n", full_report); 
+    ESP_LOGI(TAG_API, "Preprocess full_report %s\n", full_report);
     char* report_snippet = malloc(strlen(full_report)+1); //TODO ensure this is freed
     bool parse_tot_succ = parse_command_payload(full_report,report_snippet);
     ESP_LOGI(TAG_API, "Processed '%s' -> '%s'", full_report, report_snippet);
-    
+
     if(!parse_tot_succ){
         ret->api_code = CV_ERROR_PARSE;
         ret->success = false;
@@ -175,7 +178,7 @@ void run_read(struct cv_api_read* ret, char* cmd_id){
     uint8_t* rxbuf = (uint8_t*) malloc(RX_BUF_SIZE+1);
     form_command(cmd_id, cmd, MAX_CMD_LEN);
     int report_len = cvuart_send_report(cmd, rxbuf);
-    
+
     process_report(ret, (char*)rxbuf, report_len, cmd_id+2); //skip 2 for 'RP'
     free(cmd);
 }
@@ -200,11 +203,14 @@ extern void set_address(char* address, struct cv_api_write* ret){
     ret->success = write_succ;
     if (write_succ)
         ret->api_code = CV_OK;
-    else 
+    else
         ret->api_code = CV_ERROR_NO_COMMS;
 }
 
-
+extern void get_antenna(struct cv_api_read* ret){
+    char* cmd_id = REP_ANTENNA;
+    run_read(ret, cmd_id);
+}
 
 extern int set_antenna_cmd(char* antenna_mode, char* buf, int bufsz){
     return form_command_biparam("AN",antenna_mode, buf, bufsz);
@@ -225,7 +231,7 @@ extern void set_antenna(char* antenna, struct cv_api_write* ret){
     ret->success = write_succ;
     if (write_succ)
         ret->api_code = CV_OK;
-    else 
+    else
         ret->api_code = CV_ERROR_NO_COMMS;
 }
 
@@ -248,7 +254,7 @@ extern void set_band(char* band, struct cv_api_write* ret){
     ret->success = write_succ;
     if (write_succ)
         ret->api_code = CV_OK;
-    else 
+    else
         ret->api_code = CV_ERROR_NO_COMMS;
 }
 
@@ -271,7 +277,7 @@ extern void set_channel(char* channel, struct cv_api_write* ret){
     ret->success = write_succ;
     if (write_succ)
         ret->api_code = CV_OK;
-    else 
+    else
         ret->api_code = CV_ERROR_NO_COMMS;
 }
 
@@ -293,7 +299,7 @@ extern void set_id(char* id_str, struct cv_api_write* ret){
     ret->success = write_succ;
     if (write_succ)
         ret->api_code = CV_OK;
-    else 
+    else
         ret->api_code = CV_ERROR_NO_COMMS;
 }
 
@@ -315,7 +321,7 @@ extern void set_usermsg(char* usermsg_str, struct cv_api_write* ret){
     ret->success = write_succ;
     if (write_succ)
         ret->api_code = CV_OK;
-    else 
+    else
         ret->api_code = CV_ERROR_NO_COMMS;
 }
 extern void get_mode(struct cv_api_read* ret){
@@ -340,7 +346,7 @@ extern void set_mode(char* mode_str, struct cv_api_write* ret){
     ret->success = write_succ;
     if (write_succ)
         ret->api_code = CV_OK;
-    else 
+    else
         ret->api_code = CV_ERROR_NO_COMMS;
 }
 
@@ -365,10 +371,16 @@ extern void set_osdvis(char* osdvis_str, struct cv_api_write* ret){
     ret->success = write_succ;
     if (write_succ)
         ret->api_code = CV_OK;
-    else 
+    else
         ret->api_code = CV_ERROR_NO_COMMS;
 }
 
+extern void get_osdpos(struct cv_api_read* ret){
+    char* cmd_id = REP_OSD_POS;
+    // run_read(ret, cmd_id);
+    ret->api_code = CV_ERROR_READ;
+    ret->success = false;
+}
 
 extern int set_osdpos_cmd(char* osd_pos, char* buf, int bufsz){
     return form_command_biparam("ODP", osd_pos, buf, bufsz);
@@ -383,14 +395,15 @@ extern void set_osdpos(char* osdpos, struct cv_api_write* ret){
     ret->success = write_succ;
     if (write_succ)
         ret->api_code = CV_OK;
-    else 
+    else
         ret->api_code = CV_ERROR_NO_COMMS;
 }
 
 extern int reset_lock_cmd(char* buf, int bufsz){
     char tbuf[MAX_CMD_LEN];
-    form_command("RL", tbuf, bufsz); 
+    form_command(CMD_RESET_LOCK, tbuf, bufsz);
     // Send it twice
+    printf("%s%s", tbuf, tbuf);
     return sprintf(buf, "%s%s", tbuf, tbuf);
 }
 
@@ -403,7 +416,7 @@ extern void reset_lock(struct cv_api_write* ret) {
     ret->success = write_succ;
     if (write_succ)
         ret->api_code = CV_OK;
-    else 
+    else
         ret->api_code = CV_ERROR_NO_COMMS;
 }
 
@@ -435,7 +448,7 @@ extern void set_videoformat(char* videoformat, struct cv_api_write* ret){
     ret->success = write_succ;
     if (write_succ)
         ret->api_code = CV_OK;
-    else 
+    else
         ret->api_code = CV_ERROR_NO_COMMS;
 }
 
@@ -453,7 +466,7 @@ extern void set_custom_w(char* cmd_des, struct cv_api_write* ret){
     ret->success = write_succ;
     if (write_succ)
         ret->api_code = CV_OK;
-    else 
+    else
         ret->api_code = CV_ERROR_NO_COMMS;
 }
 

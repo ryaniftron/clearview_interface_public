@@ -23,7 +23,7 @@ struct cv_api_write {
 
 struct cv_api_read {
     bool success; // Whether parameter was read
-    enum cv_api_code api_code; 
+    enum cv_api_code api_code;
     char* val; // The value of the parameter, or error message if not succesful
 };
 
@@ -34,15 +34,19 @@ extern int form_command(char* payload, char* output_command, int bufsz);
 extern bool parse_command_payload(char* full_cmd, char* payload);
 
 // CV Getters
+extern void get_antenna(struct cv_api_read* ret);
 extern void get_band(struct cv_api_read* ret);
 extern void get_channel(struct cv_api_read* ret);
 extern void get_id(struct cv_api_read* ret);
 extern void get_osdvis(struct cv_api_read* ret);
+extern void get_osdpos(struct cv_api_read* ret);
 extern void get_lock(struct cv_api_read* ret);
+extern void get_mode(struct cv_api_read* ret);
 extern void get_custom_report(char* report, struct cv_api_read* ret);
 extern void get_cvcm_version(struct cv_api_read* ret);
 extern void get_cvcm_version_all(struct cv_api_read* ret);
 extern void get_mac_addr(struct cv_api_read* ret);
+extern void get_usermsg(struct cv_api_read* ret);
 extern void get_videoformat(struct cv_api_read* ret);
 
 

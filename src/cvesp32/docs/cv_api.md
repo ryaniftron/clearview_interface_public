@@ -1,11 +1,11 @@
 # CVCM API
 
-The CVCM supports JSON over http and also over MQTT. The underlying API is the same. For http, the data can be sent as either JSON or raw key/value pairs from a form, but data is always returned as JSON. 
+The CVCM supports JSON over http and also over MQTT. The underlying API is the same. For http, the data can be sent as either JSON or raw key/value pairs from a form, but data is always returned as JSON.
 
 
 ## API Endpoints
 
-Some settings support reading the parameter. To read a parameter, simply pass in the '?' character. 
+Some settings support reading the parameter. To read a parameter, simply pass in the '?' character.
 | API Endpoint Key | Description                                                            | Read/Write | Example Reply Value               | Possible Values                            |
 |------------------|------------------------------------------------------------------------|------------|-----------------------------------|--------------------------------------------|
 | address          | Address the CVCM UART is at (unused)                                   | R/W        | 1                                 | 0 <= address <= 7 |
@@ -18,19 +18,20 @@ Some settings support reading the parameter. To read a parameter, simply pass in
 | channel          | Video Channel                                                          | R/W        | 3                                 |                                            |
 | band             | Video Band                                                             | R/W        | a                                 |                                            |
 | id               | Set osd "ID" string, traditionally used for pilot handle               | R/W        | pilot1                            |                                            |
-| user_msg     | Set longer user message                                                | R/W        | Lap:4 +0.56                       |                                            |
-| mode             | Change what is displayed between menu, spectrum analyzer or live video | R/W          | ---                               |                                            |
+| user_msg     | Set longer user message, or blank to disable                  | R/W        | Lap:4 +0.56                       |                                            |
+| mode             | Change what is displayed between menu, spectrum analyzer or live video | R/W          | ---                               |                       'L','M','S' for Live,Menu, and Spectrum Analyzer                     |
 | osd_visibility   | Show or Hide OSD                                                       | R/W          | ---                               |                                            |
 | osd_position     | Change OSD Position                                                    | W          | ---                               |                                            |
-| lock             | Resets the CV Lock or queries lock status                              | R/W        | ---                               | Reset lock with '1', or get value with '?' |
+| lock             | Gets lock status                              | R       | ---                               | TODO |
+| reset_lock             | Resets the CV Lock (NOT IMPLEMENTED)                              | W        | ---                               | Reset lock with '1'. Will confirm back with 1 if successful |
 | video_format     | Camera type                                                            | R/W          | ---                               |                                            |
 | cv_version       | Firmware Version                                                       | R          | 1.21a                             | Get the firmware version of the CV         |
 | cvcm_version     | CVCM Version                                                           | R          | v1.21.a3                          | Get the short firmware version of the CVCM |
 | cvcm_version_all | CVCM Version with build date                                           | R          | v1.21.a3 - Aug 26 2020 - 23:44:28 | Get the long firmware version of the CVCM  |
-| led | Set LED State ( active until next state change)                                     | R?W          | on | on,off,blink_slow,blink_fast,breathe_slow,breathe_fast  | 
+| led | Set LED State ( active until next state change)                                     | R?W          | on | on,off,blink_slow,blink_fast,breathe_slow,breathe_fast  |
 | send_cmd | Send arbitrary UART command | W | --- |
 | req_report | Send arbitrary UART report | W | --- |
-| mac_addr | Get mac address of wifi | R | CV_342832C40A24 | 
+| mac_addr | Get mac address of wifi | R | CV_342832C40A24 |
 | ip_addr | Get ip address of wifi | R | 192.168.4.1 |
 | wifi_state | WiFi State | R/W | ['ap','sta'] | ['ap','sta']
 | wifi_power | WiFi Power | R/W | [8,20,28,34,44,52,56,60,66,72,78]] multiply by 0.25 to get power in dBm
@@ -43,10 +44,10 @@ Some settings support reading the parameter. To read a parameter, simply pass in
 
 * URL
     * `/settings`
-* Method: 
+* Method:
     * `POST`
 * Headers Needed
-    * `Content-Type` = `application/json` for JSON 
+    * `Content-Type` = `application/json` for JSON
     * ~~`Content-Type` = `text/html` for plaintext~~ (DEPRECATED)
 
 ## MQTT Topics
@@ -76,16 +77,16 @@ To get the cvcm_version using JSON, send a POST to `192.168.4.1/settings` with t
 * ~~Note how the reply is always JSON~~
 * This text/html method is now deprecated as of v1.21.a6
 
-When values are set, the JSON is returned. If there is an error, the key "error" is returned with some debug info. 
+When values are set, the JSON is returned. If there is an error, the key "error" is returned with some debug info.
 
-Note: It would be fantastic to only use JSON, but HTML forms don't normally submit as JSON. 
+Note: It would be fantastic to only use JSON, but HTML forms don't normally submit as JSON.
 There is code [here](https://github.com/keithhackbarth/submitAsJSON) that may be a good replacement.
 
 ### MQTT
 
-First, configure the module to join a WiFi network and MQTT broker in the WiFi tab. 
+First, configure the module to join a WiFi network and MQTT broker in the WiFi tab.
 Next, make it enter station mode.
-You should see it subscribed in the MQTT broker and publish a connection message 
+You should see it subscribed in the MQTT broker and publish a connection message
 
 To get the ip address of all receivers using JSON, send a MQTT publish
 * command topic: `rx/cv1/cmd_esp_all`
@@ -102,7 +103,7 @@ To set the band of all receivers on seat 0 to band:2 and channel:1:
 
 ## Return Codes:
 
-If the API request is formatted or other error occurs, the following may be returned 
+If the API request is formatted or other error occurs, the following may be returned
 
 * `error-no_comms` - it means the cv is not responding to the UART requests
    * UI message: `Error: No response from the ClearView Video Receiver`
@@ -122,9 +123,9 @@ For example, if a post to read the a non-existant parameter called `n_bugs` was 
 If you tried to set the band to an invalid band `v` with `{"band":"v"}`, the following would return
 * `{"band":"error-value"}`
 
-If the JSON request is malformatted, a general json error will return 
+If the JSON request is malformatted, a general json error will return
 * `{"error":"error-json-parse"}`
-If the POST is not the right content type, 
+If the POST is not the right content type,
 
 
 ## Combined Requests
