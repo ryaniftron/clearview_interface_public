@@ -22,8 +22,9 @@ Repo that contains scripts to control a ClearView receiver as well as the code f
 
 ### Developing with ESPIDF
 
+1. Remove .espressif if it exists with `$ rm -r ~/.espressif/`
 1. Install espidf
-2. Checkout and use release/v4.2 branch as shown [here](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/versions.html#updating-to-a-release-branch)
+1. Checkout and use release/v4.2 branch as shown [here](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/versions.html#updating-to-a-release-branch)
 
 ## Usage
 
