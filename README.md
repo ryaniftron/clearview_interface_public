@@ -20,6 +20,12 @@ Repo that contains scripts to control a ClearView receiver as well as the code f
     Expect `3.8.1`
 * `python -m pip install pyserial`
 
+### Developing with ESPIDF
+
+1. Remove .espressif if it exists with `$ rm -r ~/.espressif/`
+1. Install espidf
+1. Checkout and use release/v4.2 branch as shown [here](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/versions.html#updating-to-a-release-branch)
+
 ## Usage
 
 Check main.py to turn on simulator if you do not have a ClearView. If you do have one connected, turn off the simulator and supply the correct serial port name. 
