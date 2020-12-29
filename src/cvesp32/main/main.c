@@ -67,7 +67,7 @@
 #endif
 
 
-#include "esp_ota_ops.h"
+#include "cv_repartition.h"
 
 
 
@@ -99,31 +99,30 @@ static const char *TAG = "CV_MAIN";
 void app_main(void)
 {
 
-    const esp_partition_t * p = esp_ota_get_running_partition();
-    printf("%s", p->label);
+    alter_default_partitions();
 
 
 
-    tcpip_adapter_init();
+    // tcpip_adapter_init();
 
-    CV_LED_Code_t initial_led_state = led_off;
-    init_cv_ledc(initial_led_state);
-    init_uart();
-    start_nvs();
+    // CV_LED_Code_t initial_led_state = led_off;
+    // init_cv_ledc(initial_led_state);
+    // init_uart();
+    // start_nvs();
 
-    char chipid[UNIQUE_ID_LENGTH];
-    get_chip_id(chipid, UNIQUE_ID_LENGTH);
+    // char chipid[UNIQUE_ID_LENGTH];
+    // get_chip_id(chipid, UNIQUE_ID_LENGTH);
 
 
-    //Start Wifi
-    start_wifi(chipid, UNIQUE_ID_LENGTH);
+    // //Start Wifi
+    // start_wifi(chipid, UNIQUE_ID_LENGTH);
 
-    //only after in sequential wifi do we start mqtt. Give it some time
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    // //only after in sequential wifi do we start mqtt. Give it some time
+    // vTaskDelay(2000 / portTICK_PERIOD_MS);
 
-    #if CONFIG_ENABLE_MQTT
-        cv_mqtt_init(chipid, UNIQUE_ID_LENGTH, desired_mqtt_broker_ip);
-    #endif //CONFIG_ENABLE_MQTT == 1
+    // #if CONFIG_ENABLE_MQTT
+    //     cv_mqtt_init(chipid, UNIQUE_ID_LENGTH, desired_mqtt_broker_ip);
+    // #endif //CONFIG_ENABLE_MQTT == 1
 
 
 

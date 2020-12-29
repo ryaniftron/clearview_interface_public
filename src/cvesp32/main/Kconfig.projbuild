@@ -4,7 +4,7 @@ menu "ClearView ESP32 Configuration"
         string "ESP32 SoftAP Fallback SSID (typically overwritten on boot)"
         default "esp_softap_ssid"
         help
-            Fallback SSID (network name) for the ESP to generate when in HotSpot Mode. 
+            Fallback SSID (network name) for the ESP to generate when in HotSpot Mode.
             ClearView typically overwrites it with the serial number of the ESP32.
 
     config ESP_WIFI_PASSWORD
@@ -12,7 +12,7 @@ menu "ClearView ESP32 Configuration"
         default ""
         help
             Password to join the ESP HotSpot Network.
-            Leave it empty for an unsecured hotspot. 
+            Leave it empty for an unsecured hotspot.
 
     config ESP_MAX_STA_CONN
         int "Maximal station connections"
@@ -36,7 +36,7 @@ menu "ClearView ESP32 Configuration"
     config BROKER_IP
         string "MQTT Broker IP. Examples are 'localhost' or '192.168.88.18'"
         default "localhost"
-        help 
+        help
             The IP address of the MQTT Broker. Set to the IP address of the computer running the MQTT broker
 
     config FRIENDLY_NAME
@@ -57,22 +57,22 @@ menu "ClearView ESP32 Configuration"
         config ENABLE_SERIAL
             bool "Enable Serial Communication"
             default y
-        
+
         config HW_VERSION_IFTRON_A
             bool "Iftron Hardware RevA"
             default n
             depends on ENABLE_SERIAL
-            select ESP_CONSOLE_UART_NONE 
+            select ESP_CONSOLE_UART_NONE
             # select ESP_CONSOLE_UART_DEFAULT if HW_VERSION_IFTRON_A=n
 
             # ESP_CONSOLE_NONE
             # ESP_CONSOLE_UART_DEFAULT
-            
+
         config ENABLE_LED
             bool "Enable LED codes"
             default y
 
-        choice 
+        choice
             prompt "CVCM LED Pin"
             depends on ENABLE_LED
             help
@@ -80,44 +80,37 @@ menu "ClearView ESP32 Configuration"
 
             config CVLED_PIN_IFTRONA
                 bool "IftronA - Pin4"
-            
+
             config CVLED_PIN_DEVBOARD
                 bool "Devboard - Pin2"
 
         endchoice
-            
-        
-        choice 
+
+
+        choice
             prompt "Allowed WiFi Modes. Can Disable Wifi"
             optional
-            default y 
             config SOFTAP_ALLOWED
                 bool "Only Allow SoftAP WiFi"
-                default n
             config STA_ALLOWED
                 bool "Only Allow Station WiFi"
-                default n
             config BOTH_WIFI_ALLOWED
                 bool "Both WiFi Modes Allowed"
-                default y
         endchoice
 
         if SOFTAP_ALLOWED || STA_ALLOWED || BOTH_WIFI_ALLOWED # Wifi is on
             if BOTH_WIFI_ALLOWED
-                choice 
+                choice
                     prompt "Startup Wifi Mode"
-                    
+
                     config STARTUP_WIFI_SOFTAP
                         bool "Start in SoftAP"
-                        default n
 
                     config STARTUP_WIFI_STA
                         bool "Start in STA"
-                        default n
 
                     config STARTUP_STA_IF_CREDS_ELSE_SOFTAP
                         bool "Start in STA if valid WiFi Creds otherwise SoftAP"
-                        default y
                 endchoice
             endif # BOTH_WIFI_ALLOWED
 
@@ -125,40 +118,34 @@ menu "ClearView ESP32 Configuration"
         if STA_ALLOWED || BOTH_WIFI_ALLOWED
             config ENABLE_MQTT
                 bool "Enable MQTT"
-                default y
         endif # STA_ALLOWED || BOTH_WIFI_ALLOWED
 
-            choice 
+            choice
                 prompt "Web Server"
                 optional
-                default y
                 #if BOTH_WIFI_ALLOWED           # If all three choices use if/endif, Web Server is never available
                 config WEB_SERVER_BOTH
                     bool "Allowed in Both Modes"
-                    default y
                     depends on BOTH_WIFI_ALLOWED # Need to use depend here for some reason
                 #endif # BOTH_WIFI_ALLOWED
-                
+
                 if BOTH_WIFI_ALLOWED || SOFTAP_ALLOWED
                     config WEB_SERVER_SOFTAP_ONLY
                         bool "Only in SoftAP"
-                        default y
                 endif # BOTH_WIFI_ALLOWED || SOFTAP_ALLOWED
-                
+
                 if BOTH_WIFI_ALLOWED || STA_ALLOWED
                     config WEB_SERVER_STA_ONLY
                         bool "Only in STA"
-                        default n
                 endif  # BOTH_WIFI_ALLOWED || STA_ALLOWED
             endchoice
-                
+
         endif # SOFTAP_ALLOWED || STA_ALLOWED || BOTH_WIFI_ALLOWED # Wifi is on
-        
+
         config CV_INITIAL_PROGRAM
             bool "Enable Initial Firmware Program Version"
-            default n
             # help "Turn this on to make the module include more programming and test"
 
-    endmenu 
-        
-endmenu 
+    endmenu
+
+endmenu
