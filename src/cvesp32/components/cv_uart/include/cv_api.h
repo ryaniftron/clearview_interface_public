@@ -43,6 +43,7 @@ extern void get_osdpos(struct cv_api_read* ret);
 extern void get_lock(struct cv_api_read* ret);
 extern void get_mode(struct cv_api_read* ret);
 extern void get_custom_report(char* report, struct cv_api_read* ret);
+extern void get_cv_version(struct cv_api_read* ret);
 extern void get_cvcm_version(struct cv_api_read* ret);
 extern void get_cvcm_version_all(struct cv_api_read* ret);
 extern void get_mac_addr(struct cv_api_read* ret);

@@ -206,6 +206,8 @@ void kv_api_parse_car(struct cv_api_read* car, char* k, char* v) {
         get_mode(car);
     } else if (strncmp(k, CV_API_LOCK, strlen(k)) == 0){
         get_lock(car);
+    } else if (strncmp(k, CV_API_CV_VERSION, strlen(k)) == 0 ){
+        get_cv_version(car);
     } else if (strncmp(k, CV_API_CVCM_VERSION, strlen(k)) == 0){
         get_cvcm_version(car);
     } else if (strncmp(k, CV_API_CVCM_VERSION_ALL, strlen(k)) == 0){
