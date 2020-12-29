@@ -1,8 +1,8 @@
 idf_component_register(SRCS "cv_server.c"
                        INCLUDE_DIRS "include"
                        REQUIRES esp_http_server cv_mqtt cv_ota cv_wifi json
-                       EMBED_TXTFILES 
-                           WebsiteFiles/settings.html 
+                       EMBED_TXTFILES
+                           WebsiteFiles/settings.html
                            WebsiteFiles/httpDocBegin.html
                            WebsiteFiles/httpDocConclude.html
                            WebsiteFiles/subtitle.html

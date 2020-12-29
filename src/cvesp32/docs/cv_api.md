@@ -6,6 +6,7 @@ The CVCM supports JSON over http and also over MQTT. The underlying API is the s
 ## API Endpoints
 
 Some settings support reading the parameter. To read a parameter, simply pass in the '?' character.
+For a reference to what some of the raw values that the ClearView2.0 will accept, see [here](https://docs.google.com/document/d/1-1uMS89gDI37topBPb-QPKKed2rIyEi6Y7M0LAVGZGE/edit?usp=sharing)
 | API Endpoint Key | Description                                                            | Read/Write | Example Reply Value               | Possible Values                            |
 |------------------|------------------------------------------------------------------------|------------|-----------------------------------|--------------------------------------------|
 | address          | Address the CVCM UART is at (unused)                                   | R/W        | 1                                 | 0 <= address <= 7 |

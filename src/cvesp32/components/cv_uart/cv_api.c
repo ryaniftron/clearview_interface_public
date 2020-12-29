@@ -38,6 +38,7 @@
 #define REP_UM "RPUM"
 #define CMD_MODE "MD"
 #define REP_MODE "RPMD"
+#define REP_CV_VER "RPMV"
 #define CMD_VIDEO_FORMAT "VF"
 #define REP_VIDEO_FORMAT "RPVF"
 #define CMD_OSD_VIS "OD"
@@ -485,6 +486,11 @@ extern void get_custom_report(char* report, struct cv_api_read* ret){
         ret->val = (char*)rxbuf;
     }
     free(cmd_tot);
+}
+
+extern void get_cv_version(struct cv_api_read* ret){
+    char* cmd_id = REP_CV_VER;
+    run_read(ret, cmd_id);
 }
 
 extern void get_cvcm_version(struct cv_api_read* ret){
