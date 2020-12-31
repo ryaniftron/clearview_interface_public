@@ -37,8 +37,10 @@ typedef enum  {
     nvs_wifi_pass,
     nvs_fname,
     nvs_broker_ip,
-    nvs_seat_number
+    nvs_seat_number,
+    nvs_part_ver
 } CV_NVS_KEY;
 extern bool get_nvs_value(CV_NVS_KEY nvs_key);
 extern bool set_nvs_u8val(CV_NVS_KEY nvs_key, uint8_t val);
 extern bool set_nvs_strval(CV_NVS_KEY nvs_key, char* val);
+extern uint8_t get_part_ver(CV_NVS_KEY nvs_key);

@@ -99,16 +99,18 @@ static const char *TAG = "CV_MAIN";
 void app_main(void)
 {
 
-    alter_default_partitions();
+
 
 
 
     // tcpip_adapter_init();
 
-    // CV_LED_Code_t initial_led_state = led_off;
-    // init_cv_ledc(initial_led_state);
-    // init_uart();
-    // start_nvs();
+    CV_LED_Code_t initial_led_state = led_off;
+    init_cv_ledc(initial_led_state);
+    init_uart();
+    start_nvs();
+
+    alter_default_partitions();
 
     // char chipid[UNIQUE_ID_LENGTH];
     // get_chip_id(chipid, UNIQUE_ID_LENGTH);

@@ -37,7 +37,7 @@ extern void get_chip_id(char* ssid, const int LEN){
     return;
 }
 
-extern void remove_ctrlchars(char* s) 
+extern void remove_ctrlchars(char* s)
 //https://stackoverflow.com/a/28609778/11032285
 //https://www.programiz.com/c-programming/online-compiler/?ref=63effdb8
 {
@@ -45,17 +45,17 @@ extern void remove_ctrlchars(char* s)
 
     while (s[reader])
     {
-        if (s[reader]>=32) 
-        {   
+        if (s[reader]>=32)
+        {
             s[writer++] = s[reader];
         }
 
-        reader++;       
+        reader++;
     }
 
     s[writer]=0;;
     printf("'%s'\n", s);
-} 
+}
 
 
 // Return true if the crediential was set
@@ -91,7 +91,7 @@ extern bool set_credential(char* credentialName, char* val){
             ESP_LOGE(TAG_UTILS, "Ignoring seat_number out of range");
             return false;
         }
-        
+
     } else {
         ESP_LOGE(TAG_UTILS, "Unexpected Credential of %s", credentialName);
         return false;
@@ -174,7 +174,7 @@ static void get_nvs_str_from_enum(CV_NVS_KEY k, char* nvs_str) {
 
 static bool initialize_default_nvs(CV_NVS_KEY k, nvs_handle_t nh){
     esp_err_t err;
-    char kstr[NVS_KSIZE]; 
+    char kstr[NVS_KSIZE];
     get_nvs_str_from_enum(k, kstr);
 
     switch (k) {
@@ -214,7 +214,7 @@ extern bool get_nvs_value(CV_NVS_KEY nvs_key){
     nvs_handle_t nh;
     open_nvs_handle(&nh);
 
-    char kstr[NVS_KSIZE]; 
+    char kstr[NVS_KSIZE];
     get_nvs_str_from_enum(nvs_key, kstr);
 
     // Read
@@ -276,7 +276,7 @@ extern bool get_nvs_value(CV_NVS_KEY nvs_key){
             return false;
             break;
     }
-     
+
     switch (err) {
         case ESP_OK:
             printf("Success getting value. \n");
@@ -313,7 +313,7 @@ extern bool set_nvs_strval(CV_NVS_KEY nvs_key, char* val) {
     nvs_handle_t nh;
     open_nvs_handle(&nh);
 
-    char kstr[NVS_KSIZE]; 
+    char kstr[NVS_KSIZE];
     get_nvs_str_from_enum(nvs_key, kstr);
 
     err = nvs_set_str(nh, kstr, val);
@@ -338,7 +338,7 @@ extern bool set_nvs_u8val(CV_NVS_KEY nvs_key, uint8_t val) {
     nvs_handle_t nh;
     open_nvs_handle(&nh);
 
-    char kstr[NVS_KSIZE]; 
+    char kstr[NVS_KSIZE];
     get_nvs_str_from_enum(nvs_key, kstr);
 
     err = nvs_set_u8(nh, kstr, val);
@@ -354,4 +354,8 @@ extern bool set_nvs_u8val(CV_NVS_KEY nvs_key, uint8_t val) {
     ESP_LOGI(TAG_UTILS, "%s",(err != ESP_OK) ? "Failed to commit!\n" : "Done Committing\n");
     // if (err!=ESP_OK){nvs_set_succ=false;}
     return nvs_set_succ;
+}
+
+extern uint8_t get_part_ver(CV_NVS_KEY nvs_key) {
+    return -1;
 }

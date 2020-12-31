@@ -1,0 +1,12 @@
+import sys
+import os
+
+idf_path = os.environ["IDF_PATH"]  # get value of IDF_PATH from environment
+otatool_dir = os.path.join(idf_path, "components", "app_update")  # otatool.py lives in $IDF_PATH/components/app_update
+
+sys.path.append(otatool_dir)  # this enables Python to find otatool module
+from otatool import *  # import all names inside otatool module
+
+target = OtatoolTarget("/dev/ttyUSB0")
+
+target.read_ota_partition("ota_1","ota_1.bin")

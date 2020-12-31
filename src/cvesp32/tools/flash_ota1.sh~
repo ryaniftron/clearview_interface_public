@@ -1,0 +1,3 @@
+$IDF_PATH/components/app_update/otatool.py write_ota_partition --slot 1 --file CVCM.bin
+$IDF_PATH/components/app_update/otatool.py switch_ota_partition --slot 1
+
