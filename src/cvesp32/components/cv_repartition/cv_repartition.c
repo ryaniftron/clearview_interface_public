@@ -81,11 +81,12 @@ static void write_partition_table(const char *new_table){
 // Copies partition contents from src to dst
 static void duplicate_partition(esp_partition_t *src, esp_partition_t *dst){
     //TODO
-}   
+}
 
 
 // This function is called when a factory partition exists
 extern void alter_default_partitions() {
+    //TODO use guarded part functions
 
     esp_partition_subtype_t FACTORY = ESP_PARTITION_SUBTYPE_DATA_OTA;
     esp_partition_subtype_t OTA0 = ESP_PARTITION_SUBTYPE_APP_OTA_0;
@@ -94,7 +95,8 @@ extern void alter_default_partitions() {
     const esp_partition_t *boot_partition = esp_ota_get_running_partition();
     ESP_LOGE(TAG, "Current running partition: %s", boot_partition->label);
     if(boot_partition->subtype == FACTORY){ // This should not happen in the wild
-        ESP_LOGW(TAG, "Running from Factory partition. Rewriting table now.");
+        ESP_LOGW(TAG, "Running from Factory partition. Rewriting table now. TODO skipping this now");
+        return;
         // Clear OTA0 and OTA1
         const esp_partition_t *ota0 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, OTA0, "ota_0");
         if (ota0 != NULL){
@@ -114,20 +116,38 @@ extern void alter_default_partitions() {
         }
         ESP_LOGI(TAG, "Done erase, now rewriting partition table");
         // Write new part table
-        write_partition_table(partitions_1_5_nofactory_bin);        
+        write_partition_table(partitions_1_5_nofactory_bin);
     } else if(boot_partition->subtype == OTA0){
         ESP_LOGI(TAG, "On OTA0 now. Erasing factory, copying over ota0, then booting factory");
         const esp_partition_t *fp = esp_partition_find_first(ESP_PARTITION_TYPE_APP, FACTORY, "factory");
-        ESP_ERROR_CHECK(esp_partition_erase_range(fp,  CONFIG_PARTITION_TABLE_OFFSET, fp->size));
+        ESP_ERROR_CHECK(esp_partition_erase_range(fp,  0, fp->size));
         ESP_LOGE(TAG, "TODO copy ota0 over");
         ESP_LOGE(TAG, "TODO boot to factory");
     }
     else if(boot_partition->subtype == OTA1){
-        ESP_LOGW(TAG, "On OTA1 now. XXX");
+        ESP_LOGI(TAG, "On OTA1 now.");
         const esp_partition_t *fp = esp_partition_find_first(ESP_PARTITION_TYPE_APP, FACTORY, "factory");
-        ESP_ERROR_CHECK(esp_partition_erase_range(fp,  CONFIG_PARTITION_TABLE_OFFSET, fp->size));
-        ESP_LOGE(TAG, "TODO copy ota1 over");
+        if (fp==NULL){
+            ESP_LOGE(TAG,"No factory partition found to erase.");
+        }
+        ESP_ERROR_CHECK(esp_partition_erase_range(fp, 0, fp->size));
+
+        ESP_LOGI(TAG, "Copying ota1 (current part) over");
+        const uint16_t s = 8192;
+        void * buffer = malloc(s);
+        for (int i = 0 ; i < fp->size ; i += s) {
+            ESP_LOGI(TAG, "Copying i=%i", i);
+            esp_partition_read(boot_partition, 0, buffer, s);
+            esp_partition_write(fp, 0, buffer, s);
+        }
+        free(buffer);
         ESP_LOGE(TAG, "TODO boot to factory");
+        // ESP_ERROR_CHECK(esp_ota_set_boot_partition(fp)); //this can't validate
+        const esp_partition_t *find_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_OTA, NULL);
+        if (find_partition != NULL) {
+            ESP_ERROR_CHECK(esp_partition_erase_range(find_partition, 0, find_partition->size));
+            esp_restart();
+        }
     }
 }
 
@@ -154,6 +174,7 @@ extern void alter_default_partitions() {
 // }
 
 void repartition_device() {
+    ESP_LOGI(TAG, "HEYO");
     const esp_partition_t *factory_partition = esp_partition_find_first(ESP_PARTITION_TYPE_APP, 00, "factory");
     const esp_partition_t *ota_0 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, 16, "ota_0");
     const esp_partition_t *ota_1 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, 17, "ota_1");
