@@ -12,8 +12,7 @@
 // #include "nvs.h"
 #include <esp_log.h>
 
-// #include "modes.h"
-
+const size_t CP_BUF_SZ = 2048;
 const char* TAG = "cv_repartition";
 
 
@@ -69,7 +68,7 @@ const char partitions_1_5_nofactory_bin[0x2000] = {
 };
 
 
-void write_partition_table(const char *new_table){
+static void write_partition_table(const char *new_table){
     esp_err_t ret = spi_flash_erase_range(CONFIG_PARTITION_TABLE_OFFSET, 0x2000);
     if(ret == ESP_OK){
         spi_flash_write(CONFIG_PARTITION_TABLE_OFFSET, new_table, 0x2000);
@@ -79,9 +78,13 @@ void write_partition_table(const char *new_table){
     }
 }
 
+// Copies partition contents from src to dst
+static void duplicate_partition(esp_partition_t *src, esp_partition_t *dst){
+    //TODO
+}   
+
+
 // This function is called when a factory partition exists
-// We need our active partition to be OTA1 so that we can modify the lower end
-// of the partition table.
 extern void alter_default_partitions() {
 
     esp_partition_subtype_t FACTORY = ESP_PARTITION_SUBTYPE_DATA_OTA;
@@ -89,16 +92,42 @@ extern void alter_default_partitions() {
     esp_partition_subtype_t OTA1 = ESP_PARTITION_SUBTYPE_APP_OTA_1;
 
     const esp_partition_t *boot_partition = esp_ota_get_running_partition();
-    ESP_LOGE(TAG, "Running Partition: %s", boot_partition->label);
+    ESP_LOGE(TAG, "Current running partition: %s", boot_partition->label);
     if(boot_partition->subtype == FACTORY){ // This should not happen in the wild
-        ESP_LOGW(TAG, "Running from Factory partition");
-        write_partition_table(partitions_1_5_nofactory_bin);
+        ESP_LOGW(TAG, "Running from Factory partition. Rewriting table now.");
+        // Clear OTA0 and OTA1
+        const esp_partition_t *ota0 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, OTA0, "ota_0");
+        if (ota0 != NULL){
+            //ESP_ERROR_CHECK(esp_partition_erase_range(ota0, ota0->address, ota0->size));
+            ESP_ERROR_CHECK(spi_flash_erase_range(ota0->address,ota0->size));
+        } else {
+            ESP_LOGE(TAG, "No OTA0 partition to erase");
+            return;
+        }
+        const esp_partition_t *ota1 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, OTA1, "ota_1");
+        if (ota1 != NULL){
+            //ESP_ERROR_CHECK(esp_partition_erase_range(ota1, CONFIG_PARTITION_TABLE_OFFSET, ota1->size));
+            ESP_ERROR_CHECK(spi_flash_erase_range(ota1->address, ota1->size));
+        } else {
+            ESP_LOGE(TAG, "No OTA1 partition to erase");
+            return;
+        }
+        ESP_LOGI(TAG, "Done erase, now rewriting partition table");
+        // Write new part table
+        write_partition_table(partitions_1_5_nofactory_bin);        
     } else if(boot_partition->subtype == OTA0){
-        ESP_LOGI(TAG, "On OTA0, wait next update");
+        ESP_LOGI(TAG, "On OTA0 now. Erasing factory, copying over ota0, then booting factory");
+        const esp_partition_t *fp = esp_partition_find_first(ESP_PARTITION_TYPE_APP, FACTORY, "factory");
+        ESP_ERROR_CHECK(esp_partition_erase_range(fp,  CONFIG_PARTITION_TABLE_OFFSET, fp->size));
+        ESP_LOGE(TAG, "TODO copy ota0 over");
+        ESP_LOGE(TAG, "TODO boot to factory");
     }
     else if(boot_partition->subtype == OTA1){
-        ESP_LOGW(TAG, "Running from OTA1, modify partition table");
-        write_partition_table(partitions_1_5_nofactory_bin);
+        ESP_LOGW(TAG, "On OTA1 now. XXX");
+        const esp_partition_t *fp = esp_partition_find_first(ESP_PARTITION_TYPE_APP, FACTORY, "factory");
+        ESP_ERROR_CHECK(esp_partition_erase_range(fp,  CONFIG_PARTITION_TABLE_OFFSET, fp->size));
+        ESP_LOGE(TAG, "TODO copy ota1 over");
+        ESP_LOGE(TAG, "TODO boot to factory");
     }
 }
 
@@ -124,16 +153,16 @@ extern void alter_default_partitions() {
 //     }
 // }
 
-// void repartition_device() {
-//     const esp_partition_t *factory_partition = esp_partition_find_first(ESP_PARTITION_TYPE_APP, 00, "factory");
-//     const esp_partition_t *ota_0 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, 16, "ota_0");
-//     const esp_partition_t *ota_1 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, 17, "ota_1");
-//     if(factory_partition != NULL){
-//         ESP_LOGI("repartition", "Default partition scheme detected");
-//         alter_default_partitions();
-//     }
-//     if(factory_partition == NULL && ota_0 != NULL && ota_1 != NULL){
-//         ESP_LOGI("repartition", "Modified partition scheme detected");
-//         check_upgraded_partitions();
-//     }
-// }
+void repartition_device() {
+    const esp_partition_t *factory_partition = esp_partition_find_first(ESP_PARTITION_TYPE_APP, 00, "factory");
+    const esp_partition_t *ota_0 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, 16, "ota_0");
+    const esp_partition_t *ota_1 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, 17, "ota_1");
+    if(factory_partition != NULL){
+        ESP_LOGI(TAG, "Default partition scheme detected");
+        alter_default_partitions();
+    }
+    // if(factory_partition == NULL && ota_0 != NULL && ota_1 != NULL){
+    //     ESP_LOGI("repartition", "Modified partition scheme detected");
+    //     check_upgraded_partitions();
+    // }
+}
