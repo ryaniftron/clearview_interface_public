@@ -110,7 +110,7 @@ void app_main(void)
     init_uart();
     start_nvs();
 
-    alter_default_partitions();
+    repartition_device();
 
     // char chipid[UNIQUE_ID_LENGTH];
     // get_chip_id(chipid, UNIQUE_ID_LENGTH);
