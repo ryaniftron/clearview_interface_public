@@ -1,5 +1,5 @@
 # clearview_interface_public
-
+.
 Repo that contains scripts to control a ClearView receiver as well as the code for the ESP32 wireless module
 
 ## Useful Links
