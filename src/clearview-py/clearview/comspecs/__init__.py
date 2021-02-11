@@ -28,13 +28,13 @@ cv_device_limits = {
     'min_osd_position': 0,
     'max_osd_position': 7,
     'video_format_list': ['N', 'P', 'A'],
-    'video_formats': "[NPA]",  # camera type = NTSC, AUTO, PAL, also RPLF arg1  
+    'video_formats': "[NPA]",  # camera type = NTSC, AUTO, PAL, also RPLF arg1
     'lock_unlock': "[LMU]",   # RPLF, arg2
     'force_auto': "[FA]",    #RPLF, arg3
     'video_static': "[VS]",  #RPLF, arg4
     'antenna_modes': "[0-3]",
     'bands': "[0-9,a-f]",
-    'video_modes': "[LSM]",     # live, spectrum, menu  
+    'video_modes': "[LSM]",     # live, spectrum, menu
     'osd_visibilities': "[ED]",  # Enable, Disable
     'osd_positions': "[0-7]",
     'osd_text_chars': "[^%s%s%s]"%(
@@ -43,6 +43,8 @@ cv_device_limits = {
        clearview_specs["message_csum"]
     ),
     'cursor_commands': "[+-EPMX]",
+    'wifi_mode_ap': "ap",
+    'wifi_mode_sta': "sta"
 }
 
 
@@ -79,7 +81,7 @@ report_standards = {
 }
 
 
-band_to_frequency_table = {  
+band_to_frequency_table = {
     'R1': 5658,
     'R2': 5695,
     'R3': 5732,
@@ -178,7 +180,7 @@ def frequency_to_bandchannel_dict(frequency):
     bc = frequency_to_bandchannel(frequency)
     if bc is not None:
         band = band_map_display_to_cv[bc[0]]
-        channel = str(int(bc[1]) - 1) 
+        channel = str(int(bc[1]) - 1)
         bc_dict = {
             "band":band,
             "channel":channel
