@@ -10,6 +10,8 @@ Repo that contains scripts to control a ClearView receiver as well as the code f
 
 ## Install
 
+### Install for python library
+
 * `$ git clone https://github.com/ryaniftron/clearview_interface_public.git`
 * Install python 3.8.1 or later. Recommended to use pyenv
     `https://realpython.com/intro-to-pyenv/`
@@ -20,11 +22,44 @@ Repo that contains scripts to control a ClearView receiver as well as the code f
     Expect `3.8.1`
 * `python -m pip install pyserial`
 
-### Developing with ESPIDF
+### Install with ESPIDF locally 
 
 1. Remove .espressif if it exists with `$ rm -r ~/.espressif/`
 1. Install espidf
 1. Checkout and use release/v4.2 branch as shown [here](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/versions.html#updating-to-a-release-branch)
+
+### Install with docker
+#### Docker Setup
+
+Warning: Docker only can access USB devices if your host is Linux. See [here](https://github.com/docker/for-win/issues/1018) for Windows and [here](https://github.com/docker/for-mac/issues/900) for Mac.
+
+The 4.3 release will be used for development, as found [here](https://hub.docker.com/r/espressif/idf/tags?page=1&ordering=last_updated)
+
+```
+$ sudo docker pull espressif/idf:release-v4.3
+```
+
+[ESPIDF Docker Reference](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/tools/idf-docker-image.html)
+
+#### Code format
+
+clang-format will be used to format code.
+See [here](https://marketplace.visualstudio.com/items?itemName=xaver.clang-format) for vscode setup. Use the format on save option in VSCode.
+
+#### Run Instructions
+
+To build:
+```
+$ cd src/cvesp32
+$ scripts/init.sh
+```
+
+To build and connect to /dev/ttyUSB0
+```
+$ cd src/cvesp32
+$ ../scripts/init.sh 0
+```
+To exit the IDF monitor, type `ctrl+]`
 
 ## Usage
 

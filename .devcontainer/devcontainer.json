@@ -1,0 +1,29 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
+// https://github.com/microsoft/vscode-dev-containers/tree/v0.163.1/containers/docker-existing-dockerfile
+{
+	"name": "Existing Dockerfile",
+
+	// Sets the run context to one level up instead of the .devcontainer folder.
+	"context": "..",
+
+	// Update the 'dockerFile' property if you aren't using the standard 'Dockerfile' filename.
+	"dockerFile": "../Dockerfile",
+
+	// Set *default* container specific settings.json values on container create.
+	"settings": {
+		"terminal.integrated.shell.linux": null
+	},
+
+	// Add the IDs of extensions you want installed when the container is created.
+	"extensions": [
+		"ms-vscode.cpptools",
+		"ms-vscode.cmake-tools",
+		"ms-azuretools.vscode-docker",
+		"ms-python.python"
+	],
+
+    // Run as privileged to access USB devices to flash ESP32
+	// Set LC_ALL to C.UTF-8 to remove unicode warning
+	// Finally, mount the usb directory instead of sharing a certain device like /dev/ttyUSB0
+	"runArgs": ["--privileged", "--env", "LC_ALL=C.UTF-8", "-v" ,"/dev/bus/usb:/dev/bus/usb"]
+}
