@@ -13,7 +13,6 @@
 #include <esp_http_server.h>
 #include "esp_ota_ops.h"
 #include "freertos/event_groups.h"
-#include "cv_server.h"
 
 // Embedded Files. To add or remove make changes is component.mk file as well. 
 extern const uint8_t index_html_start[] asm("_binary_ota_html_start");
@@ -64,7 +63,7 @@ void otaRebootTask(void * parameter)
 		}
 	}
 }
-/* Send index.html Page */
+
 extern esp_err_t OTA_index_html_handler(httpd_req_t *req)
 {
 	ESP_LOGI("OTA", "index.html Requested");
@@ -79,17 +78,8 @@ extern esp_err_t OTA_index_html_handler(httpd_req_t *req)
 	return ESP_OK;
 }
 
-static esp_err_t ota_get_handler(httpd_req_t *req)
-{
-    serve_html_beg(req);
-    serve_title(req);
-	serve_menu_bar(req);
-    OTA_index_html_handler(req);
-    serve_html_end(req);
-    return ESP_OK;
-}
-/* Send .ICO (icon) file  */
-esp_err_t OTA_favicon_ico_handler(httpd_req_t *req)
+
+extern esp_err_t OTA_favicon_ico_handler(httpd_req_t *req)
 {
 	ESP_LOGI("OTA", "favicon_ico Requested");
     
@@ -99,7 +89,7 @@ esp_err_t OTA_favicon_ico_handler(httpd_req_t *req)
 
 	return ESP_OK;
 }
-/* jquery GET handler */
+
 esp_err_t jquery_3_4_1_min_js_handler(httpd_req_t *req)
 {
 	ESP_LOGI("OTA", "jqueryMinJs Requested");
@@ -112,7 +102,7 @@ esp_err_t jquery_3_4_1_min_js_handler(httpd_req_t *req)
 }
 
 /* Status */
-esp_err_t OTA_update_status_handler(httpd_req_t *req)
+extern esp_err_t OTA_update_status_handler(httpd_req_t *req)
 {
 	char ledJSON[120];
 	
@@ -136,7 +126,7 @@ esp_err_t OTA_update_status_handler(httpd_req_t *req)
 	return ESP_OK;
 }
 /* Receive .Bin file */
-esp_err_t OTA_update_post_handler(httpd_req_t *req)
+extern esp_err_t OTA_update_post_handler(httpd_req_t *req)
 {
 	esp_ota_handle_t ota_handle; 
 	
@@ -240,43 +230,8 @@ esp_err_t OTA_update_post_handler(httpd_req_t *req)
 
 
 
-httpd_uri_t OTA_index_html = {
-	.uri = "/ota",
-	.method = HTTP_GET,
-	.handler = ota_get_handler,
-	/* Let's pass response string in user
-	 * context to demonstrate it's usage */
-	.user_ctx = NULL
-};
 
-httpd_uri_t OTA_favicon_ico = {
-	.uri = "/favicon.ico",
-	.method = HTTP_GET,
-	.handler = OTA_favicon_ico_handler,
-	/* Let's pass response string in user
-	 * context to demonstrate it's usage */
-	.user_ctx = NULL
-};
-httpd_uri_t OTA_jquery_3_4_1_min_js = {
-	.uri = "/jquery-3.4.1.min.js",
-	.method = HTTP_GET,
-	.handler = jquery_3_4_1_min_js_handler,
-	/* Let's pass response string in user
-	 * context to demonstrate it's usage */
-	.user_ctx = NULL
-};
 
-httpd_uri_t OTA_update = {
-	.uri = "/update",
-	.method = HTTP_POST,
-	.handler = OTA_update_post_handler,
-	.user_ctx = NULL
-};
-httpd_uri_t OTA_status = {
-	.uri = "/status",
-	.method = HTTP_POST,
-	.handler = OTA_update_status_handler,
-	.user_ctx = NULL
-};
+
 
 

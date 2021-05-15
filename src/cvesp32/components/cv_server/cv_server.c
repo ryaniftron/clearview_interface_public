@@ -5,8 +5,6 @@
 #include <esp_event.h>
 #include <esp_log.h>
 
-
-
 #include "lwip/api.h"
 
 #include "cv_utils.h"
@@ -651,6 +649,16 @@ static esp_err_t svg_err_handler(httpd_req_t *req)
 	return ESP_OK;
 }
 
+static esp_err_t ota_get_handler(httpd_req_t *req)
+{
+    serve_html_beg(req);
+    serve_title(req);
+	serve_menu_bar(req);
+    OTA_index_html_handler(req);
+    serve_html_end(req);
+    return ESP_OK;
+}
+
 // error <svg id=\"beb23479-4000-42ba-a617-1c0d17581624\" data-name=\"Layer 1\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\"><defs><style>.bbfeb0ba-e50b-49ff-9929-d14795293362{fill:#db5727;}</style></defs><rect class=\"bbfeb0ba-e50b-49ff-9929-d14795293362\" x=\"3\" y=\"27\" width=\"59\" height=\"10\" transform=\"translate(-13.108 32.354) rotate(-45)\"/><rect class=\"bbfeb0ba-e50b-49ff-9929-d14795293362\" x=\"27.5\" y=\"2.5\" width=\"10\" height=\"59\" transform=\"translate(-13.108 32.354) rotate(-45)\"/></svg>
 
 static const httpd_uri_t root_uri = {
@@ -711,8 +719,6 @@ static const httpd_uri_t cv_js_uri = {
 	.uri = "/cv_js.js",
 	.method = HTTP_GET,
 	.handler = cv_js_handler,
-	/* Let's pass response string in user
-	 * context to demonstrate it's usage */
 	.user_ctx = NULL
 };
 
@@ -732,6 +738,45 @@ static const httpd_uri_t svg_error_uri = {
     .uri       = "/cvcm_error.svg",
     .method    = HTTP_GET,
     .handler   = svg_err_handler
+};
+
+static const httpd_uri_t OTA_index_html = {
+	.uri = "/ota",
+	.method = HTTP_GET,
+	.handler = ota_get_handler,
+	.user_ctx = NULL
+};
+
+extern const httpd_uri_t OTA_favicon_ico = {
+	.uri = "/favicon.ico",
+	.method = HTTP_GET,
+	.handler = OTA_favicon_ico_handler,
+	/* Let's pass response string in user
+	 * context to demonstrate it's usage */
+	.user_ctx = NULL
+};
+
+extern const httpd_uri_t OTA_jquery_3_4_1_min_js = {
+	.uri = "/jquery-3.4.1.min.js",
+	.method = HTTP_GET,
+	.handler = jquery_3_4_1_min_js_handler,
+	/* Let's pass response string in user
+	 * context to demonstrate it's usage */
+	.user_ctx = NULL
+};
+
+extern const httpd_uri_t OTA_update = {
+	.uri = "/update",
+	.method = HTTP_POST,
+	.handler = OTA_update_post_handler,
+	.user_ctx = NULL
+};
+
+extern const httpd_uri_t OTA_status = {
+	.uri = "/status",
+	.method = HTTP_POST,
+	.handler = OTA_update_status_handler,
+	.user_ctx = NULL
 };
 
 
